@@ -103,6 +103,18 @@ def _downloaded_album_group(
     return _downloaded_album_match(result, tracks, albums_by_id)[0]
 
 
+def _matched_track_payload(track: dict, match_method: str) -> dict:
+    return {
+        "id": track.get("id"),
+        "title": track.get("title", ""),
+        "track_number": track.get("trackNumber") or track.get("absoluteTrackNumber"),
+        "foreign_recording_id": track.get("foreignRecordingId") or track.get("foreignTrackId"),
+        "track_file_id": track.get("trackFileId"),
+        "has_file": bool(track.get("hasFile")),
+        "match_method": match_method,
+    }
+
+
 class LidarrClient:
     def __init__(self, config: Config):
         self.config = config
@@ -262,6 +274,45 @@ class LidarrClient:
         if progress:
             progress(1, total, "Loaded Lidarr artists")
         known_global_albums: dict[str, dict] = {}
+        globally_checked_groups: set[str] = set()
+        tracks_by_album_id: dict[int, list[dict]] = {}
+
+        def global_album(group: str) -> dict | None:
+            if group not in globally_checked_groups:
+                matches = self._request("GET", "album", params={"foreignAlbumId": group}) or []
+                album = next(
+                    (item for item in matches if item.get("foreignAlbumId") == group), None
+                )
+                if album is not None:
+                    known_global_albums[group] = album
+                globally_checked_groups.add(group)
+            return known_global_albums.get(group)
+
+        def global_downloaded_match(
+            result: MusicBrainzResult, local_groups: set[str]
+        ) -> tuple[dict, dict, str] | None:
+            for group in result.release_group_ids:
+                if group in local_groups:
+                    continue
+                album = global_album(group)
+                if album is None or (
+                    _is_various_artists_album(album) and group not in override_groups
+                ):
+                    continue
+                album_id = album.get("id")
+                if album_id is None:
+                    continue
+                if album_id not in tracks_by_album_id:
+                    tracks_by_album_id[album_id] = (
+                        self._request("GET", "track", params={"albumId": album_id}) or []
+                    )
+                matched_group, track, method = _downloaded_album_match(
+                    result, tracks_by_album_id[album_id], {album_id: album}
+                )
+                if matched_group and track:
+                    return album, track, method
+            return None
+
         for artist_number, (artist_mbid, artist_results) in enumerate(grouped.items(), start=1):
             artist = existing.get(artist_mbid)
             artist_name = next(
@@ -377,6 +428,14 @@ class LidarrClient:
                 downloaded_group, matched_track, match_method = _downloaded_album_match(
                     result, tracks, albums_by_id
                 )
+                global_match = (
+                    None
+                    if downloaded_group
+                    else global_downloaded_match(result, set(albums_by_group))
+                )
+                if global_match:
+                    matched_album, matched_track, match_method = global_match
+                    downloaded_group = matched_album["foreignAlbumId"]
                 if downloaded_group:
                     effective_groups.add(downloaded_group)
                     if downloaded_group not in result.release_group_ids:
@@ -391,24 +450,14 @@ class LidarrClient:
                                 {
                                     "mapped_release_group_ids": list(result.release_group_ids),
                                     "lidarr_album_id": (
-                                        albums_by_group.get(downloaded_group) or {}
+                                        albums_by_group.get(downloaded_group)
+                                        or known_global_albums.get(downloaded_group)
+                                        or {}
                                     ).get("id"),
                                     "requested_recording_ids": list(result.recording_ids),
-                                    "matched_track": {
-                                        "id": (matched_track or {}).get("id"),
-                                        "title": (matched_track or {}).get("title", ""),
-                                        "track_number": (
-                                            (matched_track or {}).get("trackNumber")
-                                            or (matched_track or {}).get("absoluteTrackNumber")
-                                        ),
-                                        "foreign_recording_id": (
-                                            (matched_track or {}).get("foreignRecordingId")
-                                            or (matched_track or {}).get("foreignTrackId")
-                                        ),
-                                        "track_file_id": (matched_track or {}).get("trackFileId"),
-                                        "has_file": bool((matched_track or {}).get("hasFile")),
-                                        "match_method": match_method,
-                                    },
+                                    "matched_track": _matched_track_payload(
+                                        matched_track or {}, match_method
+                                    ),
                                 },
                             )
                         )
@@ -419,9 +468,23 @@ class LidarrClient:
                                 artist_mbid,
                                 artist_name,
                                 downloaded_group,
-                                albums_by_group.get(downloaded_group, {}).get("title", ""),
+                                (
+                                    albums_by_group.get(downloaded_group)
+                                    or known_global_albums.get(downloaded_group)
+                                    or {}
+                                ).get("title", ""),
                                 "requested_recording_downloaded",
-                                {"requested_recording_ids": list(result.recording_ids)},
+                                {
+                                    "lidarr_album_id": (
+                                        albums_by_group.get(downloaded_group)
+                                        or known_global_albums.get(downloaded_group)
+                                        or {}
+                                    ).get("id"),
+                                    "requested_recording_ids": list(result.recording_ids),
+                                    "matched_track": _matched_track_payload(
+                                        matched_track or {}, match_method
+                                    ),
+                                },
                             )
                         )
                 else:
@@ -435,10 +498,7 @@ class LidarrClient:
             for group in sorted(effective_groups):
                 album = albums_by_group.get(group) or known_global_albums.get(group)
                 if album is None:
-                    matches = self._request("GET", "album", params={"foreignAlbumId": group}) or []
-                    album = next(
-                        (item for item in matches if item.get("foreignAlbumId") == group), None
-                    )
+                    album = global_album(group)
                 if (
                     album is not None
                     and _is_various_artists_album(album)
@@ -740,6 +800,7 @@ class LidarrClient:
             progress("Loaded Lidarr artists for comparison")
         albums_by_artist: dict[int, dict[str, dict]] = {}
         global_albums_by_group: dict[str, dict | None] = {}
+        global_tracks_by_album_id: dict[int, list[dict]] = {}
         files_by_artist: dict[int, tuple[set[str], set[str]]] = {}
         missing: dict[int, str] = {}
         matched: dict[int, str] = {}
@@ -804,6 +865,25 @@ class LidarrClient:
                     album = global_albums_by_group[release_group]
                     if album is not None:
                         exact_albums.append(album)
+                        album_id = album.get("id")
+                        if album_id is not None and not _is_various_artists_album(album):
+                            if album_id not in global_tracks_by_album_id:
+                                global_tracks_by_album_id[album_id] = (
+                                    self._request("GET", "track", params={"albumId": album_id})
+                                    or []
+                                )
+                            global_recording_ids, global_titles = _downloaded_track_keys(
+                                global_tracks_by_album_id[album_id]
+                            )
+                            same_recording = bool(
+                                global_recording_ids.intersection(result.recording_ids)
+                            )
+                            same_title = bool(
+                                result.recording_title
+                                and _comparable_title(result.recording_title) in global_titles
+                            )
+                            if same_recording or same_title:
+                                break
             if same_recording:
                 matched[index] = "release_downloaded" if exact_albums else "recording_match"
             elif same_title:
@@ -894,6 +974,73 @@ class LidarrClient:
             if progress:
                 name = results[indexes[0]].artist_names
                 progress(f"Checked files for {name[0] if name else artist_mbid}")
+
+        albums_by_group: dict[str, dict | None] = {}
+        tracks_by_album_id: dict[int, list[dict]] = {}
+        files_by_artist_id: dict[int, dict[int, dict]] = {}
+        for index, result in enumerate(results):
+            if index in matched:
+                continue
+            for group in result.release_group_ids:
+                if group not in albums_by_group:
+                    albums = self._request("GET", "album", params={"foreignAlbumId": group}) or []
+                    albums_by_group[group] = next(
+                        (album for album in albums if album.get("foreignAlbumId") == group), None
+                    )
+                album = albums_by_group[group]
+                if album is None or _is_various_artists_album(album):
+                    continue
+                album_id = album.get("id")
+                artist_id = album.get("artistId") or (album.get("artist") or {}).get("id")
+                if album_id is None or artist_id is None:
+                    continue
+                if album_id not in tracks_by_album_id:
+                    tracks_by_album_id[album_id] = (
+                        self._request("GET", "track", params={"albumId": album_id}) or []
+                    )
+                if artist_id not in files_by_artist_id:
+                    files = self._request("GET", "trackFile", params={"artistId": artist_id}) or []
+                    files_by_artist_id[artist_id] = {
+                        item["id"]: item for item in files if item.get("id") is not None
+                    }
+                candidates = []
+                artist_path = (album.get("artist") or {}).get("path")
+                for track in tracks_by_album_id[album_id]:
+                    if not track.get("hasFile"):
+                        continue
+                    track_file = files_by_artist_id[artist_id].get(track.get("trackFileId")) or {}
+                    path = track_file.get("path")
+                    if not path and track_file.get("relativePath") and artist_path:
+                        path = str(Path(artist_path) / track_file["relativePath"])
+                    if path:
+                        candidates.append((track, path))
+                exact = next(
+                    (
+                        path
+                        for track, path in candidates
+                        if {
+                            track.get("foreignRecordingId"),
+                            track.get("foreignTrackId"),
+                        }.intersection(result.recording_ids)
+                    ),
+                    None,
+                )
+                if exact:
+                    matched[index] = exact
+                    break
+                wanted_title = _comparable_title(result.recording_title)
+                title_match = next(
+                    (
+                        path
+                        for track, path in candidates
+                        if wanted_title
+                        and _comparable_title(track.get("title") or "") == wanted_title
+                    ),
+                    None,
+                )
+                if title_match:
+                    matched[index] = title_match
+                    break
         return matched
 
     def sync_planned(

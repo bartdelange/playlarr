@@ -133,7 +133,7 @@ class MissingInLidarrTests(unittest.TestCase):
 
         self.assertEqual(client.compare([result]), ({0: "release_monitored_missing"}, {}))
 
-    def test_reports_globally_owned_monitored_release_as_pending(self):
+    def test_recognizes_downloaded_track_on_globally_owned_album(self):
         client = object.__new__(LidarrClient)
         client._request = Mock(
             side_effect=[
@@ -142,9 +142,18 @@ class MissingInLidarrTests(unittest.TestCase):
                 [],
                 [
                     {
+                        "id": 20,
                         "foreignAlbumId": "revealed-compilation",
                         "monitored": True,
                         "artist": {"foreignArtistId": "another-artist"},
+                    }
+                ],
+                [
+                    {
+                        "albumId": 20,
+                        "foreignRecordingId": "recording",
+                        "title": "Shine a Light",
+                        "hasFile": True,
                     }
                 ],
             ]
@@ -156,7 +165,7 @@ class MissingInLidarrTests(unittest.TestCase):
             release_group_ids=("revealed-compilation",),
         )
 
-        self.assertEqual(client.compare([result]), ({0: "release_monitored_missing"}, {}))
+        self.assertEqual(client.compare([result]), ({}, {0: "release_downloaded"}))
         client._request.assert_any_call(
             "GET", "album", params={"foreignAlbumId": "revealed-compilation"}
         )

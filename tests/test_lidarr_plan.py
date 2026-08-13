@@ -129,6 +129,51 @@ class LidarrPlanningTests(unittest.TestCase):
         self.assertEqual([action.action for action in plan.actions], ["reuse_downloaded_release"])
         self.assertNotIn("monitor_release", [action.action for action in plan.actions])
 
+    def test_plan_recognizes_downloaded_track_on_globally_owned_album(self):
+        client = object.__new__(LidarrClient)
+        artist = {
+            "id": 7,
+            "artistName": "Track Artist",
+            "foreignArtistId": "track-artist",
+            "monitored": True,
+            "monitorNewItems": "none",
+        }
+        global_album = {
+            "id": 20,
+            "foreignAlbumId": "selected-group",
+            "title": "Globally Owned Album",
+            "monitored": True,
+            "artistId": 9,
+            "artist": {"foreignArtistId": "album-artist"},
+        }
+        global_track = {
+            "id": 44,
+            "albumId": 20,
+            "foreignRecordingId": "recording",
+            "title": "Song",
+            "hasFile": True,
+            "trackFileId": 91,
+        }
+        client._request = Mock(side_effect=[[artist], [], [], [global_album], [global_track]])
+
+        plan = client.plan(
+            [
+                MusicBrainzResult(
+                    recording_ids=("recording",),
+                    recording_title="Song",
+                    artist_names=("Track Artist",),
+                    primary_artist_id="track-artist",
+                    release_group_ids=("selected-group",),
+                )
+            ]
+        )
+
+        release_action = next(action for action in plan.actions if action.release_group_id)
+        self.assertEqual(release_action.action, "unchanged")
+        self.assertEqual(release_action.reason, "requested_recording_downloaded")
+        self.assertEqual(release_action.payload["matched_track"]["track_file_id"], 91)
+        self.assertFalse(plan.mutating_actions)
+
     def test_release_mutations_identify_only_the_missing_recording(self):
         client = object.__new__(LidarrClient)
         client.config = SimpleNamespace(lidarr_url="http://lidarr")
