@@ -67,16 +67,25 @@ release such as `ghcr.io/bartdelange/tidal-to-lidarr:0.1.0` when controlled upgr
 
 ### Releases
 
-Releases are driven by annotated semantic-version tags. Update the project version in
-`pyproject.toml`, refresh `uv.lock` with `uv lock`, merge both changes to `master`, then tag the exact
-commit:
+Releases are driven by annotated semantic-version tags. The guarded release helper prepares the
+version change on a branch, validates it, pushes it, and opens the required pull request:
+
+```bash
+uv run python scripts/release.py prepare patch  # or minor / major
+```
+
+After merging the generated release PR, update local `master` and publish it:
 
 ```bash
 git switch master
 git pull --ff-only
-git tag -a v0.2.0 -m "Release v0.2.0"
-git push origin v0.2.0
+uv run python scripts/release.py publish
 ```
+
+Both commands require a clean `master` that exactly matches `origin/master`. `prepare` uses
+`uv version` to update both `pyproject.toml` and `uv.lock`, runs formatting, linting, the full unit
+suite, and the package build, then opens a non-draft PR. `publish` refuses to move or reuse an
+existing tag and pushes an annotated tag for the merged project version.
 
 The release workflow verifies that the tag matches the project version, runs formatting, linting,
 tests, and the package build, then publishes the versioned and `latest` GHCR images with provenance.
