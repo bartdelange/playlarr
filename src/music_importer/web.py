@@ -1131,6 +1131,11 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
     @app.post("/plans/{plan_id}/execute")
     def execute_lidarr_plan(plan_id: str):
         import_id, _, plan = repository.get_lidarr_plan(plan_id)
+        entries = repository.entries(import_id)
+        artist_count = len(
+            {entry.result.primary_artist_id for entry in entries if entry.result.primary_artist_id}
+        )
+        status_work = 2 + artist_count * 2
         try:
             repository.approve_lidarr_plan(plan_id)
         except ValueError as exc:
@@ -1140,13 +1145,27 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
 
         def operation(job_id: str) -> None:
             def progress(current: int, total: int, item: str) -> None:
-                repository.update_job(job_id, current=current, total=total, current_item=item)
+                repository.update_job(
+                    job_id,
+                    current=current,
+                    total=len(plan.actions) + status_work,
+                    current_item=item,
+                )
 
-            execution = LidarrClient(config).execute_plan(plan, progress)
+            lidarr = LidarrClient(config)
+            execution = lidarr.execute_plan(plan, progress)
             repository.record_lidarr_execution(plan_id, execution)
+            statuses = LibraryStatusService(lidarr).refresh(
+                [entry.result for entry in entries],
+                lambda current, total, item: progress(len(plan.actions) + current, total, item),
+            )
+            repository.save_library_status(import_id, statuses)
 
         job = context.tasks.submit(
-            "lidarr_execution", operation, import_id, total=len(plan.actions)
+            "lidarr_execution",
+            operation,
+            import_id,
+            total=len(plan.actions) + status_work,
         )
         return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
