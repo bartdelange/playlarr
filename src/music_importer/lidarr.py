@@ -565,24 +565,6 @@ class LidarrClient:
                                 ),
                             )
                         )
-                        actions.append(
-                            LidarrPlanAction(
-                                "queue_search",
-                                artist_mbid,
-                                artist_name,
-                                group,
-                                (album or {}).get("title", ""),
-                                "requested_track_missing",
-                                action_payload(
-                                    group,
-                                    {
-                                        "requested_recording_ids": sorted(
-                                            missing_recordings_by_group[group]
-                                        )
-                                    },
-                                ),
-                            )
-                        )
                     else:
                         actions.append(
                             LidarrPlanAction(
@@ -594,6 +576,24 @@ class LidarrClient:
                                 "already_monitored",
                             )
                         )
+                    actions.append(
+                        LidarrPlanAction(
+                            "queue_search",
+                            artist_mbid,
+                            artist_name,
+                            group,
+                            (album or {}).get("title", ""),
+                            "requested_track_missing",
+                            action_payload(
+                                group,
+                                {
+                                    "requested_recording_ids": sorted(
+                                        missing_recordings_by_group[group]
+                                    )
+                                },
+                            ),
+                        )
+                    )
                 else:
                     if not any(
                         action.artist_mbid == artist_mbid and action.release_group_id == group
@@ -764,10 +764,23 @@ class LidarrClient:
                         results.append(LidarrExecutionResult(action, "updated"))
                     continue
 
-                if (
-                    action.release_group_id not in changed_releases
-                    and action.artist_mbid not in created_artists
-                ):
+                search_was_enabled = (
+                    action.release_group_id in changed_releases
+                    or action.artist_mbid in created_artists
+                )
+                requested_recording_ids = set(
+                    (action.payload or {}).get("requested_recording_ids", [])
+                )
+                if not search_was_enabled and requested_recording_ids:
+                    current_tracks = (
+                        self._request("GET", "track", params={"albumId": current_album["id"]}) or []
+                    )
+                    search_was_enabled = not any(
+                        track.get("hasFile")
+                        and track.get("foreignRecordingId") in requested_recording_ids
+                        for track in current_tracks
+                    )
+                if not search_was_enabled:
                     results.append(
                         LidarrExecutionResult(
                             action, "unchanged", "search_precondition_already_satisfied"
