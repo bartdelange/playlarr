@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Update {{ imported.playlist_name }} · Music Importer{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ imported.source }} playlist update</p>
+<h1>Review changes to {{ imported.playlist_name }}</h1>
+<div class="card">
+  <h2>Proposed update</h2>
+  <p><strong>{{ update.added }}</strong> added · <strong>{{ update.removed }}</strong> removed · <strong>{{ update.moved }}</strong> moved · <strong>{{ update.unchanged }}</strong> unchanged</p>
+  <p>Existing matches and manual corrections are retained for tracks matched by source track ID or ISRC. Added tracks will wait for resolution. Removed tracks remain available in the update audit snapshot.</p>
+  <div class="actions">
+    {% if update.added or update.removed or update.moved %}<form method="post" action="/imports/{{ imported.id }}/update"><input type="hidden" name="update_token" value="{{ update_token }}"><button>Apply update</button></form>{% else %}<span class="status ok">Already up to date</span>{% endif %}
+    <a class="button secondary" href="/imports/{{ imported.id }}">Cancel</a>
+  </div>
+</div>
+<div class="source-grid">
+  <section class="card"><h2>Stored snapshot · {{ current_entries|length }} tracks</h2><ol>{% for entry in current_entries %}<li><strong>{{ entry.track.title }}</strong><small>{{ entry.track.artists|join(', ') }}</small></li>{% endfor %}</ol></section>
+  <section class="card"><h2>Current source · {{ entries|length }} tracks</h2><ol>{% for entry in entries %}<li><strong>{{ entry.track.title }}</strong><small>{{ entry.track.artists|join(', ') }}</small></li>{% endfor %}</ol></section>
+</div>
+{% endblock %}

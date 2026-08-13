@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero dashboard-hero"><div><p class="eyebrow">Music library workflow</p><h1>Playlists</h1><p>Continue matching, approve Lidarr releases, and generate synchronized playlists.</p></div><a class="button" href="/imports/new">Add playlist</a></section>
+<section class="dashboard-stats compact-stats"><div><strong>{{ playlists|length }}</strong><span>Playlists</span></div><div><strong>{{ counts.review }}</strong><span>Need review</span></div><div><strong>{{ counts.waiting }}</strong><span>Waiting for downloads</span></div><div><strong>{{ counts.complete }}</strong><span>Ready</span></div></section>
+<div class="home-layout">
+  <section class="playlist-panel">
+    <div class="section-heading"><div><p class="eyebrow">Your imports</p><h2>Playlist workflows</h2></div></div>
+    <div class="playlist-home-list">
+    {% for row in playlists %}{% set item = row.imported %}
+      <article class="playlist-home-row">
+        <a class="playlist-home-main" href="/imports/{{ item.id }}">
+          <div><span class="badge">{{ item.source }}</span><h2>{{ item.playlist_name }}</h2><small>Updated {{ item.updated_at[:16]|replace('T', ' ') }}</small></div>
+          <div class="playlist-progress"><strong>{{ row.resolved }} / {{ row.tracks }}</strong><span>tracks matched</span>{% if row.review %}<small>{{ row.review }} need review</small>{% endif %}</div>
+          <div class="playlist-next"><span class="badge">{{ item.workflow_state|replace('_', ' ') }}</span><strong>{{ row.next_action }}</strong></div>
+        </a>
+        {% if row.job %}<a class="playlist-job" href="/jobs/{{ row.job.id }}"><span class="badge job-{{ row.job.status }}">{{ row.job.status }}</span><small>{{ row.job.kind|replace('_',' ')|title }} · {{ row.job.current }} / {{ row.job.total }}</small></a>{% endif %}
+      </article>
+    {% else %}<div class="empty"><h2>No playlists yet</h2><p>Choose a Spotify or TIDAL playlist to begin.</p><a class="button" href="/imports/new">Add playlist</a></div>{% endfor %}
+    </div>
+  </section>
+  <aside class="jobs-compact">
+    <div class="section-heading"><div><p class="eyebrow">Background</p><h2>Jobs</h2></div><a href="/jobs">All jobs</a></div>
+    {% if jobs %}<div class="compact-job-list">{% for job in jobs %}<a href="/jobs/{{ job.id }}"><div><strong>{{ job.kind|replace('_',' ')|title }}</strong><small>{{ job.current_item or job.status|replace('_',' ') }}</small></div><span class="badge job-{{ job.status }}">{{ job.status }}</span></a>{% endfor %}</div>{% else %}<p class="muted">No background activity yet.</p>{% endif %}
+  </aside>
+</div>
+{% endblock %}

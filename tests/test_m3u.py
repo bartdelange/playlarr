@@ -1,0 +1,146 @@
+import csv
+import tempfile
+import time
+import unittest
+from pathlib import Path
+from unittest.mock import Mock
+
+from music_importer.lidarr import LidarrClient
+from music_importer.m3u import (
+    cached_mapping,
+    default_output_path,
+    export_m3u,
+    missing_report_path,
+    translate_path,
+)
+from music_importer.models import MusicBrainzResult
+from music_importer.reports import FIELDS
+
+
+class M3UTests(unittest.TestCase):
+    def test_downloaded_paths_prefers_recording_id_and_falls_back_to_title(self):
+        client = object.__new__(LidarrClient)
+        client._request = Mock(
+            side_effect=[
+                [{"id": 7, "foreignArtistId": "artist", "path": "/music/Artist"}],
+                [
+                    {
+                        "title": "Exact",
+                        "foreignRecordingId": "recording",
+                        "hasFile": True,
+                        "trackFileId": 10,
+                    },
+                    {
+                        "title": "Alternate Title",
+                        "foreignRecordingId": "other",
+                        "hasFile": True,
+                        "trackFileId": 11,
+                    },
+                    {
+                        "title": "Unavailable",
+                        "foreignRecordingId": "missing",
+                        "hasFile": False,
+                        "trackFileId": 12,
+                    },
+                ],
+                [
+                    {"id": 10, "path": "/music/Artist/Exact.flac"},
+                    {"id": 11, "relativePath": "Album/Alternate.flac"},
+                    {"id": 12, "path": "/music/Artist/Unavailable.flac"},
+                ],
+            ]
+        )
+        results = [
+            MusicBrainzResult(
+                primary_artist_id="artist",
+                recording_ids=("recording",),
+                recording_title="Different title",
+            ),
+            MusicBrainzResult(
+                primary_artist_id="artist",
+                recording_ids=("playlist-version",),
+                recording_title="Alternate Title (edit)",
+            ),
+            MusicBrainzResult(
+                primary_artist_id="artist",
+                recording_ids=("missing",),
+                recording_title="Unavailable",
+            ),
+        ]
+
+        self.assertEqual(
+            client.downloaded_paths(results),
+            {
+                0: "/music/Artist/Exact.flac",
+                1: "/music/Artist/Album/Alternate.flac",
+            },
+        )
+
+    def test_exports_extended_m3u_in_mapping_order_and_preserves_duplicates(self):
+        rows = []
+        for source_id, title in (("one", "First"), ("two", "Missing"), ("one", "First")):
+            row = {field: "" for field in FIELDS}
+            row.update(
+                {
+                    "source": "spotify",
+                    "source_playlist_id": "playlist",
+                    "source_track_id": source_id,
+                    "track_title": title,
+                    "artists": "Artist",
+                    "resolved_via": "isrc",
+                    "mb_recording_ids": source_id,
+                    "mb_release_group_ids": "group",
+                    "mb_primary_artist_id": "artist",
+                }
+            )
+            rows.append(row)
+        client = Mock()
+        client.downloaded_paths.return_value = {0: "/music/First.flac", 2: "/music/First.flac"}
+        with tempfile.TemporaryDirectory() as directory:
+            mapping = Path(directory) / "spotify_Mix_id_musicbrainz.csv"
+            output = Path(directory) / "Mix.m3u8"
+            with mapping.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=FIELDS)
+                writer.writeheader()
+                writer.writerows(rows)
+
+            counts = export_m3u(mapping, output, client, [("/music", "/media/music")])
+            contents = output.read_text(encoding="utf-8")
+            with missing_report_path(output).open(newline="", encoding="utf-8") as handle:
+                missing_rows = list(csv.DictReader(handle))
+
+        self.assertEqual(counts, (2, 1))
+        self.assertEqual(contents.count("#EXTINF:-1,Artist - First"), 2)
+        self.assertEqual(contents.count("/media/music/First.flac"), 2)
+        self.assertNotIn("Missing", contents)
+        self.assertEqual(len(missing_rows), 1)
+        self.assertEqual(missing_rows[0]["navidrome_search"], "Artist Missing")
+        self.assertEqual(missing_rows[0]["missing_reason"], "not_downloaded_or_unmatched")
+
+    def test_path_helpers(self):
+        self.assertEqual(translate_path("/music/a.flac", [("/music", "/media")]), "/media/a.flac")
+        self.assertEqual(
+            translate_path("/musical/a.flac", [("/music", "/media")]), "/musical/a.flac"
+        )
+        self.assertEqual(
+            default_output_path(Path("spotify_Mix_id_musicbrainz.csv")), Path("spotify_Mix_id.m3u8")
+        )
+        self.assertEqual(
+            missing_report_path(Path("spotify_Mix_id.m3u8")), Path("spotify_Mix_id_missing.csv")
+        )
+
+    def test_cached_mapping_uses_playlist_id_and_prefers_newest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            older = output / "spotify_Old_Name_playlist_musicbrainz.csv"
+            newer = output / "spotify_New_Name_playlist_musicbrainz.csv"
+            older.touch()
+            time.sleep(0.01)
+            newer.touch()
+
+            self.assertEqual(cached_mapping(output, "spotify", "playlist"), newer)
+            self.assertIsNone(cached_mapping(output, "spotify", "different"))
+
+
+if __name__ == "__main__":
+    unittest.main()
