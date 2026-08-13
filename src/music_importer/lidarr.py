@@ -197,7 +197,11 @@ class LidarrClient:
         return payload
 
     def _add_album(
-        self, artist: dict, release_group: str, allow_various_artists: bool = False
+        self,
+        artist: dict,
+        release_group: str,
+        allow_various_artists: bool = False,
+        requested_release_ids: set[str] | None = None,
     ) -> dict | None:
         payload = self._lookup("album/lookup", release_group, "foreignAlbumId")
         if not payload:
@@ -213,7 +217,28 @@ class LidarrClient:
                 "addOptions": {"addType": "manual", "searchForNewAlbum": False},
             }
         )
+        self._pin_selected_release(payload, requested_release_ids or set())
         return self._request("POST", "album", json=payload) or {}
+
+    @staticmethod
+    def _pin_selected_release(album: dict, requested_release_ids: set[str]) -> bool:
+        candidates = [
+            release
+            for release in album.get("releases") or []
+            if release.get("foreignReleaseId") in requested_release_ids
+        ]
+        if not candidates:
+            return False
+        selected = next(
+            (release for release in candidates if release.get("monitored")), candidates[0]
+        )
+        changed = album.get("anyReleaseOk") is not False
+        album["anyReleaseOk"] = False
+        for release in album.get("releases") or []:
+            monitored = release is selected
+            changed = changed or release.get("monitored") is not monitored
+            release["monitored"] = monitored
+        return changed
 
     def _monitor_artist(self, artist: dict) -> bool:
         if artist.get("monitored") is True and artist.get("monitorNewItems") == "none":
@@ -246,9 +271,15 @@ class LidarrClient:
             if set(result.recording_ids).intersection(allow_various_artists_recordings)
             for group in result.release_group_ids
         }
+        requested_release_ids_by_group: dict[str, set[str]] = defaultdict(set)
+        for result in results:
+            for group in result.release_group_ids:
+                requested_release_ids_by_group[group].update(result.release_ids)
 
         def action_payload(group: str, payload: dict | None = None) -> dict | None:
             values = dict(payload or {})
+            if requested_release_ids_by_group[group]:
+                values["requested_release_ids"] = sorted(requested_release_ids_by_group[group])
             if group in override_groups:
                 values["allow_various_artists_release"] = True
             return values or None
@@ -395,7 +426,22 @@ class LidarrClient:
                                 action_payload(group),
                             )
                         )
-                    if not existing_album or not existing_album.get("monitored"):
+                    release_needs_pinning = bool(
+                        existing_album
+                        and requested_release_ids_by_group[group]
+                        and self._pin_selected_release(
+                            {
+                                **existing_album,
+                                "releases": [dict(r) for r in existing_album.get("releases") or []],
+                            },
+                            requested_release_ids_by_group[group],
+                        )
+                    )
+                    if (
+                        not existing_album
+                        or not existing_album.get("monitored")
+                        or release_needs_pinning
+                    ):
                         actions.append(
                             LidarrPlanAction(
                                 "monitor_release",
@@ -563,7 +609,15 @@ class LidarrClient:
                     )
                     album = lookup
                 if group in groups_needing_search:
-                    if not album or not album.get("monitored"):
+                    release_needs_pinning = bool(
+                        album
+                        and requested_release_ids_by_group[group]
+                        and self._pin_selected_release(
+                            {**album, "releases": [dict(r) for r in album.get("releases") or []]},
+                            requested_release_ids_by_group[group],
+                        )
+                    )
+                    if not album or not album.get("monitored") or release_needs_pinning:
                         actions.append(
                             LidarrPlanAction(
                                 "monitor_release",
@@ -745,7 +799,15 @@ class LidarrClient:
                     current_artist = artists().get(action.artist_mbid)
                     if not current_artist:
                         raise RuntimeError(f"artist is unavailable: {action.artist_mbid}")
-                    created = self._add_album(current_artist, action.release_group_id, allow_va)
+                    requested_release_ids = set(
+                        (action.payload or {}).get("requested_release_ids", [])
+                    )
+                    created = self._add_album(
+                        current_artist,
+                        action.release_group_id,
+                        allow_va,
+                        requested_release_ids,
+                    )
                     if created is None:
                         results.append(
                             LidarrExecutionResult(action, "skipped", "various_artists_album")
@@ -767,16 +829,22 @@ class LidarrClient:
                     continue
 
                 if action.action == "monitor_release":
-                    if current_album.get("monitored"):
+                    requested_release_ids = set(
+                        (action.payload or {}).get("requested_release_ids", [])
+                    )
+                    release_changed = self._pin_selected_release(
+                        current_album, requested_release_ids
+                    )
+                    monitoring_changed = not current_album.get("monitored")
+                    if not monitoring_changed and not release_changed:
                         results.append(
-                            LidarrExecutionResult(action, "unchanged", "already_monitored")
+                            LidarrExecutionResult(
+                                action, "unchanged", "already_monitored_and_release_selected"
+                            )
                         )
                     else:
-                        self._request(
-                            "PUT",
-                            "album/monitor",
-                            json={"albumIds": [current_album["id"]], "monitored": True},
-                        )
+                        current_album["monitored"] = True
+                        self._request("PUT", f"album/{current_album['id']}", json=current_album)
                         changed_releases.add(action.release_group_id)
                         results.append(LidarrExecutionResult(action, "updated"))
                     continue
