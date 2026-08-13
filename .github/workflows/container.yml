@@ -1,10 +1,9 @@
-name: Publish container
+name: Release
 
 on:
-  release:
-    types:
-      - published
-  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
 
 permissions:
   contents: read
@@ -14,11 +13,58 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  validate:
+    name: Validate tagged commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Validate version tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          uv run --no-project python - <<'PY'
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+
+          tag = os.environ["RELEASE_TAG"]
+          if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
+              raise SystemExit(f"release tag must use vMAJOR.MINOR.PATCH, got {tag!r}")
+
+          with Path("pyproject.toml").open("rb") as handle:
+              version = tomllib.load(handle)["project"]["version"]
+          if tag != f"v{version}":
+              raise SystemExit(
+                  f"release tag {tag!r} does not match pyproject.toml version {version!r}"
+              )
+          PY
+      - name: Install dependencies
+        run: uv sync --locked --dev
+      - name: Validate GitHub Actions
+        uses: docker://rhysd/actionlint:1.7.7
+      - name: Check formatting
+        run: uv run ruff format --check src tests scripts
+      - name: Lint
+        run: uv run ruff check src tests scripts
+      - name: Test
+        run: uv run python -m unittest discover -s tests -v
+      - name: Build package
+        run: uv build
+
   publish:
-    name: Publish GHCR image
+    name: Publish image and release
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
       attestations: write
       id-token: write
@@ -59,3 +105,12 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG"
+          --verify-tag
+          --generate-notes
+          --title "$RELEASE_TAG"

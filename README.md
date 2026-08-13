@@ -65,6 +65,25 @@ chown -R 1000:1000 /mnt/user/appdata/tidal-to-lidarr
 The template tracks `latest` so Unraid can detect published updates. Pin its Repository field to a
 release such as `ghcr.io/bartdelange/tidal-to-lidarr:0.1.0` when controlled upgrades are preferred.
 
+### Releases
+
+Releases are driven by annotated semantic-version tags. Update the project version in
+`pyproject.toml`, refresh `uv.lock` with `uv lock`, merge both changes to `master`, then tag the exact
+commit:
+
+```bash
+git switch master
+git pull --ff-only
+git tag -a v0.2.0 -m "Release v0.2.0"
+git push origin v0.2.0
+```
+
+The release workflow verifies that the tag matches the project version, runs formatting, linting,
+tests, and the package build, then publishes the versioned and `latest` GHCR images with provenance.
+The GitHub release and generated notes are created only after the image is published successfully.
+If validation fails, correct the release commit and use a new version rather than moving a published
+version tag.
+
 For local development, the repository also includes a Compose configuration:
 
 ```bash
