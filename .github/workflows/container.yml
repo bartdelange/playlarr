@@ -1,10 +1,9 @@
-name: Publish container
+name: Release
 
 on:
-  release:
-    types:
-      - published
-  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
 
 permissions:
   contents: read
@@ -14,11 +13,18 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  validate:
+    name: Validate tagged commit
+    uses: ./.github/workflows/validate.yml
+    with:
+      release_tag: ${{ github.ref_name }}
+
   publish:
-    name: Publish GHCR image
+    name: Publish image and release
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
       attestations: write
       id-token: write
@@ -59,3 +65,12 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG"
+          --verify-tag
+          --generate-notes
+          --title "$RELEASE_TAG"
