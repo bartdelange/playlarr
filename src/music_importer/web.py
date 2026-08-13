@@ -981,8 +981,8 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                     ):
                         continue
                     actions.append(action)
-                displayed_reuse = next(
-                    (action for action in actions if action.action == "reuse_downloaded_release"),
+                displayed_match = next(
+                    (action for action in actions if (action.payload or {}).get("matched_track")),
                     None,
                 )
                 release_artist = next(
@@ -1007,13 +1007,13 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                         ),
                         "actions": actions,
                         "matched_track": (
-                            (displayed_reuse.payload or {}).get("matched_track")
-                            if displayed_reuse
+                            (displayed_match.payload or {}).get("matched_track")
+                            if displayed_match
                             else None
                         ),
                         "lidarr_album_id": (
-                            (displayed_reuse.payload or {}).get("lidarr_album_id")
-                            if displayed_reuse
+                            (displayed_match.payload or {}).get("lidarr_album_id")
+                            if displayed_match
                             else None
                         ),
                     }

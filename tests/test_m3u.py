@@ -117,6 +117,49 @@ class M3UTests(unittest.TestCase):
         self.assertEqual(missing_rows[0]["navidrome_search"], "Artist Missing")
         self.assertEqual(missing_rows[0]["missing_reason"], "not_downloaded_or_unmatched")
 
+    def test_downloaded_paths_finds_file_on_globally_owned_album(self):
+        client = object.__new__(LidarrClient)
+        client._request = Mock(
+            side_effect=[
+                [{"id": 7, "foreignArtistId": "track-artist", "path": "/music/Track Artist"}],
+                [],
+                [],
+                [
+                    {
+                        "id": 20,
+                        "artistId": 9,
+                        "foreignAlbumId": "selected-group",
+                        "artist": {
+                            "id": 9,
+                            "foreignArtistId": "album-artist",
+                            "path": "/music/Album Artist",
+                        },
+                    }
+                ],
+                [
+                    {
+                        "albumId": 20,
+                        "foreignRecordingId": "recording",
+                        "title": "Song",
+                        "hasFile": True,
+                        "trackFileId": 91,
+                    }
+                ],
+                [{"id": 91, "path": "/music/Album Artist/Album/Song.flac"}],
+            ]
+        )
+        result = MusicBrainzResult(
+            recording_ids=("recording",),
+            recording_title="Song",
+            primary_artist_id="track-artist",
+            release_group_ids=("selected-group",),
+        )
+
+        self.assertEqual(
+            client.downloaded_paths([result]),
+            {0: "/music/Album Artist/Album/Song.flac"},
+        )
+
     def test_path_helpers(self):
         self.assertEqual(translate_path("/music/a.flac", [("/music", "/media")]), "/media/a.flac")
         self.assertEqual(
