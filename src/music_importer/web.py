@@ -403,6 +403,28 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             return RedirectResponse(f"/plans/{plan[0]}", status_code=307)
         library = repository.library_status(import_id)
         execution_context: dict[int, list[dict]] = {}
+        lidarr_matches: dict[int, dict] = {}
+        if plan:
+            for entry in entries:
+                for action in plan[3].actions:
+                    matched_track = (action.payload or {}).get("matched_track")
+                    if not matched_track or action.artist_mbid != entry.result.primary_artist_id:
+                        continue
+                    requested = set((action.payload or {}).get("requested_recording_ids", []))
+                    if requested and not requested.intersection(entry.result.recording_ids):
+                        continue
+                    source_groups = set((action.payload or {}).get("mapped_release_group_ids", []))
+                    if action.release_group_id in entry.result.release_group_ids:
+                        source_groups.add(action.release_group_id)
+                    if not source_groups.intersection(entry.result.release_group_ids):
+                        continue
+                    lidarr_matches[entry.position] = {
+                        "track": matched_track,
+                        "album_title": action.album_title,
+                        "release_group_id": action.release_group_id,
+                        "album_id": (action.payload or {}).get("lidarr_album_id"),
+                    }
+                    break
         if plan and plan[2] in {"completed", "failed"}:
             executed = {
                 item["action_position"]: item
@@ -497,6 +519,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             selected_stage=stage,
             lidarr_plan_id=plan[0] if plan else None,
             execution_context=execution_context,
+            lidarr_matches=lidarr_matches,
             library_availability=library_availability_by_position,
             library_availability_counts=library_availability_counts,
             revisions=repository.playlist_revisions(import_id),
