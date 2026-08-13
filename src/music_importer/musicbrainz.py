@@ -50,6 +50,15 @@ def _marked(title: str) -> bool:
     return bool(set(re.findall(r"[a-z]+", title.casefold())) & _VERSION_WORDS)
 
 
+def _version_preference(title: str) -> int:
+    words = set(re.findall(r"[a-z]+", title.casefold()))
+    if "extended" in words:
+        return 2
+    if words.intersection({"radio", "edit"}):
+        return 0
+    return 1
+
+
 def _search_title(title: str) -> str:
     title = re.sub(r"\s*[([](?:feat|ft)\.?[^)\]]*[)\]]", "", title, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", title).strip()
@@ -222,16 +231,25 @@ class MusicBrainzClient:
             }
             if source_artists and not source_artists.intersection(names):
                 continue
-            if not source_tokens or overlap < 0.3 or similarity < 0.55:
+            if (
+                not source_tokens
+                or overlap < 0.3
+                or (similarity < 0.55 and candidate_tokens != source_tokens)
+            ):
                 continue
             if _marked(track.title) and not _marked(candidate_title):
                 continue
             score = float(recording.get("score") or 0) + overlap * 100 + similarity * 25
-            candidates.append((score, recording))
+            candidates.append((score, candidate_tokens, recording))
         if not candidates:
             return None
-        candidates.sort(key=lambda item: item[0], reverse=True)
-        return self._result([candidates[0][1]], "search", track.album)
+        exact_base_candidates = [item for item in candidates if item[1] == source_tokens]
+        ranked = exact_base_candidates or candidates
+        ranked.sort(
+            key=lambda item: (_version_preference(item[2].get("title") or ""), item[0]),
+            reverse=True,
+        )
+        return self._result([ranked[0][2]], "search", track.album)
 
     def resolve(self, track: SourceTrack) -> MusicBrainzResult:
         reasons = []
@@ -326,7 +344,24 @@ class MusicBrainzClient:
                 "candidate_title": candidate_title,
                 "source_artists": list(track.artists),
                 "candidate_artists": list(result.artist_names),
+                "version_preference": _version_preference(candidate_title),
             },
+        )
+
+    @staticmethod
+    def _candidate_rank(candidate: MusicBrainzCandidate) -> tuple[bool, bool, bool, int, float]:
+        evidence = candidate.evidence or {}
+        source_title = str(evidence.get("source_title") or "")
+        candidate_title = str(evidence.get("candidate_title") or "")
+        same_base_title = bool(_words(source_title)) and _words(source_title) == _words(
+            candidate_title
+        )
+        return (
+            bool(evidence.get("isrc_match")),
+            bool(evidence.get("artist_match")),
+            same_base_title,
+            _version_preference(candidate_title) if same_base_title else 0,
+            candidate.score,
         )
 
     def search_candidates(
@@ -350,7 +385,7 @@ class MusicBrainzClient:
             for recording in (data or {}).get("recordings") or []
             if (candidate := self._candidate(recording, track)) is not None
         ]
-        return sorted(candidates, key=lambda item: item.score, reverse=True)
+        return sorted(candidates, key=self._candidate_rank, reverse=True)
 
     def validate_recording_mbid(self, mbid: str, track: SourceTrack) -> ManualValidation:
         normalized = mbid.strip().lower()
