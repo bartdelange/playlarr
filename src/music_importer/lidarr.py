@@ -739,6 +739,7 @@ class LidarrClient:
         if progress:
             progress("Loaded Lidarr artists for comparison")
         albums_by_artist: dict[int, dict[str, dict]] = {}
+        global_albums_by_group: dict[str, dict | None] = {}
         files_by_artist: dict[int, tuple[set[str], set[str]]] = {}
         missing: dict[int, str] = {}
         matched: dict[int, str] = {}
@@ -785,6 +786,24 @@ class LidarrClient:
             same_title = bool(
                 result.recording_title and _comparable_title(result.recording_title) in titles
             )
+            if not same_recording and not same_title and not exact_albums:
+                for release_group in result.release_group_ids:
+                    if release_group not in global_albums_by_group:
+                        matches = (
+                            self._request("GET", "album", params={"foreignAlbumId": release_group})
+                            or []
+                        )
+                        global_albums_by_group[release_group] = next(
+                            (
+                                album
+                                for album in matches
+                                if album.get("foreignAlbumId") == release_group
+                            ),
+                            None,
+                        )
+                    album = global_albums_by_group[release_group]
+                    if album is not None:
+                        exact_albums.append(album)
             if same_recording:
                 matched[index] = "release_downloaded" if exact_albums else "recording_match"
             elif same_title:

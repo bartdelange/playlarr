@@ -1020,13 +1020,13 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                 )
             artist_actions = list(actions_by_artist.get(entry.result.primary_artist_id or "", []))
             linked_actions = list(artist_actions)
-            seen_action_names = set()
-            seen_action_names.update(action.action for action in artist_actions)
+            seen_action_ids = {id(action) for action in artist_actions}
             for release in releases:
                 for action in release["actions"]:
-                    if action.action not in seen_action_names:
-                        seen_action_names.add(action.action)
+                    if id(action) not in seen_action_ids:
+                        seen_action_ids.add(id(action))
                         linked_actions.append(action)
+            seen_action_names = {action.action for action in linked_actions}
             if not linked_actions and not entry.result.resolved_via:
                 seen_action_names.add("skip")
             track_links.append(
@@ -1034,7 +1034,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                     "entry": entry,
                     "releases": releases,
                     "actions": linked_actions,
-                    "artist_action_names": {action.action for action in artist_actions},
+                    "artist_actions": artist_actions,
                     "action_names": sorted(seen_action_names),
                     "mutates": bool(seen_action_names & mutating_action_names),
                     "various_artists_skip": any(
@@ -1106,6 +1106,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             "release_exists_globally": "The release already exists elsewhere in the Lidarr library.",
             "already_monitored": "The release is already monitored; no configuration change is needed.",
             "already_downloaded_and_monitored": "The recording is downloaded and the release is already monitored.",
+            "already_reconciled": "No Lidarr changes are needed for this artist.",
             "requested_recording_downloaded": "The requested recording file already exists; monitoring is not changed.",
             "monitored_with_new_items_disabled": "Monitor this artist only for explicitly selected releases; automatic new-release monitoring remains disabled.",
         }
