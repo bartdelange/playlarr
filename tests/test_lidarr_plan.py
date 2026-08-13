@@ -224,6 +224,39 @@ class LidarrPlanningTests(unittest.TestCase):
             all(action.payload["requested_recording_ids"] == ["missing"] for action in mutations)
         )
 
+    def test_monitored_release_still_queues_search_for_missing_recording(self):
+        client = object.__new__(LidarrClient)
+        artist = {
+            "id": 7,
+            "artistName": "Artist",
+            "foreignArtistId": "artist",
+            "monitored": True,
+            "monitorNewItems": "none",
+        }
+        album = {"id": 20, "foreignAlbumId": "group", "title": "Album", "monitored": True}
+        track = {
+            "foreignRecordingId": "missing",
+            "title": "Missing",
+            "albumId": 20,
+            "hasFile": False,
+        }
+        client._request = Mock(side_effect=[[artist], [track], [album]])
+
+        plan = client.plan(
+            [
+                MusicBrainzResult(
+                    recording_ids=("missing",),
+                    recording_title="Missing",
+                    artist_names=("Artist",),
+                    primary_artist_id="artist",
+                    release_group_ids=("group",),
+                )
+            ]
+        )
+
+        self.assertEqual([action.action for action in plan.actions], ["unchanged", "queue_search"])
+        self.assertEqual(plan.actions[1].payload["requested_recording_ids"], ["missing"])
+
     def test_plan_skips_various_artists_without_lookup_or_mutation(self):
         client = object.__new__(LidarrClient)
         client._request = Mock(return_value=[])
@@ -404,6 +437,65 @@ class LidarrExecutionTests(unittest.TestCase):
         execution = client.execute_plan(plan)
 
         self.assertEqual([result.outcome for result in execution], ["unchanged", "unchanged"])
+        self.assertTrue(all(call.args[0] == "GET" for call in client._request.call_args_list))
+
+    def test_searches_monitored_release_when_approved_recording_is_still_missing(self):
+        client = object.__new__(LidarrClient)
+        client.config = SimpleNamespace(lidarr_url="http://lidarr")
+        monitored = {
+            "id": 11,
+            "foreignAlbumId": "group",
+            "title": "Album",
+            "monitored": True,
+            "artist": {"foreignArtistId": "artist"},
+        }
+        missing_track = {"foreignRecordingId": "missing", "hasFile": False}
+        client._request = Mock(side_effect=[[monitored], [missing_track], None])
+        plan = LidarrPlan(
+            (
+                LidarrPlanAction(
+                    "queue_search",
+                    "artist",
+                    "Artist",
+                    "group",
+                    payload={"requested_recording_ids": ["missing"]},
+                ),
+            )
+        )
+
+        execution = client.execute_plan(plan)
+
+        self.assertEqual(execution[0].outcome, "queued")
+        self.assertEqual(client._request.call_args_list[-1].args, ("POST", "command"))
+
+    def test_does_not_search_monitored_release_after_recording_downloads(self):
+        client = object.__new__(LidarrClient)
+        client.config = SimpleNamespace(lidarr_url="http://lidarr")
+        monitored = {
+            "id": 11,
+            "foreignAlbumId": "group",
+            "title": "Album",
+            "monitored": True,
+            "artist": {"foreignArtistId": "artist"},
+        }
+        downloaded_track = {"foreignRecordingId": "recording", "hasFile": True}
+        client._request = Mock(side_effect=[[monitored], [downloaded_track]])
+        plan = LidarrPlan(
+            (
+                LidarrPlanAction(
+                    "queue_search",
+                    "artist",
+                    "Artist",
+                    "group",
+                    payload={"requested_recording_ids": ["recording"]},
+                ),
+            )
+        )
+
+        execution = client.execute_plan(plan)
+
+        self.assertEqual(execution[0].outcome, "unchanged")
+        self.assertEqual(execution[0].details, "search_precondition_already_satisfied")
         self.assertTrue(all(call.args[0] == "GET" for call in client._request.call_args_list))
 
     def test_execution_never_runs_an_action_absent_from_plan(self):

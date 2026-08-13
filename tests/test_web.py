@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import ANY, Mock, patch
 
 from fastapi.testclient import TestClient
 
@@ -364,6 +365,46 @@ class WebShellTests(unittest.TestCase):
         self.assertIn('aria-current="step">4 Review', detail.text)
         self.assertNotIn('aria-current="step">5 Lidarr', detail.text)
         self.assertIn(f"/imports/{imported.id}?stage=lidarr", job_page.text)
+
+    def test_lidarr_execution_refreshes_persisted_library_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            repository.replace_tracks(
+                imported.id, [SourceTrack("spotify", "track", "Song", ("Artist",), "Album")]
+            )
+            entry = repository.entries(imported.id)[0]
+            result = MusicBrainzResult(
+                resolved_via="manual_mbid",
+                recording_ids=("recording",),
+                release_group_ids=("group",),
+                primary_artist_id="artist",
+            )
+            repository.save_manual_resolution(
+                entry.id, result, method="manual_mbid", validation_status="valid"
+            )
+            action = LidarrPlanAction("queue_search", "artist", "Artist", "group", "Album")
+            plan_id = repository.save_lidarr_plan(imported.id, LidarrPlan((action,)))
+            app = create_app(config(directory), repository)
+            client = TestClient(app)
+            lidarr = Mock()
+            lidarr.execute_plan.return_value = [LidarrExecutionResult(action, "queued")]
+
+            with (
+                patch("music_importer.web.LidarrClient", return_value=lidarr),
+                patch("music_importer.web.LibraryStatusService") as status_service,
+            ):
+                status_service.return_value.refresh.return_value = [
+                    LibraryTrackStatus(0, "release_monitored_missing")
+                ]
+                response = client.post(f"/plans/{plan_id}/execute", follow_redirects=False)
+                app.state.context.tasks.executor.shutdown(wait=True)
+
+            stored_status = repository.library_status(imported.id)
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(stored_status, {0: ("release_monitored_missing", None)})
+        status_service.return_value.refresh.assert_called_once_with([result], ANY)
 
     def test_plan_page_shows_impact_summary_and_actions(self):
         with tempfile.TemporaryDirectory() as directory:

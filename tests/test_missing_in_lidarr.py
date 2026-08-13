@@ -69,6 +69,31 @@ class MissingInLidarrTests(unittest.TestCase):
 
         self.assertEqual(client.compare([result]), ({}, {0: "alternate_version_title_match"}))
 
+    def test_does_not_match_different_named_remixes_by_base_title(self):
+        client = object.__new__(LidarrClient)
+        client._request = Mock(
+            side_effect=[
+                [{"id": 7, "foreignArtistId": "artist-present"}],
+                [{"foreignAlbumId": "another-release"}],
+                [
+                    {
+                        "title": "Diamonds (Angemi remix)",
+                        "foreignRecordingId": "angemi-recording",
+                        "hasFile": True,
+                    }
+                ],
+                [],
+            ]
+        )
+        result = MusicBrainzResult(
+            recording_title="Diamonds (Bass Modulators extended remix)",
+            recording_ids=("bass-modulators-recording",),
+            primary_artist_id="artist-present",
+            release_group_ids=("bass-modulators-release",),
+        )
+
+        self.assertEqual(client.missing([result]), {0: "release_missing"})
+
     def test_does_not_accept_matching_title_without_a_downloaded_file(self):
         client = object.__new__(LidarrClient)
         client._request = Mock(
