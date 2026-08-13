@@ -102,6 +102,26 @@ class ManualMusicBrainzTests(unittest.TestCase):
         self.assertEqual(candidates[0].result.recording_title, "Strobe")
         self.assertTrue(candidates[0].evidence["isrc_match"])
 
+    def test_candidate_search_prefers_extended_mix_over_radio_edit(self):
+        resolver = client()
+        resolver._get = Mock(
+            return_value={
+                "recordings": [
+                    recording(id="123e4567-e89b-42d3-a456-426614174001", title="Song (radio edit)"),
+                    recording(
+                        id="123e4567-e89b-42d3-a456-426614174002",
+                        title="Song (extended mix)",
+                        score=80,
+                    ),
+                ]
+            }
+        )
+        track = SourceTrack("spotify", "track", "Song", ("deadmau5",), "Album")
+
+        candidates = resolver.search_candidates(track)
+
+        self.assertEqual(candidates[0].result.recording_title, "Song (extended mix)")
+
 
 if __name__ == "__main__":
     unittest.main()

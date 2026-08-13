@@ -72,6 +72,41 @@ class MusicBrainzResolutionCharacterizationTests(unittest.TestCase):
 
         self.assertIsNone(resolver._by_search(track))
 
+    def test_metadata_search_prefers_extended_mix_for_same_song(self):
+        resolver = client()
+        resolver._get = Mock(
+            return_value={
+                "recordings": [
+                    {
+                        "id": "radio-recording",
+                        "title": "Song (radio edit)",
+                        "score": 100,
+                        "artist-credit": [{"artist": {"id": "artist", "name": "Artist"}}],
+                        "releases": [],
+                    },
+                    {
+                        "id": "extended-recording",
+                        "title": "Song (extended mix)",
+                        "score": 80,
+                        "artist-credit": [{"artist": {"id": "artist", "name": "Artist"}}],
+                        "releases": [],
+                    },
+                    {
+                        "id": "original-recording",
+                        "title": "Song",
+                        "score": 100,
+                        "artist-credit": [{"artist": {"id": "artist", "name": "Artist"}}],
+                        "releases": [],
+                    },
+                ]
+            }
+        )
+        track = SourceTrack("spotify", "track", "Song", ("Artist",), "Album")
+
+        result = resolver._by_search(track)
+
+        self.assertEqual(result.recording_ids, ("extended-recording",))
+
 
 if __name__ == "__main__":
     unittest.main()
