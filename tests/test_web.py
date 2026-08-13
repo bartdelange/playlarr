@@ -455,6 +455,12 @@ class WebShellTests(unittest.TestCase):
                             "Canonical Album",
                             "already_monitored",
                         ),
+                        LidarrPlanAction(
+                            "unchanged",
+                            "artist-id",
+                            "Noisecontrollers",
+                            reason="already_reconciled",
+                        ),
                     )
                 ),
             )
@@ -477,6 +483,9 @@ class WebShellTests(unittest.TestCase):
         self.assertIn("Lidarr file 91", response.text)
         self.assertIn("https://musicbrainz.org/recording/recording-id", response.text)
         self.assertIn("reuse downloaded release", response.text)
+        self.assertIn("The release is already monitored", response.text)
+        self.assertIn("No Lidarr changes are needed for this artist", response.text)
+        self.assertEqual(response.text.count("Artist-level action"), 2)
         self.assertIn("Change track", response.text)
         self.assertIn("All Lidarr mutations", response.text)
         self.assertIn(

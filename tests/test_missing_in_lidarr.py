@@ -20,6 +20,7 @@ class MissingInLidarrTests(unittest.TestCase):
                 [{"id": 7, "foreignArtistId": "artist-present"}],
                 [{"foreignAlbumId": "release-present"}],
                 [],
+                [],
             ]
         )
         results = [
@@ -42,7 +43,7 @@ class MissingInLidarrTests(unittest.TestCase):
                 3: "musicbrainz_unresolved",
             },
         )
-        self.assertEqual(client._request.call_count, 3)
+        self.assertEqual(client._request.call_count, 4)
 
     def test_accepts_downloaded_alternate_version_with_same_normalized_title(self):
         client = object.__new__(LidarrClient)
@@ -81,6 +82,7 @@ class MissingInLidarrTests(unittest.TestCase):
                         "hasFile": False,
                     }
                 ],
+                [],
             ]
         )
         result = MusicBrainzResult(
@@ -130,6 +132,34 @@ class MissingInLidarrTests(unittest.TestCase):
         )
 
         self.assertEqual(client.compare([result]), ({0: "release_monitored_missing"}, {}))
+
+    def test_reports_globally_owned_monitored_release_as_pending(self):
+        client = object.__new__(LidarrClient)
+        client._request = Mock(
+            side_effect=[
+                [{"id": 7, "foreignArtistId": "hardwell"}],
+                [],
+                [],
+                [
+                    {
+                        "foreignAlbumId": "revealed-compilation",
+                        "monitored": True,
+                        "artist": {"foreignArtistId": "another-artist"},
+                    }
+                ],
+            ]
+        )
+        result = MusicBrainzResult(
+            recording_title="Shine a Light",
+            recording_ids=("recording",),
+            primary_artist_id="hardwell",
+            release_group_ids=("revealed-compilation",),
+        )
+
+        self.assertEqual(client.compare([result]), ({0: "release_monitored_missing"}, {}))
+        client._request.assert_any_call(
+            "GET", "album", params={"foreignAlbumId": "revealed-compilation"}
+        )
 
     def test_compare_reports_all_manual_intervention_reasons(self):
         client = object.__new__(LidarrClient)
