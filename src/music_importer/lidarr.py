@@ -47,6 +47,23 @@ def _comparable_title(value: str) -> str:
     return "".join(character for character in value if character.isalnum())
 
 
+def _normalized_title(value: str) -> str:
+    value = unicodedata.normalize("NFKD", value).casefold()
+    return "".join(character for character in value if character.isalnum())
+
+
+def _title_fallback_matches(requested: str, downloaded: str) -> bool:
+    if not requested or _comparable_title(requested) != _comparable_title(downloaded):
+        return False
+    requested_has_version = bool(_VERSION_QUALIFIER.search(requested))
+    downloaded_has_version = bool(_VERSION_QUALIFIER.search(downloaded))
+    return (
+        not requested_has_version
+        or not downloaded_has_version
+        or _normalized_title(requested) == _normalized_title(downloaded)
+    )
+
+
 def _downloaded_track_keys(tracks: list[dict]) -> tuple[set[str], set[str]]:
     downloaded = [track for track in tracks if track.get("hasFile")]
     recording_ids = {
@@ -55,7 +72,7 @@ def _downloaded_track_keys(tracks: list[dict]) -> tuple[set[str], set[str]]:
         for identifier in (track.get("foreignRecordingId"), track.get("foreignTrackId"))
         if identifier
     }
-    titles = {_comparable_title(track.get("title") or "") for track in downloaded}
+    titles = {track.get("title") or "" for track in downloaded}
     return recording_ids, titles
 
 
@@ -63,7 +80,8 @@ def _represented_by_download(
     result: MusicBrainzResult, recording_ids: set[str], titles: set[str]
 ) -> bool:
     return bool(recording_ids.intersection(result.recording_ids)) or bool(
-        result.recording_title and _comparable_title(result.recording_title) in titles
+        result.recording_title
+        and any(_title_fallback_matches(result.recording_title, title) for title in titles)
     )
 
 
@@ -83,12 +101,11 @@ def _downloaded_album_match(
     )
     method = "recording_id"
     if match is None and result.recording_title:
-        wanted = _comparable_title(result.recording_title)
         match = next(
             (
                 track
                 for track in downloaded
-                if _comparable_title(track.get("title") or "") == wanted
+                if _title_fallback_matches(result.recording_title, track.get("title") or "")
             ),
             None,
         )
@@ -858,7 +875,8 @@ class LidarrClient:
             recording_ids, titles = files_by_artist[artist_id]
             same_recording = bool(recording_ids.intersection(result.recording_ids))
             same_title = bool(
-                result.recording_title and _comparable_title(result.recording_title) in titles
+                result.recording_title
+                and any(_title_fallback_matches(result.recording_title, title) for title in titles)
             )
             if not same_recording and not same_title and not exact_albums:
                 for release_group in result.release_group_ids:
@@ -893,7 +911,10 @@ class LidarrClient:
                             )
                             same_title = bool(
                                 result.recording_title
-                                and _comparable_title(result.recording_title) in global_titles
+                                and any(
+                                    _title_fallback_matches(result.recording_title, title)
+                                    for title in global_titles
+                                )
                             )
                             if same_recording or same_title:
                                 break
@@ -972,13 +993,11 @@ class LidarrClient:
                 if exact:
                     matched[index] = exact
                     continue
-                wanted_title = _comparable_title(result.recording_title)
                 title_match = next(
                     (
                         path
                         for track, path in candidates
-                        if wanted_title
-                        and _comparable_title(track.get("title") or "") == wanted_title
+                        if _title_fallback_matches(result.recording_title, track.get("title") or "")
                     ),
                     None,
                 )
@@ -1041,13 +1060,11 @@ class LidarrClient:
                 if exact:
                     matched[index] = exact
                     break
-                wanted_title = _comparable_title(result.recording_title)
                 title_match = next(
                     (
                         path
                         for track, path in candidates
-                        if wanted_title
-                        and _comparable_title(track.get("title") or "") == wanted_title
+                        if _title_fallback_matches(result.recording_title, track.get("title") or "")
                     ),
                     None,
                 )

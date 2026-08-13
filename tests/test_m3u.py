@@ -76,6 +76,30 @@ class M3UTests(unittest.TestCase):
             },
         )
 
+    def test_downloaded_paths_rejects_a_different_named_remix(self):
+        client = object.__new__(LidarrClient)
+        client._request = Mock(
+            side_effect=[
+                [{"id": 7, "foreignArtistId": "artist", "path": "/music/Artist"}],
+                [
+                    {
+                        "title": "Diamonds (Angemi remix)",
+                        "foreignRecordingId": "angemi-recording",
+                        "hasFile": True,
+                        "trackFileId": 10,
+                    }
+                ],
+                [{"id": 10, "path": "/music/Artist/Diamonds.flac"}],
+            ]
+        )
+        result = MusicBrainzResult(
+            primary_artist_id="artist",
+            recording_ids=("bass-modulators-recording",),
+            recording_title="Diamonds (Bass Modulators extended remix)",
+        )
+
+        self.assertEqual(client.downloaded_paths([result]), {})
+
     def test_exports_extended_m3u_in_mapping_order_and_preserves_duplicates(self):
         rows = []
         for source_id, title in (("one", "First"), ("two", "Missing"), ("one", "First")):
