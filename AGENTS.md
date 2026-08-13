@@ -2,6 +2,7 @@
 
 ## Project principles
 
+
 - Prefer explicit, readable code over clever abstractions. Keep abstractions proportional to the
   domain problem they represent.
 - Preserve externally observable behavior and persisted-data compatibility unless a change
@@ -115,25 +116,24 @@ mix unrelated changes, merge unrelated branches into the task branch, bypass hoo
 Use Conventional Commit headers:
 
 ```text
-<type>(<optional-scope>): <description>
+<emoji> <type>(<scope>): <description>
 ```
 
 Allowed types are `chore`, `docs`, `feat`, `fix`, `refactor`, `release`, `revert`, and `test`.
-Allowed optional scopes are `config`, `deployment`, `lidarr`, `musicbrainz`, `persistence`,
-`playlist`, `repo`, `sources`, and `web`. Choose the narrowest applicable scope; omit it for a
-genuinely cross-cutting change. Descriptions start lowercase, use imperative wording where
+Allowed scopes are `config`, `deployment`, `lidarr`, `musicbrainz`, `persistence`,
+`playlist`, `repo`, `sources`, and `web`. Choose the narrowest applicable scope. Descriptions start lowercase, use imperative wording where
 practical, describe the resulting change, do not end with a period, and keep the complete header at
 100 characters or fewer.
 
 Examples:
 
 ```text
-feat(playlist): preview source playlist updates
-fix(lidarr): preserve downloaded release selection
-refactor(config): isolate persisted settings normalization
-test(persistence): cover restart recovery
-docs: explain container authentication boundary
-chore(repo): add pull request validation
+✨ feat(playlist): preview source playlist updates
+🐛 fix(lidarr): preserve downloaded release selection
+♻️ refactor(config): isolate persisted settings normalization
+✅ test(persistence): cover restart recovery
+📝 docs(repo): explain container authentication boundary
+👷 chore(repo): add pull request validation
 ```
 
 Tests normally belong in the same commit as the feature or fix they protect. Use `test` only for

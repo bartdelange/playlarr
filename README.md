@@ -164,6 +164,7 @@ uv run ruff format --check src tests scripts
 uv run ruff check src tests scripts
 uv run python -m unittest discover -s tests -v
 uv build
+docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7
 ```
 
 Use `uv run ruff format src tests scripts` to format changes. Install the repository Git hooks with

@@ -1,24 +1,36 @@
-name: CI
+name: Validate
 
 on:
   push:
+    branches:
+      - master
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
+    name: Validate project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install Python
         run: uv python install 3.12
       - name: Install dependencies
         run: uv sync --locked --dev
+      - name: Validate GitHub Actions
+        uses: docker://rhysd/actionlint:1.7.7
       - name: Check formatting
         run: uv run ruff format --check src tests scripts
       - name: Lint

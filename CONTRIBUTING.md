@@ -31,10 +31,10 @@ call live Spotify, TIDAL, MusicBrainz, Lidarr, or Navidrome services.
 Create a dedicated `feat/`, `fix/`, or `chore/` branch from the latest default branch. Keep commits
 focused and independently reviewable, and do not push directly to the default branch.
 
-Commit headers use Conventional Commits with an optional scope:
+Commit headers combine a Gitmoji with a Conventional Commit type and required scope:
 
 ```text
-<type>(<optional-scope>): <description>
+<emoji> <type>(<scope>): <description>
 ```
 
 Allowed types are `chore`, `docs`, `feat`, `fix`, `refactor`, `release`, `revert`, and `test`.
@@ -43,8 +43,8 @@ Allowed scopes are `config`, `deployment`, `lidarr`, `musicbrainz`, `persistence
 lowercase wording, and omit the final period. For example:
 
 ```text
-fix(lidarr): preserve downloaded release selection
-docs: explain local configuration
+🐛 fix(lidarr): preserve downloaded release selection
+📝 docs(repo): explain local configuration
 ```
 
 The installed `commit-msg` hook enforces this format. Do not bypass repository hooks with
@@ -57,6 +57,7 @@ uv run ruff format --check src tests scripts
 uv run ruff check src tests scripts
 uv run python -m unittest discover -s tests -v
 uv build
+docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7
 ```
 
 Review the branch diff, push the task branch, and open a non-draft pull request using the repository

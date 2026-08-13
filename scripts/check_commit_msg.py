@@ -27,7 +27,14 @@ ALLOWED_SCOPES = {
     "web",
 }
 MAX_HEADER_LENGTH = 100
-HEADER_PATTERN = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[a-z0-9._/-]+)\))?: (?P<subject>.+)$")
+HEADER_PATTERN = re.compile(
+    r"^(?P<emoji>\S+) (?P<type>[a-z]+)\((?P<scope>[a-z0-9._/-]+)\): (?P<subject>.+)$"
+)
+
+
+def is_emoji(value: str) -> bool:
+    codepoint = ord(value[0])
+    return 0x2300 <= codepoint <= 0x2BFF or 0x1F000 <= codepoint <= 0x1FAFF
 
 
 def validate_header(header: str) -> str | None:
@@ -40,9 +47,13 @@ def validate_header(header: str) -> str | None:
 
     match = HEADER_PATTERN.fullmatch(header)
     if match is None:
-        return "Invalid commit message. Use: <type>(<optional-scope>): <description>"
+        return "Invalid commit message. Use: <emoji> <type>(<scope>): <description>"
 
     commit_type = match.group("type")
+
+    if not is_emoji(match.group("emoji")):
+        return "Commit message must start with an emoji."
+
     if commit_type not in ALLOWED_TYPES:
         allowed = ", ".join(sorted(ALLOWED_TYPES))
         return f"Invalid commit type {commit_type!r}. Allowed types: {allowed}."
@@ -72,7 +83,9 @@ def main() -> int:
     if error is None:
         return 0
 
-    print(f"{error}\nExample: fix(lidarr): preserve downloaded release selection", file=sys.stderr)
+    print(
+        f"{error}\nExample: 🐛 fix(lidarr): preserve downloaded release selection", file=sys.stderr
+    )
     return 1
 
 
