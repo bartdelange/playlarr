@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>tidal-to-lidarr</Name>
+  <Repository>ghcr.io/bartdelange/tidal-to-lidarr:latest</Repository>
+  <Registry>https://github.com/bartdelange/tidal-to-lidarr/pkgs/container/tidal-to-lidarr</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Project>https://github.com/bartdelange/tidal-to-lidarr</Project>
+  <Support>https://github.com/bartdelange/tidal-to-lidarr/issues</Support>
+  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+  <Overview>Import Spotify and TIDAL playlists into a Lidarr-managed library using MusicBrainz matching.</Overview>
+  <Category>MediaApp:Music</Category>
+  <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="Port used to access the web interface." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
+  <Config Name="Application Data" Target="/data" Default="/mnt/user/appdata/tidal-to-lidarr/data" Mode="rw" Description="SQLite database and persistent workflow state." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr/data</Config>
+  <Config Name="Authentication Data" Target="/secrets" Default="/mnt/user/appdata/tidal-to-lidarr/secrets" Mode="rw" Description="Spotify token and TIDAL session files." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr/secrets</Config>
+  <Config Name="Playlist Output" Target="/output" Default="/mnt/user/appdata/tidal-to-lidarr/output" Mode="rw" Description="Generated playlists and diagnostic reports." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr/output</Config>
+  <Config Name="Timezone" Target="TZ" Default="Europe/Amsterdam" Description="Container timezone." Type="Variable" Display="always" Required="true" Mask="false">Europe/Amsterdam</Config>
+  <Config Name="MusicBrainz User Agent" Target="MUSICBRAINZ_USER_AGENT" Default="" Description="Required identifying user agent containing a real email address or URL." Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Spotify Client ID" Target="SPOTIFY_CLIENT_ID" Default="" Description="Spotify application client ID. No client secret is required." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Spotify Redirect URI" Target="SPOTIFY_REDIRECT_URI" Default="http://127.0.0.1:8765/callback" Description="Spotify PKCE redirect URI." Type="Variable" Display="advanced" Required="false" Mask="false">http://127.0.0.1:8765/callback</Config>
+  <Config Name="Lidarr URL" Target="LIDARR_URL" Default="" Description="URL through which the container can reach Lidarr." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Lidarr API Key" Target="LIDARR_API_KEY" Default="" Description="Lidarr API key." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Lidarr Root Folder" Target="LIDARR_ROOT_FOLDER" Default="/music" Description="Root folder configured inside Lidarr; this is a logical path and does not require a volume mount." Type="Variable" Display="advanced" Required="false" Mask="false">/music</Config>
+  <Config Name="Lidarr Quality Profile ID" Target="LIDARR_QUALITY_PROFILE_ID" Default="1" Description="Lidarr quality profile ID." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+  <Config Name="Lidarr Metadata Profile ID" Target="LIDARR_METADATA_PROFILE_ID" Default="1" Description="Lidarr metadata profile ID." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+  <Config Name="Navidrome URL" Target="NAVIDROME_URL" Default="" Description="Optional Navidrome server URL." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Navidrome Username" Target="NAVIDROME_USERNAME" Default="" Description="Optional Navidrome username." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Navidrome Password" Target="NAVIDROME_PASSWORD" Default="" Description="Optional Navidrome password." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Navidrome Root Folder" Target="NAVIDROME_ROOT_FOLDER" Default="/music" Description="Music root path reported by Navidrome." Type="Variable" Display="advanced" Required="false" Mask="false">/music</Config>
+</Container>

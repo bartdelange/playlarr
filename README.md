@@ -46,6 +46,27 @@ the GUI take precedence, except explicit `DATA_DIR` and `OUTPUT_DIR` deployment 
 
 The container listens on `0.0.0.0:8787`; the normal `music-import` launcher remains localhost-only. The web UI has no login screen, so expose it only on a trusted LAN or put authentication in front of it. Do not publish it directly to the internet.
 
+Published GitHub releases produce `linux/amd64` images at
+`ghcr.io/bartdelange/tidal-to-lidarr`. The root-level
+[`tidal-to-lidarr.xml`](tidal-to-lidarr.xml) file is a native Unraid Docker template. Copy it to
+`/boot/config/plugins/dockerMan/templates-user/my-tidal-to-lidarr.xml`, refresh the Docker page,
+choose **Add Container**, and select `tidal-to-lidarr` from **User templates**. The package must be
+public in GitHub Container Registry for anonymous pulls; a private package requires GHCR
+credentials on the server.
+
+Before starting the Unraid container, create its persistent directories and make them writable by
+the image's UID/GID `1000:1000`:
+
+```bash
+mkdir -p /mnt/user/appdata/tidal-to-lidarr/{data,secrets,output}
+chown -R 1000:1000 /mnt/user/appdata/tidal-to-lidarr
+```
+
+The template tracks `latest` so Unraid can detect published updates. Pin its Repository field to a
+release such as `ghcr.io/bartdelange/tidal-to-lidarr:0.1.0` when controlled upgrades are preferred.
+
+For local development, the repository also includes a Compose configuration:
+
 ```bash
 cp .env.example .env
 mkdir -p container-data container-output container-secrets
