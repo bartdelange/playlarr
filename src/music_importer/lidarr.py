@@ -897,7 +897,9 @@ class LidarrClient:
                     if album is not None:
                         exact_albums.append(album)
                         album_id = album.get("id")
-                        if album_id is not None and not _is_various_artists_album(album):
+                        # Existing files are safe to recognize regardless of album ownership.
+                        # Various Artists protections remain enforced by planning and execution.
+                        if album_id is not None:
                             if album_id not in global_tracks_by_album_id:
                                 global_tracks_by_album_id[album_id] = (
                                     self._request("GET", "track", params={"albumId": album_id})
@@ -1020,8 +1022,10 @@ class LidarrClient:
                         (album for album in albums if album.get("foreignAlbumId") == group), None
                     )
                 album = albums_by_group[group]
-                if album is None or _is_various_artists_album(album):
+                if album is None:
                     continue
+                # This lookup is read-only. A Various Artists-owned file may satisfy an entry
+                # without authorizing the planner to mutate that album or artist.
                 album_id = album.get("id")
                 artist_id = album.get("artistId") or (album.get("artist") or {}).get("id")
                 if album_id is None or artist_id is None:

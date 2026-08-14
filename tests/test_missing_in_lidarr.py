@@ -195,6 +195,43 @@ class MissingInLidarrTests(unittest.TestCase):
             "GET", "album", params={"foreignAlbumId": "revealed-compilation"}
         )
 
+    def test_recognizes_downloaded_track_on_various_artists_album(self):
+        client = object.__new__(LidarrClient)
+        client._request = Mock(
+            side_effect=[
+                [{"id": 7, "foreignArtistId": "track-artist"}],
+                [],
+                [],
+                [
+                    {
+                        "id": 20,
+                        "foreignAlbumId": "compilation",
+                        "monitored": True,
+                        "artist": {
+                            "foreignArtistId": "89ad4ac3-39f7-470e-963a-56509c546377",
+                            "artistName": "Various Artists",
+                        },
+                    }
+                ],
+                [
+                    {
+                        "albumId": 20,
+                        "foreignRecordingId": "recording",
+                        "title": "Song",
+                        "hasFile": True,
+                    }
+                ],
+            ]
+        )
+        result = MusicBrainzResult(
+            recording_title="Song",
+            recording_ids=("recording",),
+            primary_artist_id="track-artist",
+            release_group_ids=("compilation",),
+        )
+
+        self.assertEqual(client.compare([result]), ({}, {0: "release_downloaded"}))
+
     def test_compare_reports_all_manual_intervention_reasons(self):
         client = object.__new__(LidarrClient)
         client._request = Mock(return_value=[])
