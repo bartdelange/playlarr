@@ -6,7 +6,7 @@ from pathlib import Path
 
 import requests
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -20,20 +20,12 @@ from .config import (
 from .csv_compat import import_mapping_csv
 from .lidarr import LidarrClient
 from .m3u import write_m3u
-from .models import AcquiredTrack, PlaylistInfo
+from .models import AcquiredTrack
 from .musicbrainz import MusicBrainzClient
 from .navidrome import NavidromeClient
 from .persistence import ImportRepository
 from .playlist_updates import playlist_snapshot_token
-from .reports import (
-    artist_additions,
-    row_for,
-    write_artist_impact_report,
-    write_lidarr_action_report,
-    write_matched_report,
-    write_missing_report,
-    write_reports,
-)
+from .reports import artist_additions
 from .services import (
     LibraryStatusService,
     PersistentImportService,
@@ -1313,67 +1305,6 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
 
         job = context.tasks.submit("playlist_generation", operation, import_id, total=len(entries))
         return RedirectResponse(f"/jobs/{job.id}", status_code=303)
-
-    @app.get("/imports/{import_id}/export/{kind}")
-    def export_report(import_id: str, kind: str):
-        imported = repository.get_import(import_id)
-        entries = repository.entries(import_id)
-        playlist = PlaylistInfo(
-            imported.source,
-            imported.source_playlist_id,
-            imported.playlist_name,
-            imported.playlist_path,
-        )
-        rows = [row_for(playlist, entry.track, entry.result) for entry in entries]
-        mapping, unresolved = write_reports(config.output_dir, playlist, rows)
-        if kind == "mapping":
-            path = mapping
-        elif kind == "unresolved":
-            path = unresolved
-        elif kind in {"missing", "matched", "artist-impact"}:
-            if not config.lidarr_enabled:
-                raise HTTPException(400, "Lidarr is not configured")
-            missing, matched = LidarrClient(config).compare([entry.result for entry in entries])
-            if kind == "missing":
-                path = write_missing_report(config.output_dir, playlist, rows, missing)
-            elif kind == "matched":
-                path = write_matched_report(config.output_dir, playlist, rows, matched)
-            else:
-                path = write_artist_impact_report(
-                    mapping, artist_additions([entry.result for entry in entries], missing)
-                )
-        elif kind == "lidarr-actions":
-            stored = repository.latest_lidarr_plan(import_id)
-            if not stored:
-                raise HTTPException(400, "create a Lidarr plan before exporting actions")
-            plan = stored[3]
-            action_rows = [
-                {
-                    "mapped_artist_names": action.artist_name,
-                    "artist_name": action.artist_name,
-                    "artist_mbid": action.artist_mbid,
-                    "artist_lidarr_url": (
-                        f"{config.lidarr_url}/artist/{action.artist_mbid}"
-                        if config.lidarr_url and action.artist_mbid
-                        else ""
-                    ),
-                    "release_group_id": action.release_group_id,
-                    "album_title": action.album_title,
-                    "album_lidarr_url": (
-                        f"{config.lidarr_url}/album/{action.release_group_id}"
-                        if config.lidarr_url and action.release_group_id
-                        else ""
-                    ),
-                    "action": action.action,
-                    "outcome": "planned",
-                    "details": action.reason,
-                }
-                for action in plan.actions
-            ]
-            path = write_lidarr_action_report(mapping, action_rows)
-        else:
-            raise HTTPException(404, "unknown report type")
-        return FileResponse(path, filename=path.name, media_type="text/csv")
 
     @app.post("/settings/test/{service}")
     def test_connection(service: str):
