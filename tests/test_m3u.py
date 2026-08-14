@@ -184,6 +184,50 @@ class M3UTests(unittest.TestCase):
             {0: "/music/Album Artist/Album/Song.flac"},
         )
 
+    def test_downloaded_paths_finds_file_on_various_artists_album(self):
+        client = object.__new__(LidarrClient)
+        client._request = Mock(
+            side_effect=[
+                [{"id": 7, "foreignArtistId": "track-artist", "path": "/music/Track Artist"}],
+                [],
+                [],
+                [
+                    {
+                        "id": 20,
+                        "artistId": 9,
+                        "foreignAlbumId": "compilation",
+                        "artist": {
+                            "id": 9,
+                            "artistName": "Various Artists",
+                            "foreignArtistId": "89ad4ac3-39f7-470e-963a-56509c546377",
+                            "path": "/music/Various Artists",
+                        },
+                    }
+                ],
+                [
+                    {
+                        "albumId": 20,
+                        "foreignRecordingId": "recording",
+                        "title": "Song",
+                        "hasFile": True,
+                        "trackFileId": 91,
+                    }
+                ],
+                [{"id": 91, "path": "/music/Various Artists/Compilation/Song.flac"}],
+            ]
+        )
+        result = MusicBrainzResult(
+            recording_ids=("recording",),
+            recording_title="Song",
+            primary_artist_id="track-artist",
+            release_group_ids=("compilation",),
+        )
+
+        self.assertEqual(
+            client.downloaded_paths([result]),
+            {0: "/music/Various Artists/Compilation/Song.flac"},
+        )
+
     def test_path_helpers(self):
         self.assertEqual(translate_path("/music/a.flac", [("/music", "/media")]), "/media/a.flac")
         self.assertEqual(
