@@ -831,6 +831,52 @@ class WebShellTests(unittest.TestCase):
         self.assertTrue(saved.evidence["allow_various_artists_release"])
         self.assertEqual(status, "superseded")
 
+    def test_completed_various_artists_skip_can_queue_override_for_next_plan(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            repository.replace_tracks(
+                imported.id, [SourceTrack("spotify", "track", "Song", ("Artist",), "Compilation")]
+            )
+            entry = repository.entries(imported.id)[0]
+            repository.save_manual_resolution(
+                entry.id,
+                MusicBrainzResult(
+                    resolved_via="manual_mbid",
+                    recording_ids=("recording",),
+                    release_group_ids=("compilation",),
+                    primary_artist_id="artist",
+                ),
+                method="manual_mbid",
+                validation_status="valid",
+            )
+            action = LidarrPlanAction(
+                "skip",
+                "artist",
+                "Artist",
+                "compilation",
+                "Compilation",
+                "various_artists_album",
+            )
+            plan_id = repository.save_lidarr_plan(imported.id, LidarrPlan((action,)))
+            repository.approve_lidarr_plan(plan_id)
+            repository.record_lidarr_execution(
+                plan_id, [LidarrExecutionResult(action, "skipped", "various_artists_album")]
+            )
+            client = TestClient(create_app(config(directory), repository))
+
+            page = client.get(f"/plans/{plan_id}")
+            changed = client.post(
+                f"/plans/{plan_id}/entries/{entry.id}/allow-va", follow_redirects=False
+            )
+            saved = repository.entry(entry.id)
+            _, status, _ = repository.get_lidarr_plan(plan_id)
+
+        self.assertIn("Allow this VA release", page.text)
+        self.assertEqual(changed.headers["location"], f"/imports/{imported.id}")
+        self.assertTrue(saved.evidence["allow_various_artists_release"])
+        self.assertEqual(status, "completed")
+
     def test_unresolved_plan_row_can_be_resolved_from_final_review(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = ImportRepository(Path(directory) / "state.db")
