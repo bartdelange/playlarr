@@ -129,6 +129,72 @@ class WebShellTests(unittest.TestCase):
         self.assertIn(">Missing but downloadable</span>", response.text)
         self.assertIn("/music/downloaded.flac", response.text)
         self.assertIn("Selected release is not currently present in Lidarr", response.text)
+        self.assertIn("Choose visible columns", response.text)
+        self.assertIn("sessionStorage", response.text)
+
+    def test_export_stage_shows_recording_scoped_lidarr_match(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            repository.replace_tracks(
+                imported.id, [SourceTrack("spotify", "one", "Song", ("Artist",), "Album")]
+            )
+            entry = repository.entries(imported.id)[0]
+            repository.save_manual_resolution(
+                entry.id,
+                MusicBrainzResult(
+                    resolved_via="manual_mbid",
+                    recording_ids=("requested-recording",),
+                    recording_title="Song (extended mix)",
+                    artist_names=("Artist",),
+                    primary_artist_id="artist",
+                    release_group_ids=("requested-group",),
+                ),
+                method="manual_mbid",
+                validation_status="valid",
+            )
+            repository.save_lidarr_plan(
+                imported.id,
+                LidarrPlan(
+                    (
+                        LidarrPlanAction(
+                            "reuse_downloaded_release",
+                            "artist",
+                            "Artist",
+                            "matched-group",
+                            "Matched Album",
+                            "downloaded_recording_match",
+                            {
+                                "mapped_release_group_ids": ["requested-group"],
+                                "requested_recording_ids": ["requested-recording"],
+                                "lidarr_album_id": 20,
+                                "matched_track": {
+                                    "title": "Song (extended mix)",
+                                    "track_number": "1",
+                                    "foreign_recording_id": "requested-recording",
+                                    "track_file_id": 91,
+                                    "has_file": True,
+                                    "match_method": "recording_id",
+                                },
+                            },
+                        ),
+                    )
+                ),
+            )
+            repository.save_library_status(
+                imported.id, [LibraryTrackStatus(0, "represented_locally", "/music/song.flac")]
+            )
+            client = TestClient(create_app(config(directory), repository))
+
+            export = client.get(f"/imports/{imported.id}?stage=export")
+            review = client.get(f"/imports/{imported.id}")
+
+        self.assertIn("<th>Lidarr matched</th>", export.text)
+        self.assertIn("Matched Lidarr track", export.text)
+        self.assertIn("Exact recording ID", export.text)
+        self.assertIn("Lidarr file 91", export.text)
+        self.assertIn("Matched Album", export.text)
+        self.assertNotIn("<th>Lidarr matched</th>", review.text)
 
     def test_export_stage_explains_safety_skip_from_executed_plan(self):
         with tempfile.TemporaryDirectory() as directory:
