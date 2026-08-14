@@ -1,8 +1,10 @@
-<nav class="steps" aria-label="Import progress">
-  {% if imported %}<span class="complete">1 Source</span>{% else %}<a class="{{ 'active' if workflow_step == 1 else 'complete' }}" href="/imports/new"{% if workflow_step == 1 %} aria-current="step"{% endif %}>1 Source</a>{% endif %}
-  {% if imported %}<span class="complete">2 Playlist</span>{% elif source %}<a class="active" href="/imports/new?source={{ source }}" aria-current="step">2 Playlist</a>{% else %}<span>2 Playlist</span>{% endif %}
-  {% if imported %}<a class="{{ 'active' if workflow_step == 3 else 'complete' if workflow_step > 3 else '' }}" href="/imports/{{ imported.id }}?stage=resolve"{% if workflow_step == 3 %} aria-current="step"{% endif %}>3 Resolve</a>{% else %}<span>3 Resolve</span>{% endif %}
-  {% if imported %}<a class="{{ 'active' if workflow_step == 4 else 'complete' if workflow_step > 4 else '' }}" href="/imports/{{ imported.id }}?stage=review"{% if workflow_step == 4 %} aria-current="step"{% endif %}>4 Review</a>{% else %}<span>4 Review</span>{% endif %}
-  {% if imported %}<a class="{{ 'active' if workflow_step == 5 else 'complete' if workflow_step > 5 else '' }}" href="{% if lidarr_plan_id %}/plans/{{ lidarr_plan_id }}{% else %}/imports/{{ imported.id }}?stage=lidarr{% endif %}"{% if workflow_step == 5 %} aria-current="step"{% endif %}>5 Lidarr</a>{% else %}<span>5 Lidarr</span>{% endif %}
-  {% if imported %}<a class="{{ 'active' if workflow_step == 6 else '' }}" href="/imports/{{ imported.id }}?stage=export"{% if workflow_step == 6 %} aria-current="step"{% endif %}>6 Export</a>{% else %}<span>6 Export</span>{% endif %}
+<nav class="steps" aria-label="Workflow progress">
+  {% if not imported %}
+    <a class="{{ 'active' if new_import_step == 1 else 'complete' }}" href="/imports/new"{% if new_import_step == 1 %} aria-current="step"{% endif %}>1 Source</a>
+    {% if source %}<a class="active" href="/imports/new?source={{ source }}" aria-current="step">2 Playlist</a>{% else %}<span class="disabled" aria-disabled="true">2 Playlist</span>{% endif %}
+  {% else %}
+    <a class="{{ 'active' if workflow_step == 1 else 'complete' }}" href="/imports/{{ imported.id }}?stage=match"{% if workflow_step == 1 %} aria-current="step"{% endif %}>1 Music match</a>
+    {% if can_open_lidarr %}<a class="{{ 'active' if workflow_step == 2 else 'complete' if workflow_step > 2 else '' }}" href="{% if lidarr_plan_id %}/plans/{{ lidarr_plan_id }}{% else %}/imports/{{ imported.id }}?stage=lidarr{% endif %}"{% if workflow_step == 2 %} aria-current="step"{% endif %}>2 Lidarr</a>{% else %}<span class="disabled" aria-disabled="true">2 Lidarr</span>{% endif %}
+    {% if can_open_final %}<a class="{{ 'active' if workflow_step == 3 else '' }}" href="/imports/{{ imported.id }}?stage=final"{% if workflow_step == 3 %} aria-current="step"{% endif %}>3 Final</a>{% else %}<span class="disabled" aria-disabled="true">3 Final</span>{% endif %}
+  {% endif %}
 </nav>

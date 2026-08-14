@@ -75,6 +75,25 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         return {"status": "ok"}
 
     def render(request: Request, template: str, **values):
+        imported = values.get("imported")
+        if imported is not None:
+            import_entries = repository.entries(imported.id)
+            states = {entry.resolution_state for entry in import_entries}
+            latest_plan = repository.latest_lidarr_plan(imported.id)
+            values.setdefault("playlist_track_count", len(import_entries))
+            values.setdefault(
+                "can_open_lidarr",
+                not bool(
+                    states
+                    & {"pending", "resolving", "unresolved", "ambiguous", "validation_failed"}
+                ),
+            )
+            values.setdefault(
+                "can_open_final",
+                imported.workflow_state
+                in {"waiting_for_downloads", "library_status", "playlist_generated"},
+            )
+            values.setdefault("lidarr_plan_id", latest_plan[0] if latest_plan else None)
         return templates.TemplateResponse(
             request,
             template,
@@ -89,16 +108,16 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         entries = entries if entries is not None else repository.entries(imported.id)
         states = {entry.resolution_state for entry in entries}
         if states & {"pending", "resolving"}:
-            return 3
+            return 1
         if states & {"unresolved", "ambiguous", "validation_failed"}:
-            return 4
+            return 1
         if imported.workflow_state in {
             "waiting_for_downloads",
             "library_status",
             "playlist_generated",
         }:
-            return 6
-        return 5
+            return 3
+        return 2
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard(request: Request):
@@ -241,7 +260,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             error=error,
             analyses=analyses,
             existing_imports=existing_imports,
-            workflow_step=2 if source else 1,
+            new_import_step=2 if source else 1,
             imported=None,
         )
 
@@ -401,6 +420,8 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         plan = repository.latest_lidarr_plan(import_id)
         if stage == "lidarr" and plan:
             return RedirectResponse(f"/plans/{plan[0]}", status_code=307)
+        if stage is None and workflow_step(imported, entries) == 2 and plan:
+            return RedirectResponse(f"/plans/{plan[0]}", status_code=307)
         library = repository.library_status(import_id)
         execution_context: dict[int, list[dict]] = {}
         lidarr_matches: dict[int, dict] = {}
@@ -491,12 +512,18 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             "library_status",
             "playlist_generated",
         }
-        requested_steps = {"resolve": 3, "review": 4, "lidarr": 5, "export": 6}
+        requested_steps = {
+            "match": 1,
+            "resolve": 1,
+            "review": 1,
+            "lidarr": 2,
+            "final": 3,
+            "export": 3,
+        }
         default_step = workflow_step(imported, entries)
-        # This route renders the track-resolution review table. A ready Lidarr
-        # plan is progress, not a reason to label this page as the plan itself.
-        if default_step == 5:
-            default_step = 4
+        # The import route owns Music match and Final. Lidarr plans have their own page.
+        if default_step == 2:
+            default_step = 1
         selected_step = requested_steps.get(stage, default_step)
         return render(
             request,
@@ -689,7 +716,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             query=q or "",
             imported=imported,
             source=imported.source,
-            workflow_step=4,
+            workflow_step=1,
             match_suggestions=repository.manual_match_suggestions(entry_id),
             plan_id=plan_id,
             **review_session_values(entry, session),
@@ -723,7 +750,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             query="",
             imported=imported,
             source=imported.source,
-            workflow_step=4,
+            workflow_step=1,
             match_suggestions=repository.manual_match_suggestions(entry_id),
             plan_id=plan_id,
             **review_session_values(entry, session),
@@ -1145,7 +1172,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             execution=repository.lidarr_execution_results(plan_id),
             imported=imported,
             source=imported.source,
-            workflow_step=5,
+            workflow_step=2,
             track_links=track_links,
             action_guide=action_guide,
             reason_guide=reason_guide,

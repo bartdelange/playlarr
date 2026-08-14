@@ -94,7 +94,7 @@ class WebShellTests(unittest.TestCase):
         self.assertIn("1</strong> removed", preview.text)
         self.assertEqual(applied.status_code, 303)
         self.assertEqual([entry.track.source_track_id for entry in entries], ["added", "kept"])
-        self.assertIn("Update history (1)", detail.text)
+        self.assertIn("Playlist refresh history (1)", detail.text)
 
     def test_export_stage_filters_downloaded_and_missing_files(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -117,13 +117,13 @@ class WebShellTests(unittest.TestCase):
             )
             client = TestClient(create_app(config(directory), repository))
 
-            response = client.get(f"/imports/{imported.id}?stage=export")
+            response = client.get(f"/imports/{imported.id}?stage=final")
 
         self.assertIn(">All (2)</button>", response.text)
         self.assertIn(">Downloaded (1)</button>", response.text)
         self.assertIn(">Missing but downloadable (1)</button>", response.text)
         self.assertIn(">Not downloadable (0)</button>", response.text)
-        self.assertNotIn(">Auto matched</button>", response.text)
+        self.assertNotIn(">Automatic</button>", response.text)
         self.assertIn('data-availability="downloaded"', response.text)
         self.assertIn('data-availability="downloadable"', response.text)
         self.assertIn(">Missing but downloadable</span>", response.text)
@@ -186,8 +186,8 @@ class WebShellTests(unittest.TestCase):
             )
             client = TestClient(create_app(config(directory), repository))
 
-            export = client.get(f"/imports/{imported.id}?stage=export")
-            review = client.get(f"/imports/{imported.id}")
+            export = client.get(f"/imports/{imported.id}?stage=final")
+            review = client.get(f"/imports/{imported.id}?stage=match")
 
         self.assertIn("<th>Lidarr matched</th>", export.text)
         self.assertIn("Matched Lidarr track", export.text)
@@ -195,6 +195,7 @@ class WebShellTests(unittest.TestCase):
         self.assertIn("Lidarr file 91", export.text)
         self.assertIn("Matched Album", export.text)
         self.assertNotIn("<th>Lidarr matched</th>", review.text)
+        self.assertNotIn("<th>Matched recording</th>", export.text)
 
     def test_export_stage_explains_safety_skip_from_executed_plan(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -229,7 +230,7 @@ class WebShellTests(unittest.TestCase):
             repository.save_library_status(imported.id, [LibraryTrackStatus(0, "release_missing")])
             client = TestClient(create_app(config(directory), repository))
 
-            response = client.get(f"/imports/{imported.id}?stage=export")
+            response = client.get(f"/imports/{imported.id}?stage=final")
 
         self.assertIn("Not added: selected release is a Various Artists compilation", response.text)
         self.assertIn(">Not downloadable</span>", response.text)
@@ -371,6 +372,7 @@ class WebShellTests(unittest.TestCase):
             dashboard = client.get("/")
             detail = client.get(f"/imports/{imported.id}")
             source_step = client.get("/imports/new?source=unknown")
+            source_start = client.get("/imports/new")
             settings = client.get("/settings")
             premature_library = client.post(
                 f"/imports/{imported.id}/library-status", follow_redirects=False
@@ -382,9 +384,17 @@ class WebShellTests(unittest.TestCase):
         self.assertIn("pending", detail.text)
         self.assertIn("Resolve 1 tracks", detail.text)
         self.assertIn('class="active" href="/imports/', detail.text)
-        self.assertIn('aria-current="step">3 Resolve', detail.text)
+        self.assertIn('aria-current="step">1 Music match', detail.text)
         self.assertIn('aria-current="step">2 Playlist', source_step.text)
-        self.assertNotIn("Refresh downloads", detail.text)
+        self.assertIn("Authorization Code + PKCE", source_start.text)
+        self.assertNotIn("Authorization Code + PKCE", source_step.text)
+        self.assertNotIn("Import an existing mapping", source_start.text)
+        self.assertNotIn("CSV exports", detail.text)
+        self.assertIn("<th>Matched recording</th>", detail.text)
+        self.assertNotIn("<th>Library state</th>", detail.text)
+        self.assertNotIn("Refresh monitored &amp; downloaded", detail.text)
+        self.assertNotIn(">1 Source<", detail.text)
+        self.assertNotIn(">2 Playlist<", detail.text)
         self.assertEqual(premature_library.status_code, 409)
         self.assertNotIn("secret", settings.text)
         self.assertIn("Configured — enter to replace", settings.text)
@@ -428,8 +438,8 @@ class WebShellTests(unittest.TestCase):
             detail = client.get(f"/imports/{imported.id}")
             job_page = client.get(f"/jobs/{job.id}")
 
-        self.assertIn('aria-current="step">4 Review', detail.text)
-        self.assertNotIn('aria-current="step">5 Lidarr', detail.text)
+        self.assertIn('aria-current="step">1 Music match', detail.text)
+        self.assertNotIn('aria-current="step">2 Lidarr', detail.text)
         self.assertIn(f"/imports/{imported.id}?stage=lidarr", job_page.text)
 
     def test_lidarr_execution_refreshes_persisted_library_status(self):
@@ -494,7 +504,7 @@ class WebShellTests(unittest.TestCase):
         self.assertIn("1 new", response.text)
         self.assertIn("Searches queued", response.text)
         self.assertIn("monitor release", response.text)
-        self.assertIn('aria-current="step">5 Lidarr', response.text)
+        self.assertIn('aria-current="step">2 Lidarr', response.text)
 
     def test_plan_page_links_source_song_to_selected_lidarr_release(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -578,17 +588,16 @@ class WebShellTests(unittest.TestCase):
 
         self.assertIn("Songs and Lidarr releases", response.text)
         self.assertIn("Source Compilation", response.text)
-        self.assertIn("recording-id", response.text)
         self.assertIn("Canonical Album", response.text)
         self.assertNotIn("Lidarr artist", response.text)
         self.assertIn("Noisecontrollers ·", response.text)
-        self.assertIn("lidarr-group", response.text)
-        self.assertIn("Originally selected", response.text)
+        self.assertIn(
+            "Rebound because this Lidarr release contains the selected track", response.text
+        )
         self.assertIn("The Theme (Radio Edit)", response.text)
         self.assertIn("Track 3-12", response.text)
-        self.assertIn("Exact recording ID", response.text)
         self.assertIn("Lidarr file 91", response.text)
-        self.assertIn("https://musicbrainz.org/recording/recording-id", response.text)
+        self.assertNotIn("https://musicbrainz.org/recording/recording-id", response.text)
         self.assertIn("reuse downloaded release", response.text)
         self.assertIn("The release is already monitored", response.text)
         self.assertIn("No Lidarr changes are needed for this artist", response.text)
@@ -601,9 +610,9 @@ class WebShellTests(unittest.TestCase):
         self.assertIn('data-mutates="1"', response.text)
         self.assertIn("Artist-level action", response.text)
         self.assertIn("create artist", response.text)
-        self.assertIn(f'href="/imports/{imported.id}?stage=review"', response.text)
-        self.assertIn('aria-current="step">4 Review', review_stage.text)
-        self.assertNotIn('aria-current="step">5 Lidarr', review_stage.text)
+        self.assertIn(f'href="/imports/{imported.id}?stage=match"', response.text)
+        self.assertIn('aria-current="step">1 Music match', review_stage.text)
+        self.assertNotIn('aria-current="step">2 Lidarr', review_stage.text)
         self.assertIn(f'href="/plans/{plan_id}"', review_stage.text)
 
     def test_plan_page_does_not_rebind_other_tracks_from_shared_compilation(self):
