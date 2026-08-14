@@ -714,24 +714,37 @@ class LidarrClient:
     ) -> list[LidarrExecutionResult]:
         """Reconcile and execute only the mutations present in an approved plan.
 
-        Every action re-reads its target. A search is queued only when this
-        execution actually created/started monitoring its release (or created
-        its artist), which makes replaying the same approved plan idempotent.
+        Every target is re-read once for this execution. Mutations update the
+        execution-local snapshot before dependent actions run. A search is queued
+        only when this execution actually created/started monitoring its release
+        (or created its artist), which makes replaying the same approved plan
+        idempotent without repeating identical Lidarr reads for adjacent actions.
         """
         results: list[LidarrExecutionResult] = []
         created_artists: set[str] = set()
         changed_releases: set[str] = set()
+        known_artists: dict[str, dict] | None = None
+        known_albums: dict[str, dict | None] = {}
 
         def artists() -> dict[str, dict]:
-            return {
-                item.get("foreignArtistId"): item for item in self._request("GET", "artist") or []
-            }
+            nonlocal known_artists
+            if known_artists is None:
+                known_artists = {
+                    item.get("foreignArtistId"): item
+                    for item in self._request("GET", "artist") or []
+                }
+            return known_artists
 
         def album(release_group: str) -> dict | None:
-            matches = self._request("GET", "album", params={"foreignAlbumId": release_group}) or []
-            return next(
-                (item for item in matches if item.get("foreignAlbumId") == release_group), None
-            )
+            if release_group not in known_albums:
+                matches = (
+                    self._request("GET", "album", params={"foreignAlbumId": release_group}) or []
+                )
+                known_albums[release_group] = next(
+                    (item for item in matches if item.get("foreignAlbumId") == release_group),
+                    None,
+                )
+            return known_albums[release_group]
 
         total = len(plan.actions)
         for position, action in enumerate(plan.actions, start=1):
@@ -768,6 +781,7 @@ class LidarrClient:
                             f"Lidarr did not return created artist {action.artist_mbid}"
                         )
                     created_artists.add(action.artist_mbid)
+                    artists()[action.artist_mbid] = created
                     results.append(LidarrExecutionResult(action, "created"))
                     continue
 
@@ -780,6 +794,7 @@ class LidarrClient:
                             LidarrExecutionResult(action, "unchanged", "already_monitored")
                         )
                     else:
+                        artists()[action.artist_mbid] = current
                         results.append(LidarrExecutionResult(action, "updated"))
                     continue
 
@@ -814,6 +829,7 @@ class LidarrClient:
                         )
                     else:
                         changed_releases.add(action.release_group_id)
+                        known_albums[action.release_group_id] = created
                         results.append(LidarrExecutionResult(action, "created"))
                     continue
 

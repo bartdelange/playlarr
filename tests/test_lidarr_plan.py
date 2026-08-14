@@ -436,8 +436,7 @@ class LidarrExecutionTests(unittest.TestCase):
             "monitored": False,
             "artist": {"foreignArtistId": "artist"},
         }
-        monitored = {**unmonitored, "monitored": True}
-        client._request = Mock(side_effect=[[unmonitored], None, [monitored], None])
+        client._request = Mock(side_effect=[[unmonitored], None, None])
         plan = LidarrPlan(
             (
                 LidarrPlanAction("monitor_release", "artist", "Artist", "group"),
@@ -453,6 +452,36 @@ class LidarrExecutionTests(unittest.TestCase):
         ]
         self.assertEqual(mutation_calls[0].args, ("PUT", "album/11"))
         self.assertEqual(mutation_calls[1].args, ("POST", "command"))
+        album_reads = [
+            call for call in client._request.call_args_list if call.args[:2] == ("GET", "album")
+        ]
+        self.assertEqual(len(album_reads), 1)
+
+    def test_execution_reuses_artist_read_and_updated_state(self):
+        client = object.__new__(LidarrClient)
+        client.config = SimpleNamespace(lidarr_url="http://lidarr")
+        artist = {
+            "id": 7,
+            "foreignArtistId": "artist",
+            "artistName": "Artist",
+            "monitored": False,
+            "monitorNewItems": "all",
+        }
+        client._request = Mock(side_effect=[[artist], None])
+        plan = LidarrPlan(
+            (
+                LidarrPlanAction("monitor_artist", "artist", "Artist"),
+                LidarrPlanAction("monitor_artist", "artist", "Artist"),
+            )
+        )
+
+        execution = client.execute_plan(plan)
+
+        self.assertEqual([result.outcome for result in execution], ["updated", "unchanged"])
+        artist_reads = [
+            call for call in client._request.call_args_list if call.args[:2] == ("GET", "artist")
+        ]
+        self.assertEqual(len(artist_reads), 1)
 
     def test_execution_disables_switching_and_selects_requested_release(self):
         client = object.__new__(LidarrClient)
