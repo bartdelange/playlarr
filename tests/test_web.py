@@ -108,6 +108,9 @@ class WebShellTests(unittest.TestCase):
                 ],
             )
             repository.set_workflow_state(imported.id, "waiting_for_downloads")
+            plan_id = repository.save_lidarr_plan(imported.id, LidarrPlan(()))
+            repository.approve_lidarr_plan(plan_id)
+            repository.record_lidarr_execution(plan_id, [])
             repository.save_library_status(
                 imported.id,
                 [
@@ -153,7 +156,7 @@ class WebShellTests(unittest.TestCase):
                 method="manual_mbid",
                 validation_status="valid",
             )
-            repository.save_lidarr_plan(
+            plan_id = repository.save_lidarr_plan(
                 imported.id,
                 LidarrPlan(
                     (
@@ -180,6 +183,15 @@ class WebShellTests(unittest.TestCase):
                         ),
                     )
                 ),
+            )
+            repository.approve_lidarr_plan(plan_id)
+            repository.record_lidarr_execution(
+                plan_id,
+                [
+                    LidarrExecutionResult(
+                        repository.get_lidarr_plan(plan_id)[2].actions[0], "unchanged"
+                    )
+                ],
             )
             repository.save_library_status(
                 imported.id, [LibraryTrackStatus(0, "represented_locally", "/music/song.flac")]
@@ -438,9 +450,54 @@ class WebShellTests(unittest.TestCase):
             detail = client.get(f"/imports/{imported.id}")
             job_page = client.get(f"/jobs/{job.id}")
 
-        self.assertIn('aria-current="step">1 Music match', detail.text)
-        self.assertNotIn('aria-current="step">2 Lidarr', detail.text)
+        self.assertIn('aria-current="step">2 Lidarr', detail.text)
+        self.assertIn("Apply to Lidarr", detail.text)
         self.assertIn(f"/imports/{imported.id}?stage=lidarr", job_page.text)
+
+    def test_lidarr_stage_owns_plan_creation_and_final_warns_for_unapplied_plan(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            repository.replace_tracks(
+                imported.id, [SourceTrack("spotify", "track", "Song", ("Artist",), "Album")]
+            )
+            entry = repository.entries(imported.id)[0]
+            repository.save_manual_resolution(
+                entry.id,
+                MusicBrainzResult(
+                    resolved_via="manual_mbid",
+                    recording_ids=("recording",),
+                    release_group_ids=("group",),
+                    primary_artist_id="artist",
+                ),
+                method="manual_mbid",
+                validation_status="valid",
+            )
+            client = TestClient(create_app(config(directory), repository))
+
+            match_page = client.get(f"/imports/{imported.id}?stage=match")
+            empty_plan = client.get(f"/imports/{imported.id}?stage=lidarr")
+            blocked_final = client.get(
+                f"/imports/{imported.id}?stage=final", follow_redirects=False
+            )
+            plan_id = repository.save_lidarr_plan(imported.id, LidarrPlan(()))
+            draft_page = client.get(f"/plans/{plan_id}")
+            draft_final = client.get(f"/imports/{imported.id}?stage=final")
+            repository.approve_lidarr_plan(plan_id)
+            repository.record_lidarr_execution(plan_id, [])
+            completed_page = client.get(f"/plans/{plan_id}")
+
+        self.assertIn("Open Lidarr plan", match_page.text)
+        self.assertNotIn("Build Lidarr plan", match_page.text)
+        self.assertIn("No Lidarr plan exists yet", empty_plan.text)
+        self.assertIn("Create Lidarr plan", empty_plan.text)
+        self.assertEqual(blocked_final.headers["location"], f"/imports/{imported.id}?stage=lidarr")
+        self.assertIn("Apply to Lidarr", draft_page.text)
+        self.assertIn("Rebuild Lidarr plan", draft_page.text)
+        self.assertIn(f'href="/imports/{imported.id}?stage=final"', draft_page.text)
+        self.assertIn("There are unapplied Lidarr changes", draft_final.text)
+        self.assertIn(f'href="/plans/{plan_id}"', draft_final.text)
+        self.assertIn(f'href="/imports/{imported.id}?stage=final"', completed_page.text)
 
     def test_lidarr_execution_refreshes_persisted_library_status(self):
         with tempfile.TemporaryDirectory() as directory:

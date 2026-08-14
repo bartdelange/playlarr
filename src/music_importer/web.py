@@ -90,8 +90,11 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             )
             values.setdefault(
                 "can_open_final",
-                imported.workflow_state
-                in {"waiting_for_downloads", "library_status", "playlist_generated"},
+                bool(latest_plan),
+            )
+            values.setdefault(
+                "has_unapplied_lidarr_plan",
+                bool(latest_plan and latest_plan[2] != "completed"),
             )
             values.setdefault("lidarr_plan_id", latest_plan[0] if latest_plan else None)
         return templates.TemplateResponse(
@@ -420,8 +423,19 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         plan = repository.latest_lidarr_plan(import_id)
         if stage == "lidarr" and plan:
             return RedirectResponse(f"/plans/{plan[0]}", status_code=307)
-        if stage is None and workflow_step(imported, entries) == 2 and plan:
-            return RedirectResponse(f"/plans/{plan[0]}", status_code=307)
+        if stage in {"final", "export"} and not plan:
+            return RedirectResponse(f"/imports/{import_id}?stage=lidarr", status_code=307)
+        if stage is None and workflow_step(imported, entries) == 2:
+            target = f"/plans/{plan[0]}" if plan else f"/imports/{import_id}?stage=lidarr"
+            return RedirectResponse(target, status_code=307)
+        if stage == "lidarr":
+            return render(
+                request,
+                "lidarr_empty.html",
+                imported=imported,
+                source=imported.source,
+                workflow_step=2,
+            )
         library = repository.library_status(import_id)
         execution_context: dict[int, list[dict]] = {}
         lidarr_matches: dict[int, dict] = {}
@@ -521,7 +535,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             "export": 3,
         }
         default_step = workflow_step(imported, entries)
-        # The import route owns Music match and Final. Lidarr plans have their own page.
+        # The import route owns Music match and Final. Lidarr plans have their own pages.
         if default_step == 2:
             default_step = 1
         selected_step = requested_steps.get(stage, default_step)
