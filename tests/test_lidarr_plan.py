@@ -224,6 +224,44 @@ class LidarrPlanningTests(unittest.TestCase):
             all(action.payload["requested_recording_ids"] == ["missing"] for action in mutations)
         )
 
+    def test_plan_reconfigures_automatic_release_switching_for_selected_edition(self):
+        client = object.__new__(LidarrClient)
+        artist = {
+            "id": 7,
+            "artistName": "Artist",
+            "foreignArtistId": "artist",
+            "monitored": True,
+            "monitorNewItems": "none",
+        }
+        album = {
+            "id": 20,
+            "foreignAlbumId": "group",
+            "title": "Album",
+            "monitored": True,
+            "anyReleaseOk": True,
+            "releases": [
+                {"foreignReleaseId": "original-release", "monitored": True},
+                {"foreignReleaseId": "extended-release", "monitored": False},
+            ],
+        }
+        client._request = Mock(side_effect=[[artist], [], [album]])
+
+        plan = client.plan(
+            [
+                MusicBrainzResult(
+                    recording_ids=("extended-recording",),
+                    recording_title="Song (extended mix)",
+                    artist_names=("Artist",),
+                    primary_artist_id="artist",
+                    release_ids=("extended-release",),
+                    release_group_ids=("group",),
+                )
+            ]
+        )
+
+        monitor = next(action for action in plan.actions if action.action == "monitor_release")
+        self.assertEqual(monitor.payload["requested_release_ids"], ["extended-release"])
+
     def test_monitored_release_still_queues_search_for_missing_recording(self):
         client = object.__new__(LidarrClient)
         artist = {
@@ -413,8 +451,39 @@ class LidarrExecutionTests(unittest.TestCase):
         mutation_calls = [
             call for call in client._request.call_args_list if call.args[0] in {"PUT", "POST"}
         ]
-        self.assertEqual(mutation_calls[0].args, ("PUT", "album/monitor"))
+        self.assertEqual(mutation_calls[0].args, ("PUT", "album/11"))
         self.assertEqual(mutation_calls[1].args, ("POST", "command"))
+
+    def test_execution_disables_switching_and_selects_requested_release(self):
+        client = object.__new__(LidarrClient)
+        album = {
+            "id": 11,
+            "foreignAlbumId": "group",
+            "title": "Album",
+            "monitored": True,
+            "anyReleaseOk": True,
+            "artist": {"foreignArtistId": "artist"},
+            "releases": [
+                {"foreignReleaseId": "original-release", "monitored": True},
+                {"foreignReleaseId": "extended-release", "monitored": False},
+            ],
+        }
+        client._request = Mock(side_effect=[[album], None])
+        action = LidarrPlanAction(
+            "monitor_release",
+            "artist",
+            "Artist",
+            "group",
+            payload={"requested_release_ids": ["extended-release"]},
+        )
+
+        execution = client.execute_plan(LidarrPlan((action,)))
+
+        self.assertEqual(execution[0].outcome, "updated")
+        payload = client._request.call_args_list[1].kwargs["json"]
+        self.assertFalse(payload["anyReleaseOk"])
+        self.assertFalse(payload["releases"][0]["monitored"])
+        self.assertTrue(payload["releases"][1]["monitored"])
 
     def test_replaying_plan_does_not_repeat_search(self):
         client = object.__new__(LidarrClient)
