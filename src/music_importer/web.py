@@ -904,13 +904,14 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
     @app.post("/plans/{plan_id}/entries/{entry_id}/allow-va")
     def allow_various_artists_release(plan_id: str, entry_id: int):
         import_id, status, _ = repository.get_lidarr_plan(plan_id)
-        if status not in {"draft", "superseded"}:
-            raise HTTPException(409, "an applied plan cannot be edited")
         entry = repository.entry(entry_id)
         if entry.import_id != import_id:
             raise HTTPException(409, "track does not belong to this plan")
         repository.set_various_artists_override(entry_id, True)
-        return RedirectResponse(f"/plans/{plan_id}", status_code=303)
+        location = (
+            f"/plans/{plan_id}" if status in {"draft", "superseded"} else f"/imports/{import_id}"
+        )
+        return RedirectResponse(location, status_code=303)
 
     @app.get("/plans/{plan_id}", response_class=HTMLResponse)
     def plan_detail(request: Request, plan_id: str):
