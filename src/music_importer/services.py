@@ -94,25 +94,17 @@ class MissingPlaylistEntry:
 class PlaylistExportResult:
     entries: tuple[PlaylistFileEntry, ...]
     missing: tuple[MissingPlaylistEntry, ...]
-    navidrome_matches: int = 0
 
 
 class DownloadedPathProvider(Protocol):
     def downloaded_paths(self, results: list[MusicBrainzResult]) -> dict[int, str]: ...
 
 
-class FallbackPathProvider(Protocol):
-    def find_song(self, artist: str, title: str, album: str = "") -> tuple[str | None, str]: ...
-
-
 class PlaylistExportService:
     """Resolve downloaded paths without writing a file or depending on CSV state."""
 
-    def __init__(
-        self, library: DownloadedPathProvider, fallback: FallbackPathProvider | None = None
-    ):
+    def __init__(self, library: DownloadedPathProvider):
         self.library = library
-        self.fallback = fallback
 
     @staticmethod
     def _translate(path: str, mappings: list[tuple[str, str]]) -> str:
@@ -130,19 +122,6 @@ class PlaylistExportService:
         if len(tracks) != len(results):
             raise ValueError("playlist tracks and MusicBrainz results must have equal length")
         paths = self.library.downloaded_paths(results)
-        reasons: dict[int, str] = {}
-        navidrome_matches = 0
-        if self.fallback:
-            for index, track in enumerate(tracks):
-                if index in paths:
-                    continue
-                path, reason = self.fallback.find_song(
-                    "; ".join(track.artists), track.title, track.album
-                )
-                reasons[index] = reason
-                if path:
-                    paths[index] = path
-                    navidrome_matches += 1
         entries: list[PlaylistFileEntry] = []
         missing: list[MissingPlaylistEntry] = []
         for index, (track, result) in enumerate(zip(tracks, results)):
@@ -156,13 +135,13 @@ class PlaylistExportService:
                     )
                 )
             else:
-                reason = reasons.get(index) or (
+                reason = (
                     "musicbrainz_unresolved"
                     if not result.resolved_via
                     else "not_downloaded_or_unmatched"
                 )
                 missing.append(MissingPlaylistEntry(index, track, reason))
-        return PlaylistExportResult(tuple(entries), tuple(missing), navidrome_matches)
+        return PlaylistExportResult(tuple(entries), tuple(missing))
 
 
 class PersistentImportService:

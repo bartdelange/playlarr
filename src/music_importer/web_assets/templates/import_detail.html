@@ -26,7 +26,7 @@
 {% elif has_unapplied_lidarr_plan %}
   <div class="next-step"><div><strong>There are unapplied Lidarr changes.</strong><span>This Final view is provisional. Apply the active Lidarr plan, then refresh monitored and downloaded status.</span></div><a class="button" href="/plans/{{ lidarr_plan_id }}">Open Lidarr plan</a></div>
 {% elif latest_export %}
-  <div class="card playlist-result"><div><p class="eyebrow">Latest M3U</p><h2>{{ latest_export.output_path }}</h2><p>{{ latest_export.written_tracks }} exported · {{ latest_export.missing_tracks }} missing · {{ latest_export.navidrome_matches }} Navidrome fallback matches</p></div><span class="status ok">Ready</span></div>
+  <div class="card playlist-result"><div><p class="eyebrow">Latest M3U</p><h2>{{ latest_export.output_path }}</h2><p>{{ latest_export.written_tracks }} exported · {{ latest_export.missing_tracks }} missing</p></div><span class="status ok">Ready</span></div>
 {% endif %}
 
 {% if imported.last_error %}<div class="alert">{{ imported.last_error }}</div>{% endif %}

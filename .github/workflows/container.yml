@@ -26,8 +26,6 @@ jobs:
     permissions:
       contents: write
       packages: write
-      attestations: write
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -59,12 +57,6 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Attest image
-        uses: actions/attest@v4
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

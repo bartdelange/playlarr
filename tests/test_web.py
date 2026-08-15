@@ -40,11 +40,6 @@ def config(directory: str):
         lidarr_enabled=True,
         lidarr_quality_profile_id=1,
         lidarr_metadata_profile_id=1,
-        navidrome_url=None,
-        navidrome_username=None,
-        navidrome_password=None,
-        navidrome_root_folder="/music",
-        navidrome_enabled=False,
     )
 
 

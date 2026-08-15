@@ -39,18 +39,10 @@ class Config:
     lidarr_quality_profile_id: int
     lidarr_metadata_profile_id: int
     lidarr_root_folder: str
-    navidrome_url: str | None
-    navidrome_username: str | None
-    navidrome_password: str | None
-    navidrome_root_folder: str
 
     @property
     def lidarr_enabled(self) -> bool:
         return bool(self.lidarr_url and self.lidarr_api_key)
-
-    @property
-    def navidrome_enabled(self) -> bool:
-        return bool(self.navidrome_url and self.navidrome_username and self.navidrome_password)
 
 
 _PATH_FIELDS = {"data_dir", "output_dir", "tidal_session_file", "spotify_token_cache"}
@@ -89,10 +81,6 @@ def service_config_values(
     lidarr_root_folder: str,
     lidarr_quality_profile_id: int,
     lidarr_metadata_profile_id: int,
-    navidrome_url: str,
-    navidrome_username: str,
-    navidrome_password: str,
-    navidrome_root_folder: str,
     output_dir: str,
 ) -> dict[str, object]:
     """Normalize settings form values and preserve replacement-only secrets."""
@@ -110,12 +98,6 @@ def service_config_values(
         "lidarr_root_folder": lidarr_root_folder.strip() or config.lidarr_root_folder,
         "lidarr_quality_profile_id": lidarr_quality_profile_id,
         "lidarr_metadata_profile_id": lidarr_metadata_profile_id,
-        "navidrome_url": navidrome_url.strip().rstrip("/") or None,
-        "navidrome_username": navidrome_username.strip() or None,
-        "navidrome_password": navidrome_password.strip()
-        or saved.get("navidrome_password")
-        or config.navidrome_password,
-        "navidrome_root_folder": navidrome_root_folder.strip() or config.navidrome_root_folder,
         "output_dir": Path(output_dir.strip() or str(config.output_dir)),
     }
 
@@ -143,10 +125,4 @@ def load_config() -> Config:
         lidarr_quality_profile_id=_integer("LIDARR_QUALITY_PROFILE_ID", 1),
         lidarr_metadata_profile_id=_integer("LIDARR_METADATA_PROFILE_ID", 1),
         lidarr_root_folder=os.getenv("LIDARR_ROOT_FOLDER", "/music"),
-        navidrome_url=(os.getenv("NAVIDROME_URL") or "").rstrip("/") or None,
-        navidrome_username=os.getenv("NAVIDROME_USERNAME") or None,
-        navidrome_password=os.getenv("NAVIDROME_PASSWORD") or None,
-        navidrome_root_folder=os.getenv(
-            "NAVIDROME_ROOT_FOLDER", os.getenv("LIDARR_ROOT_FOLDER", "/music")
-        ),
     )

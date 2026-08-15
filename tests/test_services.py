@@ -61,7 +61,7 @@ class ResolutionServiceTests(unittest.TestCase):
 
 
 class PlaylistExportServiceTests(unittest.TestCase):
-    def test_builds_in_original_order_with_duplicates_and_fallback_evidence(self):
+    def test_builds_downloaded_tracks_in_original_order_and_skips_missing_paths(self):
         tracks = [
             SourceTrack("spotify", "same", "Song", ("Artist",), "Album"),
             SourceTrack("spotify", "fallback", "Other", ("Artist",), "Album"),
@@ -73,24 +73,18 @@ class PlaylistExportServiceTests(unittest.TestCase):
             0: "/music/Song.flac",
             2: "/music/Song.flac",
         }
-        fallback = Mock()
-        fallback.find_song.return_value = ("/music/Other.flac", "navidrome_exact_match")
+        export = PlaylistExportService(library).build(tracks, results, [("/music", "/media/music")])
 
-        export = PlaylistExportService(library, fallback).build(
-            tracks, results, [("/music", "/media/music")]
-        )
-
-        self.assertEqual([entry.position for entry in export.entries], [0, 1, 2])
+        self.assertEqual([entry.position for entry in export.entries], [0, 2])
         self.assertEqual(
             [entry.path for entry in export.entries],
             [
                 "/media/music/Song.flac",
-                "/media/music/Other.flac",
                 "/media/music/Song.flac",
             ],
         )
-        self.assertEqual(export.navidrome_matches, 1)
-        self.assertEqual(export.missing, ())
+        self.assertEqual([item.position for item in export.missing], [1])
+        self.assertEqual(export.missing[0].reason, "not_downloaded_or_unmatched")
 
     def test_rejects_misaligned_tracks_and_results(self):
         with self.assertRaisesRegex(ValueError, "equal length"):

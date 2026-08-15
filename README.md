@@ -8,7 +8,7 @@ The application runs entirely on your computer and binds only to `127.0.0.1`.
 
 The installed `music-import` command starts the FastAPI application in `web.py`. Routes coordinate
 the application services in `services.py`; source adapters under `sources/` isolate Spotify and
-TIDAL APIs; `musicbrainz.py`, `lidarr.py`, and `navidrome.py` own their respective integrations;
+TIDAL APIs; `musicbrainz.py` and `lidarr.py` own their respective integrations;
 and `persistence.py` is the SQLite boundary. Templates and CSS live under `web_assets/`.
 
 SQLite is the durable application state. CSV reports and M3U8 playlists are exports, not inputs to
@@ -34,8 +34,7 @@ The GUI stores resumable import state in `.data/music-importer.db`. The file is 
 
 Copy `.env.example` and set `MUSICBRAINZ_USER_AGENT` to an identifying value with a real contact
 address or URL. Spotify requires `SPOTIFY_CLIENT_ID`; Lidarr requires both `LIDARR_URL` and
-`LIDARR_API_KEY`. Navidrome is optional and is enabled only when its URL, username, and password
-are all present.
+`LIDARR_API_KEY`.
 
 Storage defaults to `.data`, `output`, and `.secrets`. `DATA_DIR`, `OUTPUT_DIR`,
 `TIDAL_SESSION_FILE`, and `SPOTIFY_TOKEN_CACHE` may override those locations. The complete list of
@@ -129,14 +128,14 @@ docker compose logs -f music-importer
 
 ## Workflow
 
-1. Open **Settings**, configure MusicBrainz, Spotify, Lidarr, and optionally Navidrome, then test the connections.
+1. Open **Settings**, configure MusicBrainz, Spotify, and Lidarr, then test the connections.
 2. Select **New Import** and authenticate with Spotify or TIDAL.
 3. Browse or filter playlists. Playlist analysis is explicit because MusicBrainz analysis can be expensive.
 4. Import a playlist and start resolution. Work runs in a persisted, cancellable background job.
 5. Review unresolved or suspicious tracks. Search MusicBrainz or paste a recording MBID, inspect validation evidence, and explicitly accept warnings when appropriate.
 6. Preview the Lidarr plan. Planning is read-only; Lidarr is changed only after **Apply to Lidarr**.
 7. Refresh download/library status after Lidarr has had time to download albums.
-8. Generate or refresh the M3U8 playlist. Saved path mappings translate Lidarr paths for the playlist consumer, and Navidrome provides the existing unique-exact-match fallback.
+8. Generate or refresh the M3U8 playlist. Saved path mappings translate Lidarr paths for the playlist consumer.
 
 Imports, source entries, resolution evidence, manual decisions, Lidarr plans, execution results, jobs, library state, and generated-playlist information survive restarts. Original playlist positions and duplicate entries are retained.
 
@@ -169,9 +168,9 @@ Lidarr synchronization remains additive. It does not monitor unrelated albums, s
 
 ## Playlist generation
 
-M3U8 generation queries downloaded Lidarr files and retains source order and duplicates. Tracks missing from Lidarr may use Navidrome only when it returns one unique exact normalized artist/title match. Persisted path mappings translate paths such as `/music` to `/mnt/media/music`.
+M3U8 generation queries downloaded Lidarr files and retains source order and duplicates. Tracks for which Lidarr does not provide a downloaded file path are skipped. Persisted path mappings translate paths such as `/music` to `/mnt/media/music`.
 
-The import page displays the output file, downloaded/matched count, missing count, and Navidrome fallback count.
+The import page displays the output file, downloaded count, and missing count.
 
 ## CSV compatibility and reporting
 
@@ -201,7 +200,7 @@ Former switches such as `--overview`, `--resume`, `--dry-run`, `--missing-in-lid
 uv run python -m unittest discover -s tests -v
 ```
 
-The test suite primarily targets application/domain behavior: resolver safeguards, persistent overrides and restart behavior, read-only planning, approved execution and idempotency, Lidarr safety rules, CSV migration, library state, Navidrome matching, and ordered duplicate-preserving M3U generation.
+The test suite primarily targets application/domain behavior: resolver safeguards, persistent overrides and restart behavior, read-only planning, approved execution and idempotency, Lidarr safety rules, CSV migration, library state, and ordered duplicate-preserving M3U generation.
 
 ## Development
 
