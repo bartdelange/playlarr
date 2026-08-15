@@ -53,8 +53,8 @@ choose **Add Container**, and select `tidal-to-lidarr` from **User templates**. 
 public in GitHub Container Registry for anonymous pulls; a private package requires GHCR
 credentials on the server.
 
-Before starting the Unraid container, create its persistent directories and make them writable by
-the image's UID/GID `1000:1000`:
+The container creates its persistent directories on first start and makes the mount roots writable
+by the application user. To prepare them manually instead:
 
 ```bash
 mkdir -p /mnt/user/appdata/tidal-to-lidarr/{data,secrets,output}
@@ -115,7 +115,9 @@ volumes:
   - /mnt/user/music:/playlists
 ```
 
-The image runs as UID/GID `1000:1000`. Ensure those host directories are writable by that identity, or change their ownership before starting the container. To move the current installation without losing progress, stop the local application and copy `.data/music-importer.db` to the host directory mounted at `/data/music-importer.db`.
+The startup process prepares the three mount roots and then runs the application as UID/GID
+`1000:1000`. To move the current installation without losing progress, stop the local application
+and copy `.data/music-importer.db` to the host directory mounted at `/data/music-importer.db`.
 
 Spotify's current PKCE helper expects its browser and callback listener on the same machine. For a headless Unraid deployment, authenticate once with the local application and copy `.secrets/spotify-token.json` to the directory mounted at `/secrets/spotify-token.json`. Keep the same Spotify client ID. TIDAL's device login is suitable for the container and persists its session under `/secrets`.
 
