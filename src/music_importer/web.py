@@ -307,19 +307,29 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                 for job in repository.list_jobs()
             ):
                 raise HTTPException(409, "wait for the active playlist job before updating")
-            playlist, entries = current_playlist_entries(imported)
-            if update_token != playlist_snapshot_token(entries):
-                raise HTTPException(409, "the source playlist changed; preview the update again")
-            update = repository.preview_playlist_update(import_id, entries)
-            if update.added or update.removed or update.moved:
-                repository.apply_playlist_update(import_id, playlist, entries)
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
         except HTTPException:
             raise
-        except Exception as exc:
-            raise HTTPException(400, str(exc)) from exc
-        return RedirectResponse(f"/imports/{import_id}", status_code=303)
+
+        def operation(job_id: str) -> None:
+            repository.update_job(
+                job_id, current=0, current_item="Fetching the current source playlist"
+            )
+            playlist, entries = current_playlist_entries(imported)
+            if update_token != playlist_snapshot_token(entries):
+                raise ValueError("the source playlist changed; preview the update again")
+
+            repository.update_job(
+                job_id, current=1, current_item="Applying the approved playlist update"
+            )
+            update = repository.preview_playlist_update(import_id, entries)
+            if update.added or update.removed or update.moved:
+                repository.apply_playlist_update(import_id, playlist, entries)
+            repository.update_job(job_id, current=2, current_item="Playlist update complete")
+
+        job = context.tasks.submit("playlist_update", operation, import_id, total=2)
+        return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
     @app.get("/imports/{import_id}/revisions/{revision_id}", response_class=HTMLResponse)
     def playlist_revision(request: Request, import_id: str, revision_id: str):

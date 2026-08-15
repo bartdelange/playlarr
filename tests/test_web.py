@@ -1,5 +1,6 @@
 import re
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -81,15 +82,68 @@ class WebShellTests(unittest.TestCase):
                 data={"update_token": token},
                 follow_redirects=False,
             )
+            job_id = applied.headers["location"].rsplit("/", 1)[-1]
+            deadline = time.monotonic() + 2
+            while repository.get_job(job_id).status in {"queued", "running"}:
+                if time.monotonic() >= deadline:
+                    self.fail("playlist update job did not finish")
+                time.sleep(0.01)
             detail = client.get(f"/imports/{imported.id}")
             entries = repository.entries(imported.id)
+            job_status = repository.get_job(job_id).status
 
         self.assertEqual(preview.status_code, 200)
         self.assertIn("1</strong> added", preview.text)
         self.assertIn("1</strong> removed", preview.text)
         self.assertEqual(applied.status_code, 303)
+        self.assertEqual(applied.headers["location"], f"/jobs/{job_id}")
+        self.assertEqual(job_status, "completed")
         self.assertEqual([entry.track.source_track_id for entry in entries], ["added", "kept"])
         self.assertIn("Playlist refresh history (1)", detail.text)
+
+    def test_failed_playlist_update_job_stays_on_error_page(self):
+        class Source:
+            def login(self):
+                pass
+
+            def get_playlist(self, playlist_id):
+                return PlaylistInfo("spotify", playlist_id, "Changed Mix", track_count=1)
+
+            def get_entries(self, playlist):
+                return [
+                    AcquiredTrack(
+                        0, SourceTrack("spotify", "changed", "Changed", ("Artist",), "Album")
+                    )
+                ]
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            repository.replace_tracks(
+                imported.id,
+                [SourceTrack("spotify", "original", "Original", ("Artist",), "Album")],
+            )
+            app = create_app(config(directory), repository)
+            app.state.context.sources["spotify"] = Source()
+            client = TestClient(app)
+
+            response = client.post(
+                f"/imports/{imported.id}/update",
+                data={"update_token": "stale"},
+                follow_redirects=False,
+            )
+            job_id = response.headers["location"].rsplit("/", 1)[-1]
+            deadline = time.monotonic() + 2
+            while repository.get_job(job_id).status in {"queued", "running"}:
+                if time.monotonic() >= deadline:
+                    self.fail("playlist update job did not finish")
+                time.sleep(0.01)
+            job_page = client.get(f"/jobs/{job_id}")
+            job = repository.get_job(job_id)
+
+        self.assertEqual(job.status, "failed")
+        self.assertIn("the source playlist changed", job.error)
+        self.assertIn("j.status==='completed'", job_page.text)
 
     def test_export_stage_filters_downloaded_and_missing_files(self):
         with tempfile.TemporaryDirectory() as directory:
