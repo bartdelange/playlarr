@@ -8,7 +8,6 @@ import requests
 from .config import load_config
 from .lidarr import LidarrClient
 from .models import SourceTrack
-from .navidrome import NavidromeClient
 from .reports import load_mapping_report
 from .services import PlaylistExportResult, PlaylistExportService
 from .sources.spotify import SpotifySource
@@ -16,7 +15,6 @@ from .sources.tidal import TidalSource
 from .workflow import resolve_playlist, select_playlist
 
 MISSING_FIELDS = [
-    "navidrome_search",
     "artists",
     "track_title",
     "album",
@@ -97,7 +95,6 @@ def export_m3u(
     output_path: Path,
     client: LidarrClient,
     path_mappings: list[tuple[str, str]],
-    navidrome: NavidromeClient | None = None,
 ) -> tuple[int, int]:
     results, rows, _ = load_mapping_report(mapping_path)
     tracks = [
@@ -118,7 +115,7 @@ def export_m3u(
         )
         for row in rows
     ]
-    export = PlaylistExportService(client, navidrome).build(tracks, results, path_mappings)
+    export = PlaylistExportService(client).build(tracks, results, path_mappings)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="\n") as handle:
         handle.write("#EXTM3U\n")
@@ -134,11 +131,8 @@ def export_m3u(
         writer.writeheader()
         for item in export.missing:
             row = rows[item.position]
-            artist = "; ".join(item.track.artists)
-            title = item.track.title
             writer.writerow(
                 {
-                    "navidrome_search": " ".join(value for value in (artist, title) if value),
                     "artists": row.get("artists") or "",
                     "track_title": row.get("track_title") or "",
                     "album": row.get("album") or "",
@@ -198,10 +192,7 @@ def main() -> None:
             raise ValueError("M3U export requires LIDARR_URL and LIDARR_API_KEY")
         mapping = args.mapping or select_or_resolve_mapping(config, args.source or choose_source())
         output = args.output or default_output_path(mapping)
-        navidrome = NavidromeClient(config) if config.navidrome_enabled else None
-        written, missing = export_m3u(
-            mapping, output, LidarrClient(config), args.path_map, navidrome
-        )
+        written, missing = export_m3u(mapping, output, LidarrClient(config), args.path_map)
         print(f"M3U playlist: {output} ({written} tracks; {missing} not downloaded or unmatched)")
         print(f"Missing-track report: {missing_report_path(output)} ({missing} tracks)")
     except (ValueError, OSError, RuntimeError, requests.RequestException) as exc:

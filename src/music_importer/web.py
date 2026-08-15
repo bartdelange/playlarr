@@ -22,7 +22,6 @@ from .lidarr import LidarrClient
 from .m3u import write_m3u
 from .models import AcquiredTrack
 from .musicbrainz import MusicBrainzClient
-from .navidrome import NavidromeClient
 from .persistence import ImportRepository
 from .playlist_updates import playlist_snapshot_token
 from .reports import artist_additions
@@ -186,10 +185,6 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         lidarr_root_folder: str = Form(""),
         lidarr_quality_profile_id: int = Form(1),
         lidarr_metadata_profile_id: int = Form(1),
-        navidrome_url: str = Form(""),
-        navidrome_username: str = Form(""),
-        navidrome_password: str = Form(""),
-        navidrome_root_folder: str = Form(""),
         output_dir: str = Form("output"),
         debug_logging: bool = Form(False),
     ):
@@ -206,10 +201,6 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             lidarr_root_folder=lidarr_root_folder,
             lidarr_quality_profile_id=lidarr_quality_profile_id,
             lidarr_metadata_profile_id=lidarr_metadata_profile_id,
-            navidrome_url=navidrome_url,
-            navidrome_username=navidrome_username,
-            navidrome_password=navidrome_password,
-            navidrome_root_folder=navidrome_root_folder,
             output_dir=output_dir,
         )
         repository.set_setting("debug_logging", debug_logging)
@@ -1276,8 +1267,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                     "path_mappings", [[config.lidarr_root_folder, config.lidarr_root_folder]]
                 )
             ]
-            navidrome = NavidromeClient(config) if config.navidrome_enabled else None
-            export = PlaylistExportService(LidarrClient(config), navidrome).build(
+            export = PlaylistExportService(LidarrClient(config)).build(
                 [entry.track for entry in entries],
                 [entry.result for entry in entries],
                 path_mappings,
@@ -1299,7 +1289,6 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                 output,
                 len(export.entries),
                 len(export.missing),
-                export.navidrome_matches,
             )
             repository.update_job(job_id, current=len(entries), total=len(entries))
 
@@ -1311,8 +1300,6 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         try:
             if service == "lidarr":
                 LidarrClient(config)._request("GET", "system/status")
-            elif service == "navidrome":
-                NavidromeClient(config)._request("ping.view")
             elif service in {"spotify", "tidal"}:
                 context.source(service).login()
             else:

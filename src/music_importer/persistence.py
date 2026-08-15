@@ -1057,21 +1057,20 @@ class ImportRepository:
         return {row["position"]: (row["classification"], row["file_path"]) for row in rows}
 
     def record_playlist_export(
-        self, import_id: str, output_path: Path, written: int, missing: int, navidrome_matches: int
+        self, import_id: str, output_path: Path, written: int, missing: int
     ) -> str:
         identifier = str(uuid.uuid4())
         with self.connect() as db:
             db.execute(
                 """INSERT INTO playlist_exports
                 (id, import_id, output_path, written_tracks, missing_tracks,
-                 navidrome_matches, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                 created_at) VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     identifier,
                     import_id,
                     str(output_path),
                     written,
                     missing,
-                    navidrome_matches,
                     _now(),
                 ),
             )

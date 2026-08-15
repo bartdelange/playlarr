@@ -43,7 +43,7 @@ class StoredConfigTests(unittest.TestCase):
     def test_form_values_preserve_omitted_secrets_and_normalize_urls(self):
         values = service_config_values(
             self.config,
-            {"lidarr_api_key": "saved-key", "navidrome_password": "saved-password"},
+            {"lidarr_api_key": "saved-key"},
             mb_user_agent=" agent ",
             spotify_client_id="",
             spotify_redirect_uri="",
@@ -52,16 +52,11 @@ class StoredConfigTests(unittest.TestCase):
             lidarr_root_folder="",
             lidarr_quality_profile_id=2,
             lidarr_metadata_profile_id=3,
-            navidrome_url="",
-            navidrome_username=" user ",
-            navidrome_password="",
-            navidrome_root_folder="",
             output_dir=" reports ",
         )
 
         self.assertEqual(values["lidarr_url"], "http://lidarr")
         self.assertEqual(values["lidarr_api_key"], "saved-key")
-        self.assertEqual(values["navidrome_password"], "saved-password")
         self.assertEqual(values["output_dir"], Path("reports"))
         self.assertEqual(serializable_config(values)["output_dir"], "reports")
 

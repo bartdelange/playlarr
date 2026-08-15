@@ -138,7 +138,6 @@ class M3UTests(unittest.TestCase):
         self.assertEqual(contents.count("/media/music/First.flac"), 2)
         self.assertNotIn("Missing", contents)
         self.assertEqual(len(missing_rows), 1)
-        self.assertEqual(missing_rows[0]["navidrome_search"], "Artist Missing")
         self.assertEqual(missing_rows[0]["missing_reason"], "not_downloaded_or_unmatched")
 
     def test_downloaded_paths_finds_file_on_globally_owned_album(self):
