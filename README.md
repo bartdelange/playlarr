@@ -97,14 +97,14 @@ For local development, the repository also includes a Compose configuration:
 
 ```bash
 cp .env.example .env
-mkdir -p container-data container-output container-secrets
+mkdir -p container-data container-playlists container-secrets
 docker compose up -d --build
 ```
 
 Open `http://UNRAID-IP:8787`. The mounts contain:
 
 - `/data`: SQLite state and all resumable workflow progress;
-- `/output`: reports and generated M3U8 files;
+- `/playlists`: generated M3U8 files;
 - `/secrets`: Spotify token and TIDAL session files.
 
 For an Unraid Compose stack, replace the relative host paths with persistent shares such as:
@@ -113,7 +113,7 @@ For an Unraid Compose stack, replace the relative host paths with persistent sha
 volumes:
   - /mnt/user/appdata/music-importer/data:/data
   - /mnt/user/appdata/music-importer/secrets:/secrets
-  - /mnt/user/music-importer-output:/output
+  - /mnt/user/music:/playlists
 ```
 
 The image runs as UID/GID `1000:1000`. Ensure those host directories are writable by that identity, or change their ownership before starting the container. To move the current installation without losing progress, stop the local application and copy `.data/music-importer.db` to the host directory mounted at `/data/music-importer.db`.

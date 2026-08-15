@@ -20,7 +20,7 @@ services:
       NAVIDROME_ROOT_FOLDER: ${NAVIDROME_ROOT_FOLDER:-/music}
     volumes:
       - ./container-data:/data
-      - ./container-output:/output
+      - ./container-playlists:/playlists
       - ./container-secrets:/secrets
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
