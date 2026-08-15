@@ -1,4 +1,6 @@
 import csv
+import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +19,43 @@ from music_importer.reports import FIELDS
 class ImportRepositoryTests(unittest.TestCase):
     def repository(self, directory: str) -> ImportRepository:
         return ImportRepository(Path(directory) / "imports.db")
+
+    def test_migrates_version_five_jobs_to_persist_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "imports.db"
+            with sqlite3.connect(path) as db:
+                db.executescript("""
+                    CREATE TABLE jobs (
+                        id TEXT PRIMARY KEY,
+                        import_id TEXT,
+                        kind TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        current INTEGER NOT NULL DEFAULT 0,
+                        total INTEGER NOT NULL DEFAULT 0,
+                        current_item TEXT,
+                        cancel_requested INTEGER NOT NULL DEFAULT 0,
+                        error TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                    PRAGMA user_version = 5;
+                """)
+                db.execute(
+                    """INSERT INTO jobs
+                    (id, kind, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)""",
+                    ("job", "playlist_catalogue", "completed", "now", "now"),
+                )
+
+            repository = ImportRepository(path)
+            repository.save_job_result("job", {"source": "spotify"})
+            with sqlite3.connect(path) as db:
+                version = db.execute("PRAGMA user_version").fetchone()[0]
+                result_json = db.execute(
+                    "SELECT result_json FROM jobs WHERE id = 'job'"
+                ).fetchone()[0]
+
+        self.assertEqual(version, 6)
+        self.assertEqual(json.loads(result_json), {"source": "spotify"})
 
     def test_import_survives_restart_and_preserves_order_and_duplicates(self):
         with tempfile.TemporaryDirectory() as directory:
