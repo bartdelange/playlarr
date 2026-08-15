@@ -154,15 +154,23 @@ class PersistentImportService:
         imported = self.repository.create_import(
             playlist, metadata={"owner": playlist.owner, "track_count": playlist.track_count}
         )
+        self.acquire_into(imported.id, source, playlist)
+        return self.repository.get_import(imported.id)
+
+    def acquire_into(self, import_id: str, source: MusicSource, playlist: PlaylistInfo) -> None:
+        self.repository.update_import_playlist(
+            import_id,
+            playlist,
+            metadata={"owner": playlist.owner, "track_count": playlist.track_count},
+        )
         try:
             if hasattr(source, "get_entries"):
-                self.repository.replace_acquired_tracks(imported.id, source.get_entries(playlist))
+                self.repository.replace_acquired_tracks(import_id, source.get_entries(playlist))
             else:
-                self.repository.replace_tracks(imported.id, source.get_tracks(playlist))
+                self.repository.replace_tracks(import_id, source.get_tracks(playlist))
         except Exception as exc:
-            self.repository.set_workflow_state(imported.id, "acquisition_failed", str(exc))
+            self.repository.set_workflow_state(import_id, "acquisition_failed", str(exc))
             raise
-        return self.repository.get_import(imported.id)
 
     def resolve(
         self,

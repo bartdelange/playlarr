@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, is_dataclass, replace
+from dataclasses import asdict, dataclass, is_dataclass, replace
 from pathlib import Path
+from urllib.parse import urlencode
 
 import requests
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
@@ -20,7 +21,7 @@ from .config import (
 from .csv_compat import import_mapping_csv
 from .lidarr import LidarrClient
 from .m3u import write_m3u
-from .models import AcquiredTrack
+from .models import AcquiredTrack, PlaylistInfo, SourceTrack
 from .musicbrainz import MusicBrainzClient
 from .persistence import ImportRepository
 from .playlist_updates import playlist_snapshot_token
@@ -112,6 +113,33 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         }:
             return 3
         return 2
+
+    def playlist_info_from_payload(payload: dict) -> PlaylistInfo:
+        return PlaylistInfo(**payload)
+
+    def acquired_track_from_payload(payload: dict) -> AcquiredTrack:
+        track_payload = dict(payload["track"])
+        track_payload["artists"] = tuple(track_payload["artists"])
+        return AcquiredTrack(
+            int(payload["position"]),
+            SourceTrack(**track_payload),
+            payload.get("skip_reason"),
+        )
+
+    def job_completion_url(job) -> str | None:
+        if job.import_id and job.kind == "lidarr_planning":
+            return f"/imports/{job.import_id}?stage=lidarr"
+        if job.import_id and job.kind == "playlist_update_preview":
+            return f"/imports/{job.import_id}/update?preview_job={job.id}"
+        if job.kind == "playlist_catalogue":
+            result = repository.job_result(job.id)
+            if result and result.get("source"):
+                query = urlencode({"source": result["source"], "catalog_job": job.id})
+                return f"/imports/new?{query}"
+            return None
+        if job.import_id:
+            return f"/imports/{job.import_id}"
+        return None
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard(request: Request):
@@ -218,16 +246,51 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         return RedirectResponse("/settings", status_code=303)
 
     @app.get("/imports/new", response_class=HTMLResponse)
-    def new_import(request: Request, source: str | None = None):
+    def new_import(request: Request, source: str | None = None, catalog_job: str | None = None):
         playlists = None
         error = None
         if source:
-            try:
-                adapter = context.source(source)
-                adapter.login()
-                playlists = adapter.list_playlists()
-            except Exception as exc:
-                error = str(exc)
+            if catalog_job is None:
+                try:
+                    adapter = context.source(source)
+                except Exception as exc:
+                    error = str(exc)
+                    adapter = None
+
+                if adapter is not None:
+
+                    def operation(job_id: str) -> None:
+                        repository.update_job(job_id, current_item=f"Loading {source} playlists")
+                        adapter.login()
+                        loaded = adapter.list_playlists()
+                        repository.save_job_result(
+                            job_id,
+                            {"source": source, "playlists": [asdict(item) for item in loaded]},
+                        )
+                        repository.update_job(
+                            job_id,
+                            current=len(loaded),
+                            total=len(loaded),
+                            current_item=f"Loaded {len(loaded)} playlists",
+                        )
+
+                    job = context.tasks.submit("playlist_catalogue", operation)
+                    return RedirectResponse(f"/jobs/{job.id}", status_code=303)
+
+            else:
+                try:
+                    job = repository.get_job(catalog_job)
+                    result = repository.job_result(catalog_job)
+                except KeyError as exc:
+                    raise HTTPException(404, str(exc)) from exc
+                if (
+                    job.kind != "playlist_catalogue"
+                    or job.status != "completed"
+                    or not result
+                    or result.get("source") != source
+                ):
+                    raise HTTPException(409, "playlist catalogue is not ready for this source")
+                playlists = [playlist_info_from_payload(item) for item in result["playlists"]]
         analyses = repository.playlist_analyses(source) if source else {}
         existing_imports = (
             {
@@ -257,11 +320,32 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             return RedirectResponse(f"/imports/{existing.id}", status_code=303)
         try:
             adapter = context.source(source)
-            playlist = adapter.get_playlist(playlist_id)
-            imported = PersistentImportService(repository).acquire(adapter, playlist)
         except Exception as exc:
             raise HTTPException(400, str(exc)) from exc
-        return RedirectResponse(f"/imports/{imported.id}", status_code=303)
+        imported = repository.create_import(PlaylistInfo(source, playlist_id, "Loading playlist…"))
+
+        def operation(job_id: str) -> None:
+            try:
+                repository.update_job(job_id, current_item="Fetching playlist metadata")
+                adapter.login()
+                playlist = adapter.get_playlist(playlist_id)
+                repository.update_job(
+                    job_id,
+                    total=playlist.track_count or 1,
+                    current_item=f"Importing {playlist.name}",
+                )
+                PersistentImportService(repository).acquire_into(imported.id, adapter, playlist)
+                repository.update_job(
+                    job_id,
+                    current=playlist.track_count or len(repository.entries(imported.id)) or 1,
+                    current_item=f"Imported {playlist.name}",
+                )
+            except Exception as exc:
+                repository.set_workflow_state(imported.id, "acquisition_failed", str(exc))
+                raise
+
+        job = context.tasks.submit("playlist_acquisition", operation, imported.id)
+        return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
     def current_playlist_entries(imported):
         adapter = context.source(imported.source)
@@ -278,15 +362,46 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         return playlist, entries
 
     @app.get("/imports/{import_id}/update", response_class=HTMLResponse)
-    def preview_playlist_update(request: Request, import_id: str):
+    def preview_playlist_update(request: Request, import_id: str, preview_job: str | None = None):
         try:
             imported = repository.get_import(import_id)
-            playlist, entries = current_playlist_entries(imported)
-            update = repository.preview_playlist_update(import_id, entries)
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
-        except Exception as exc:
-            raise HTTPException(400, str(exc)) from exc
+
+        if preview_job is None:
+
+            def operation(job_id: str) -> None:
+                repository.update_job(job_id, current_item="Fetching the current source playlist")
+                playlist, entries = current_playlist_entries(imported)
+                repository.save_job_result(
+                    job_id,
+                    {"playlist": asdict(playlist), "entries": [asdict(item) for item in entries]},
+                )
+                repository.update_job(
+                    job_id,
+                    current=len(entries),
+                    total=len(entries),
+                    current_item="Playlist update preview ready",
+                )
+
+            job = context.tasks.submit("playlist_update_preview", operation, import_id)
+            return RedirectResponse(f"/jobs/{job.id}", status_code=303)
+
+        try:
+            job = repository.get_job(preview_job)
+            result = repository.job_result(preview_job)
+        except KeyError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        if (
+            job.import_id != import_id
+            or job.kind != "playlist_update_preview"
+            or job.status != "completed"
+            or not result
+        ):
+            raise HTTPException(409, "playlist update preview is not ready")
+        playlist = playlist_info_from_payload(result["playlist"])
+        entries = [acquired_track_from_payload(item) for item in result["entries"]]
+        update = repository.preview_playlist_update(import_id, entries)
         return render(
             request,
             "playlist_update.html",
@@ -296,12 +411,17 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             entries=entries,
             current_entries=repository.entries(import_id),
             update_token=playlist_snapshot_token(entries),
+            preview_job=preview_job,
         )
 
     @app.post("/imports/{import_id}/update")
-    def apply_playlist_update(import_id: str, update_token: str = Form(...)):
+    def apply_playlist_update(
+        import_id: str,
+        update_token: str = Form(...),
+        preview_job: str = Form(...),
+    ):
         try:
-            imported = repository.get_import(import_id)
+            repository.get_import(import_id)
             if any(
                 job.import_id == import_id and job.status in {"queued", "running"}
                 for job in repository.list_jobs()
@@ -313,10 +433,17 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             raise
 
         def operation(job_id: str) -> None:
-            repository.update_job(
-                job_id, current=0, current_item="Fetching the current source playlist"
-            )
-            playlist, entries = current_playlist_entries(imported)
+            preview = repository.get_job(preview_job)
+            result = repository.job_result(preview_job)
+            if (
+                preview.import_id != import_id
+                or preview.kind != "playlist_update_preview"
+                or preview.status != "completed"
+                or not result
+            ):
+                raise ValueError("playlist update preview is not ready")
+            playlist = playlist_info_from_payload(result["playlist"])
+            entries = [acquired_track_from_payload(item) for item in result["entries"]]
             if update_token != playlist_snapshot_token(entries):
                 raise ValueError("the source playlist changed; preview the update again")
 
@@ -345,14 +472,22 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         if not config.lidarr_enabled:
             raise HTTPException(400, "Lidarr is required for impact analysis")
         adapter = context.source(source)
-        playlist = adapter.get_playlist(playlist_id)
-        if playlist.is_followed:
-            repository.save_playlist_analysis(
-                source, playlist_id, playlist.name, "skipped_followed", {}
-            )
-            return RedirectResponse(f"/imports/new?source={source}", status_code=303)
 
         def operation(job_id: str) -> None:
+            repository.update_job(job_id, current_item="Fetching playlist metadata")
+            adapter.login()
+            playlist = adapter.get_playlist(playlist_id)
+            if playlist.is_followed:
+                repository.save_playlist_analysis(
+                    source, playlist_id, playlist.name, "skipped_followed", {}
+                )
+                repository.update_job(job_id, current=1, total=1, current_item="Analysis skipped")
+                return
+            repository.update_job(
+                job_id,
+                total=playlist.track_count or 0,
+                current_item=f"Loading tracks from {playlist.name}",
+            )
             tracks = adapter.get_tracks(playlist)
 
             def progress(item: ResolutionProgress) -> None:
@@ -380,7 +515,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
                 },
             )
 
-        job = context.tasks.submit("playlist_analysis", operation, total=playlist.track_count or 0)
+        job = context.tasks.submit("playlist_analysis", operation)
         return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
     @app.post("/imports/from-csv")
@@ -595,13 +730,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
         imported = repository.get_import(job.import_id) if job.import_id else None
-        completion_url = (
-            f"/imports/{job.import_id}?stage=lidarr"
-            if job.import_id and job.kind == "lidarr_planning"
-            else f"/imports/{job.import_id}"
-            if job.import_id
-            else None
-        )
+        completion_url = job_completion_url(job)
         return render(
             request,
             "job.html",
@@ -638,6 +767,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
             "total": job.total,
             "current_item": job.current_item,
             "error": job.error,
+            "completion_url": job_completion_url(job),
         }
 
     @app.post("/jobs/{job_id}/cancel")

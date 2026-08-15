@@ -141,6 +141,10 @@ docker compose logs -f music-importer
 
 Imports, source entries, resolution evidence, manual decisions, Lidarr plans, execution results, jobs, library state, and generated-playlist information survive restarts. Original playlist positions and duplicate entries are retained.
 
+Live source catalogue reads, initial playlist acquisition, update previews, and impact analysis run as
+persisted background jobs so slow Spotify or TIDAL responses do not hold the browser request open.
+Catalogue reads remain live: choosing a source starts a fresh read rather than reusing a cached list.
+
 An existing import can be refreshed with **Update playlist**. The app previews additions, removals, and moves before applying them. Stable source-track IDs and ISRCs retain existing automatic and manual mappings, including duplicate occurrences; new tracks return to resolution. Each applied update stores before-and-after snapshots that can be inspected from the import's update history.
 
 ## Authentication

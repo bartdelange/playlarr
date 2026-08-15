@@ -23,7 +23,7 @@ from .models import (
     SourceTrack,
 )
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 RESOLUTION_STATES = {
     "pending",
     "resolving",
@@ -289,6 +289,12 @@ class ImportRepository:
                         ON playlist_revisions(import_id, created_at DESC);
                     PRAGMA user_version = 5;
                 """)
+                version = 5
+            if version < 6:
+                db.executescript("""
+                    ALTER TABLE jobs ADD COLUMN result_json TEXT;
+                    PRAGMA user_version = 6;
+                """)
             db.execute(
                 "UPDATE jobs SET status = 'interrupted', updated_at = ? WHERE status = 'running'",
                 (_now(),),
@@ -378,6 +384,22 @@ class ImportRepository:
             db.execute(
                 "UPDATE imports SET workflow_state = ?, last_error = ?, updated_at = ? WHERE id = ?",
                 (state, error, _now(), import_id),
+            )
+
+    def update_import_playlist(
+        self, import_id: str, playlist: PlaylistInfo, *, metadata: dict | None = None
+    ) -> None:
+        with self.connect() as db:
+            db.execute(
+                """UPDATE imports SET playlist_name = ?, playlist_path = ?,
+                playlist_metadata_json = ?, updated_at = ? WHERE id = ?""",
+                (
+                    playlist.name,
+                    playlist.path,
+                    json.dumps(metadata or {}),
+                    _now(),
+                    import_id,
+                ),
             )
 
     def replace_tracks(self, import_id: str, tracks: list[SourceTrack]) -> None:
@@ -1199,6 +1221,20 @@ class ImportRepository:
         assignments = ", ".join(f"{key} = ?" for key in fields)
         with self.connect() as db:
             db.execute(f"UPDATE jobs SET {assignments} WHERE id = ?", (*fields.values(), job_id))
+
+    def save_job_result(self, job_id: str, result: dict) -> None:
+        with self.connect() as db:
+            db.execute(
+                "UPDATE jobs SET result_json = ?, updated_at = ? WHERE id = ?",
+                (json.dumps(result), _now(), job_id),
+            )
+
+    def job_result(self, job_id: str) -> dict | None:
+        with self.connect() as db:
+            row = db.execute("SELECT result_json FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if row is None:
+            raise KeyError(f"unknown job: {job_id}")
+        return json.loads(row[0]) if row[0] else None
 
     def request_job_cancel(self, job_id: str) -> None:
         with self.connect() as db:

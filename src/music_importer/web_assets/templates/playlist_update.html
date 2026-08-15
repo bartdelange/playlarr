@@ -8,7 +8,7 @@
   <p><strong>{{ update.added }}</strong> added · <strong>{{ update.removed }}</strong> removed · <strong>{{ update.moved }}</strong> moved · <strong>{{ update.unchanged }}</strong> unchanged</p>
   <p>Existing matches and manual corrections are retained for tracks matched by source track ID or ISRC. Added tracks will wait for resolution. Removed tracks remain available in the update audit snapshot.</p>
   <div class="actions">
-    {% if update.added or update.removed or update.moved %}<form method="post" action="/imports/{{ imported.id }}/update"><input type="hidden" name="update_token" value="{{ update_token }}"><button>Apply update</button></form>{% else %}<span class="status ok">Already up to date</span>{% endif %}
+    {% if update.added or update.removed or update.moved %}<form method="post" action="/imports/{{ imported.id }}/update"><input type="hidden" name="update_token" value="{{ update_token }}"><input type="hidden" name="preview_job" value="{{ preview_job }}"><button>Apply update</button></form>{% else %}<span class="status ok">Already up to date</span>{% endif %}
     <a class="button secondary" href="/imports/{{ imported.id }}">Cancel</a>
   </div>
 </div>

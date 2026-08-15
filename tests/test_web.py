@@ -44,9 +44,20 @@ def config(directory: str):
     )
 
 
+def wait_for_job(repository: ImportRepository, job_id: str):
+    deadline = time.monotonic() + 2
+    while repository.get_job(job_id).status in {"queued", "running"}:
+        if time.monotonic() >= deadline:
+            raise AssertionError(f"job {job_id} did not finish")
+        time.sleep(0.01)
+    return repository.get_job(job_id)
+
+
 class WebShellTests(unittest.TestCase):
     def test_playlist_update_preview_and_apply(self):
         class Source:
+            entry_reads = 0
+
             def login(self):
                 pass
 
@@ -54,6 +65,7 @@ class WebShellTests(unittest.TestCase):
                 return PlaylistInfo("spotify", playlist_id, "Updated Mix", track_count=2)
 
             def get_entries(self, playlist):
+                self.entry_reads += 1
                 return [
                     AcquiredTrack(
                         0, SourceTrack("spotify", "added", "Added", ("Artist",), "Album")
@@ -75,29 +87,30 @@ class WebShellTests(unittest.TestCase):
             app.state.context.sources["spotify"] = Source()
             client = TestClient(app)
 
-            preview = client.get(f"/imports/{imported.id}/update")
+            preview_start = client.get(f"/imports/{imported.id}/update", follow_redirects=False)
+            preview_job = preview_start.headers["location"].rsplit("/", 1)[-1]
+            wait_for_job(repository, preview_job)
+            preview = client.get(f"/imports/{imported.id}/update?preview_job={preview_job}")
             token = re.search(r'name="update_token" value="([a-f0-9]+)"', preview.text).group(1)
             applied = client.post(
                 f"/imports/{imported.id}/update",
-                data={"update_token": token},
+                data={"update_token": token, "preview_job": preview_job},
                 follow_redirects=False,
             )
             job_id = applied.headers["location"].rsplit("/", 1)[-1]
-            deadline = time.monotonic() + 2
-            while repository.get_job(job_id).status in {"queued", "running"}:
-                if time.monotonic() >= deadline:
-                    self.fail("playlist update job did not finish")
-                time.sleep(0.01)
+            wait_for_job(repository, job_id)
             detail = client.get(f"/imports/{imported.id}")
             entries = repository.entries(imported.id)
             job_status = repository.get_job(job_id).status
 
         self.assertEqual(preview.status_code, 200)
+        self.assertEqual(preview_start.status_code, 303)
         self.assertIn("1</strong> added", preview.text)
         self.assertIn("1</strong> removed", preview.text)
         self.assertEqual(applied.status_code, 303)
         self.assertEqual(applied.headers["location"], f"/jobs/{job_id}")
         self.assertEqual(job_status, "completed")
+        self.assertEqual(app.state.context.sources["spotify"].entry_reads, 1)
         self.assertEqual([entry.track.source_track_id for entry in entries], ["added", "kept"])
         self.assertIn("Playlist refresh history (1)", detail.text)
 
@@ -127,23 +140,129 @@ class WebShellTests(unittest.TestCase):
             app.state.context.sources["spotify"] = Source()
             client = TestClient(app)
 
+            preview_start = client.get(f"/imports/{imported.id}/update", follow_redirects=False)
+            preview_job = preview_start.headers["location"].rsplit("/", 1)[-1]
+            wait_for_job(repository, preview_job)
             response = client.post(
                 f"/imports/{imported.id}/update",
-                data={"update_token": "stale"},
+                data={"update_token": "stale", "preview_job": preview_job},
                 follow_redirects=False,
             )
             job_id = response.headers["location"].rsplit("/", 1)[-1]
-            deadline = time.monotonic() + 2
-            while repository.get_job(job_id).status in {"queued", "running"}:
-                if time.monotonic() >= deadline:
-                    self.fail("playlist update job did not finish")
-                time.sleep(0.01)
+            wait_for_job(repository, job_id)
             job_page = client.get(f"/jobs/{job_id}")
             job = repository.get_job(job_id)
 
         self.assertEqual(job.status, "failed")
         self.assertIn("the source playlist changed", job.error)
         self.assertIn("j.status==='completed'", job_page.text)
+
+    def test_playlist_catalogue_is_loaded_live_in_a_background_job(self):
+        class Source:
+            catalogue_reads = 0
+
+            def login(self):
+                pass
+
+            def list_playlists(self):
+                self.catalogue_reads += 1
+                return [PlaylistInfo("spotify", "playlist", "Live Mix", track_count=12)]
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            app = create_app(config(directory), repository)
+            source = Source()
+            app.state.context.sources["spotify"] = source
+            client = TestClient(app)
+
+            first = client.get("/imports/new?source=spotify", follow_redirects=False)
+            first_job = first.headers["location"].rsplit("/", 1)[-1]
+            wait_for_job(repository, first_job)
+            completion_url = client.get(f"/api/jobs/{first_job}").json()["completion_url"]
+            catalogue = client.get(completion_url)
+            second = client.get("/imports/new?source=spotify", follow_redirects=False)
+            second_job = second.headers["location"].rsplit("/", 1)[-1]
+            wait_for_job(repository, second_job)
+
+        self.assertEqual(first.status_code, 303)
+        self.assertIn("Live Mix", catalogue.text)
+        self.assertIn("12 tracks", catalogue.text)
+        self.assertNotEqual(first_job, second_job)
+        self.assertEqual(source.catalogue_reads, 2)
+
+    def test_playlist_acquisition_runs_in_a_background_job(self):
+        class Source:
+            def login(self):
+                pass
+
+            def get_playlist(self, playlist_id):
+                return PlaylistInfo("spotify", playlist_id, "Imported Mix", track_count=1)
+
+            def get_entries(self, playlist):
+                return [
+                    AcquiredTrack(0, SourceTrack("spotify", "track", "Song", ("Artist",), "Album"))
+                ]
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            app = create_app(config(directory), repository)
+            app.state.context.sources["spotify"] = Source()
+            client = TestClient(app)
+
+            response = client.post(
+                "/imports",
+                data={"source": "spotify", "playlist_id": "playlist"},
+                follow_redirects=False,
+            )
+            job_id = response.headers["location"].rsplit("/", 1)[-1]
+            job = wait_for_job(repository, job_id)
+            imported = repository.get_import(job.import_id)
+            entries = repository.entries(imported.id)
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], f"/jobs/{job_id}")
+        self.assertEqual(job.status, "completed")
+        self.assertEqual(imported.playlist_name, "Imported Mix")
+        self.assertEqual([entry.track.title for entry in entries], ["Song"])
+
+    def test_playlist_analysis_fetches_metadata_inside_background_job(self):
+        class Source:
+            def login(self):
+                pass
+
+            def get_playlist(self, playlist_id):
+                return PlaylistInfo("spotify", playlist_id, "Analyzed Mix", track_count=1)
+
+            def get_tracks(self, playlist):
+                return [SourceTrack("spotify", "track", "Song", ("Artist",), "Album")]
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            app = create_app(config(directory), repository)
+            app.state.context.sources["spotify"] = Source()
+            client = TestClient(app)
+            batch = SimpleNamespace(
+                results=[MusicBrainzResult(resolved_via="isrc")],
+                summary=SimpleNamespace(unresolved=0),
+            )
+
+            with (
+                patch("music_importer.web.ResolutionService") as resolution_service,
+                patch("music_importer.web.LidarrClient") as lidarr_client,
+            ):
+                resolution_service.return_value.resolve_tracks.return_value = batch
+                lidarr_client.return_value.compare.return_value = ({}, {})
+                response = client.post(
+                    "/playlists/spotify/playlist/analyze", follow_redirects=False
+                )
+                job_id = response.headers["location"].rsplit("/", 1)[-1]
+                job = wait_for_job(repository, job_id)
+
+            analysis = repository.playlist_analyses("spotify")["playlist"]
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(job.status, "completed")
+        self.assertEqual(analysis["tracks"], 1)
 
     def test_export_stage_filters_downloaded_and_missing_files(self):
         with tempfile.TemporaryDirectory() as directory:
