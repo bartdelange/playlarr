@@ -2,7 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.release import ReleaseError, bumped_version, parse_args, project_version
+from scripts.release import (
+    ReleaseError,
+    bumped_version,
+    parse_args,
+    porcelain_paths,
+    project_version,
+)
 
 
 class ReleaseScriptTests(unittest.TestCase):
@@ -21,6 +27,11 @@ class ReleaseScriptTests(unittest.TestCase):
             path.write_text('[project]\nversion = "3.4.5"\n', encoding="utf-8")
 
             self.assertEqual(project_version(path), "3.4.5")
+
+    def test_reads_paths_without_stripping_the_first_status_prefix(self):
+        status = " M pyproject.toml\0 M uv.lock\0"
+
+        self.assertEqual(porcelain_paths(status), {"pyproject.toml", "uv.lock"})
 
     def test_parses_prepare_and_publish_commands(self):
         prepare = parse_args(["prepare", "minor"])
