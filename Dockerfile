@@ -25,7 +25,6 @@ RUN groupadd --gid 1000 music-importer \
 COPY --from=builder /wheels /wheels
 RUN python -m pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
-USER music-importer
 WORKDIR /app
 EXPOSE 8787
 VOLUME ["/data", "/playlists", "/secrets"]
@@ -33,4 +32,5 @@ VOLUME ["/data", "/playlists", "/secrets"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
 
+ENTRYPOINT ["python", "-m", "music_importer.container_entrypoint"]
 CMD ["python", "-m", "uvicorn", "music_importer.web:create_app", "--factory", "--host", "0.0.0.0", "--port", "8787"]
