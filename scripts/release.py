@@ -44,6 +44,23 @@ def output(*args: str) -> str:
     return run(*args, capture=True).stdout.strip()
 
 
+def porcelain_paths(status: str) -> set[str]:
+    """Return paths from NUL-delimited porcelain without trimming status prefixes."""
+    entries = iter(status.split("\0"))
+    paths: set[str] = set()
+    for entry in entries:
+        if not entry:
+            continue
+        if len(entry) < 4 or entry[2] != " ":
+            raise ReleaseError(f"could not parse git status entry: {entry!r}")
+
+        status_code = entry[:2]
+        paths.add(entry[3:])
+        if status_code[0] in {"R", "C"}:
+            next(entries, None)
+    return paths
+
+
 def project_version(path: Path = ROOT / "pyproject.toml") -> str:
     with path.open("rb") as handle:
         version = tomllib.load(handle)["project"]["version"]
@@ -108,8 +125,8 @@ def prepare(part: str) -> None:
 
     run("git", "switch", "-c", branch)
     run("uv", "version", version, "--no-sync")
-    changed = set(output("git", "status", "--short").splitlines())
-    changed_paths = {line[3:] for line in changed}
+    status = run("git", "status", "--porcelain=v1", "-z", capture=True).stdout
+    changed_paths = porcelain_paths(status)
     if changed_paths != {"pyproject.toml", "uv.lock"}:
         raise ReleaseError(
             "version bump changed unexpected files: " + ", ".join(sorted(changed_paths))
