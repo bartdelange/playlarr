@@ -1,7 +1,9 @@
 import logging
 import re
+from concurrent.futures import Future
 from pathlib import Path
 
+import requests
 import tidalapi
 
 from ...domain.models import AcquiredTrack, PlaylistInfo, SourceTrack
@@ -10,18 +12,57 @@ logger = logging.getLogger(__name__)
 _PLAYLIST_RE = re.compile(r"(?:playlist/|playlist:)([0-9a-f-]+)", re.IGNORECASE)
 
 
+class TidalAuthenticationRequired(RuntimeError):
+    pass
+
+
+class _TimeoutSession(requests.Session):
+    def request(self, *args, **kwargs):
+        kwargs.setdefault("timeout", 30)
+        return super().request(*args, **kwargs)
+
+
 class TidalSource:
     name = "tidal"
 
     def __init__(self, session_file: Path):
         self.session_file = session_file
         self.session = tidalapi.Session()
+        self.session.request_session = _TimeoutSession()
         self._playlists: dict[str, object] = {}
+        self._auth: tuple[str, Future] | None = None
+        self._auth_error: str | None = None
 
     def login(self) -> None:
         self.session_file.parent.mkdir(parents=True, exist_ok=True)
-        self.session.login_session_file(self.session_file)
+        self.session.load_session_from_file(self.session_file)
+        if not self.session.check_login():
+            raise TidalAuthenticationRequired("authenticate TIDAL in Settings first")
         logger.info("Authenticated with TIDAL")
+
+    def authorization_url(self) -> str:
+        login, future = self.session.login_oauth()
+        url = f"https://{login.verification_uri_complete}"
+        self._auth = (url, future)
+        self._auth_error = None
+
+        def save(completed: Future) -> None:
+            try:
+                if completed.result():
+                    self.session_file.parent.mkdir(parents=True, exist_ok=True)
+                    self.session.save_session_to_file(self.session_file)
+            except Exception as exc:
+                self._auth_error = str(exc)
+
+        future.add_done_callback(save)
+        return url
+
+    def authorization_status(self) -> tuple[str, str | None]:
+        if self._auth_error:
+            return "failed", self._auth_error
+        if self._auth is None:
+            return "missing", None
+        return ("completed", None) if self._auth[1].done() else ("pending", None)
 
     def _walk(self, favorites, folder=None, path=""):
         if folder is None:
