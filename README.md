@@ -121,7 +121,10 @@ The startup process prepares the three mount roots and then runs the application
 `1000:1000`. To move the current installation without losing progress, stop the local application
 and copy `.data/music-importer.db` to the host directory mounted at `/data/music-importer.db`.
 
-Spotify's current PKCE helper expects its browser and callback listener on the same machine. For a headless Unraid deployment, authenticate once with the local application and copy `.secrets/spotify-token.json` to the directory mounted at `/secrets/spotify-token.json`. Keep the same Spotify client ID. TIDAL's device login is suitable for the container and persists its session under `/secrets`.
+Spotify authentication returns through the application's `/callback` route. For a headless Unraid
+deployment, set `SPOTIFY_REDIRECT_URI` to the externally reachable application URL ending in
+`/callback`, and register that exact URI in the Spotify developer dashboard. TIDAL's device login
+persists its session under `/secrets`.
 
 The health check is available at `/health`. View status and logs with:
 
@@ -153,7 +156,11 @@ An existing import can be refreshed with **Update playlist**. The app previews a
 
 ### Spotify
 
-Create a Spotify application and register the configured redirect URI, which defaults to `http://127.0.0.1:8765/callback`. Authentication uses Authorization Code with PKCE; no client secret is required. Tokens default to `.secrets/spotify-token.json`.
+Create a Spotify application and register the configured redirect URI, which defaults to
+`http://127.0.0.1:8787/callback`. Authentication uses Authorization Code with PKCE; no client secret
+is required. The URI must point back to the application from the browser you use to authenticate.
+Tokens default to `.secrets/spotify-token.json`. Background jobs only use a cached token and fail
+with an authentication message instead of starting an interactive callback listener.
 
 ### TIDAL
 

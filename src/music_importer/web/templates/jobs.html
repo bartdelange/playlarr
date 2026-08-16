@@ -6,7 +6,7 @@
 {% for job in jobs %}
   <article class="job-row">
     <a class="job-main" href="/jobs/{{ job.id }}"><div><strong>{{ job.kind|replace('_',' ')|title }}</strong><small>{% if job.status == 'queued' %}Queue position {{ queue_positions[job.id] }}{% else %}{{ job.current_item or job.status|replace('_',' ') }}{% endif %}</small></div><div class="job-state"><span class="badge job-{{ job.status }}">{{ job.status }}</span><span>{{ job.current }} / {{ job.total }}</span></div></a>
-    {% if (job.status == 'queued' or (job.status == 'running' and job.kind == 'resolution')) and not job.cancel_requested %}<form method="post" action="/jobs/{{ job.id }}/cancel"><button class="secondary">Cancel</button></form>{% endif %}
+    {% if job.status in ['queued', 'running'] and not job.cancel_requested %}<form method="post" action="/jobs/{{ job.id }}/cancel"><button class="secondary">Cancel</button></form>{% endif %}
   </article>
 {% else %}
   <div class="empty"><h2>No background jobs</h2><p>Playlist analysis, resolution, Lidarr operations, and playlist generation will appear here.</p></div>

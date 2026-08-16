@@ -33,7 +33,11 @@ class TaskManager:
                 status = "cancelled" if current.cancel_requested else "completed"
                 self.repository.update_job(job.id, status=status)
             except Exception as exc:
-                self.repository.update_job(job.id, status="failed", error=str(exc))
+                current = self.repository.get_job(job.id)
+                if current.cancel_requested:
+                    self.repository.update_job(job.id, status="cancelled")
+                else:
+                    self.repository.update_job(job.id, status="failed", error=str(exc))
 
         self.executor.submit(run)
         return job

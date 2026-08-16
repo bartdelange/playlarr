@@ -118,7 +118,7 @@ def load_config() -> Config:
         mb_max_retries=_integer("MUSICBRAINZ_MAX_RETRIES", 5),
         tidal_session_file=Path(os.getenv("TIDAL_SESSION_FILE", ".secrets/tidal-session.json")),
         spotify_client_id=os.getenv("SPOTIFY_CLIENT_ID") or None,
-        spotify_redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8765/callback"),
+        spotify_redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8787/callback"),
         spotify_token_cache=Path(os.getenv("SPOTIFY_TOKEN_CACHE", ".secrets/spotify-token.json")),
         lidarr_url=(os.getenv("LIDARR_URL") or "").rstrip("/") or None,
         lidarr_api_key=os.getenv("LIDARR_API_KEY") or None,

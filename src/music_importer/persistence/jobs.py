@@ -96,6 +96,7 @@ class JobsRepository:
             db.execute(
                 """UPDATE jobs SET cancel_requested = 1,
                 status = CASE WHEN status = 'queued' THEN 'cancelled' ELSE status END,
+                current_item = CASE WHEN status = 'running' THEN 'Cancellation requested' ELSE current_item END,
                 updated_at = ? WHERE id = ?""",
                 (now(), job_id),
             )
