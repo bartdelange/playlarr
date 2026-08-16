@@ -3,5 +3,10 @@
     <div class="playlist-meta"><span class="badge">{{ imported.source }}</span><span>{{ playlist_track_count }} tracks</span></div>
     <h1>{{ imported.playlist_name }}</h1>
   </div>
-  <a class="button secondary" href="/imports/{{ imported.id }}/update">Refresh playlist</a>
+  <div class="actions">
+    <a class="button secondary" href="/imports/{{ imported.id }}/update">Refresh playlist</a>
+    <form method="post" action="/imports/{{ imported.id }}/delete" onsubmit="return confirm('Delete this import and all of its history? Generated playlist files will remain on disk.')">
+      <button class="secondary">Delete import</button>
+    </form>
+  </div>
 </div>

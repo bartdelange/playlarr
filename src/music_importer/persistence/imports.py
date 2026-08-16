@@ -93,6 +93,20 @@ class ImportsRepository:
             None,
         )
 
+    def delete_import(self, import_id: str) -> None:
+        with self.connect() as db:
+            imported = db.execute("SELECT id FROM imports WHERE id = ?", (import_id,)).fetchone()
+            if imported is None:
+                raise KeyError(f"unknown import: {import_id}")
+            active_job = db.execute(
+                """SELECT id FROM jobs
+                WHERE import_id = ? AND status IN ('queued', 'running') LIMIT 1""",
+                (import_id,),
+            ).fetchone()
+            if active_job is not None:
+                raise ValueError("cancel or wait for the active job before deleting this import")
+            db.execute("DELETE FROM imports WHERE id = ?", (import_id,))
+
     def set_workflow_state(self, import_id: str, state: str, error: str | None = None) -> None:
         with self.connect() as db:
             db.execute(

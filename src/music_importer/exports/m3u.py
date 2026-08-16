@@ -37,6 +37,14 @@ def missing_report_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}_missing.csv")
 
 
+def playlist_output_path(output_dir: Path, playlist_name: str) -> Path:
+    safe_name = "".join(
+        character if character.isalnum() or character in "-_" else "-"
+        for character in playlist_name
+    ).strip("-")
+    return output_dir / f"{safe_name or 'playlist'}.m3u8"
+
+
 def cached_mapping(output_dir: Path, source: str, playlist_id: str) -> Path | None:
     candidates = list(output_dir.glob(f"{source}_*_{playlist_id}_musicbrainz.csv"))
     return max(candidates, key=lambda path: path.stat().st_mtime) if candidates else None

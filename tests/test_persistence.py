@@ -75,6 +75,27 @@ class ImportRepositoryTests(unittest.TestCase):
         self.assertEqual([entry.track.source_track_id for entry in entries], ["same", "same"])
         self.assertEqual(workflow_state, "ready_to_resolve")
 
+    def test_delete_import_cascades_history_and_rejects_active_jobs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.repository(directory)
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            repository.replace_tracks(
+                imported.id,
+                [SourceTrack("spotify", "track", "Song", ("Artist",), "Album")],
+            )
+            job = repository.create_job("resolution", imported.id)
+
+            with self.assertRaisesRegex(ValueError, "active job"):
+                repository.delete_import(imported.id)
+
+            repository.update_job(job.id, status="cancelled")
+            repository.delete_import(imported.id)
+
+            with self.assertRaises(KeyError):
+                repository.get_import(imported.id)
+            with self.assertRaises(KeyError):
+                repository.get_job(job.id)
+
     def test_manual_override_is_persisted_and_not_overwritten_by_automation(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = self.repository(directory)
