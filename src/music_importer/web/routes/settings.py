@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from ...config import serializable_config, service_config_values
 from ...integrations.lidarr import LidarrClient
 from ...integrations.sources.spotify import SpotifySource
+from ...integrations.sources.tidal import TidalSource
 from ..presentation import WebUI
 
 
@@ -76,10 +77,8 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
         try:
             if service == "lidarr":
                 LidarrClient(config)._request("GET", "system/status")
-            elif service == "tidal":
-                context.source(service).login()
-            elif service == "spotify":
-                raise HTTPException(400, "use Authenticate Spotify")
+            elif service in {"spotify", "tidal"}:
+                raise HTTPException(400, f"use Authenticate {service.title()}")
             else:
                 raise HTTPException(404, "unknown service")
             message = f"{service.title()} connection successful"
@@ -90,6 +89,21 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
         from urllib.parse import quote
 
         return RedirectResponse(f"/settings?message={quote(message)}", status_code=303)
+
+    @app.post("/settings/auth/tidal", response_class=HTMLResponse)
+    def authenticate_tidal(request: Request):
+        source = context.source("tidal")
+        if not isinstance(source, TidalSource):
+            raise HTTPException(500, "TIDAL source is not available")
+        return render(request, "tidal_auth.html", authorization_url=source.authorization_url())
+
+    @app.get("/api/settings/auth/tidal")
+    def tidal_authentication_status():
+        source = context.source("tidal")
+        if not isinstance(source, TidalSource):
+            raise HTTPException(500, "TIDAL source is not available")
+        status, error = source.authorization_status()
+        return {"status": status, "error": error}
 
     @app.post("/settings/auth/spotify")
     def authenticate_spotify():
