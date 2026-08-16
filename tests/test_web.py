@@ -54,6 +54,19 @@ def wait_for_job(repository: ImportRepository, job_id: str):
 
 
 class WebShellTests(unittest.TestCase):
+    def test_playlist_update_fails_instead_of_starting_interactive_spotify_auth(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            client = TestClient(create_app(config(directory), repository))
+
+            response = client.get(f"/imports/{imported.id}/update", follow_redirects=False)
+            job_id = response.headers["location"].rsplit("/", 1)[-1]
+            job = wait_for_job(repository, job_id)
+
+        self.assertEqual(job.status, "failed")
+        self.assertIn("authenticate Spotify in Settings", job.error)
+
     def test_import_can_be_deleted_when_no_job_is_active(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = ImportRepository(Path(directory) / "state.db")

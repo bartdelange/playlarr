@@ -55,6 +55,28 @@ class TaskManagerTests(unittest.TestCase):
         self.assertEqual(second_status, "cancelled")
         self.assertFalse(second_ran.is_set())
 
+    def test_cancelled_running_job_stays_cancelled_when_operation_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            manager = TaskManager(repository)
+            started = threading.Event()
+            release = threading.Event()
+
+            def operation(_):
+                started.set()
+                release.wait(2)
+                raise TimeoutError("source request timed out")
+
+            job = manager.submit("playlist_update_preview", operation)
+            self.assertTrue(started.wait(2))
+            repository.request_job_cancel(job.id)
+            release.set()
+            manager.executor.shutdown(wait=True)
+            stored = repository.get_job(job.id)
+
+        self.assertEqual(stored.status, "cancelled")
+        self.assertEqual(stored.current_item, "Cancellation requested")
+
 
 if __name__ == "__main__":
     unittest.main()

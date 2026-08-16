@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 from dataclasses import is_dataclass, replace
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ...config import serializable_config, service_config_values
 from ...integrations.lidarr import LidarrClient
+from ...integrations.sources.spotify import SpotifySource
 from ..presentation import WebUI
 
 
@@ -75,8 +76,10 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
         try:
             if service == "lidarr":
                 LidarrClient(config)._request("GET", "system/status")
-            elif service in {"spotify", "tidal"}:
+            elif service == "tidal":
                 context.source(service).login()
+            elif service == "spotify":
+                raise HTTPException(400, "use Authenticate Spotify")
             else:
                 raise HTTPException(404, "unknown service")
             message = f"{service.title()} connection successful"
@@ -86,4 +89,37 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
             message = f"{service.title()} connection failed: {exc}"
         from urllib.parse import quote
 
+        return RedirectResponse(f"/settings?message={quote(message)}", status_code=303)
+
+    @app.post("/settings/auth/spotify")
+    def authenticate_spotify():
+        source = context.source("spotify")
+        if not isinstance(source, SpotifySource):
+            raise HTTPException(500, "Spotify source is not available")
+        try:
+            return RedirectResponse(source.authorization_url(), status_code=303)
+        except Exception as exc:
+            from urllib.parse import quote
+
+            return RedirectResponse(
+                f"/settings?message={quote(f'Spotify authentication failed: {exc}')}",
+                status_code=303,
+            )
+
+    @app.get("/callback")
+    def spotify_callback(code: str = Query(""), state: str = Query(""), error: str = Query("")):
+        from urllib.parse import quote
+
+        try:
+            if error:
+                raise ValueError(error)
+            if not code or not state:
+                raise ValueError("Spotify did not return an authorization code")
+            source = context.source("spotify")
+            if not isinstance(source, SpotifySource):
+                raise ValueError("Spotify source is not available")
+            source.complete_authorization(code, state)
+            message = "Spotify connection successful"
+        except Exception as exc:
+            message = f"Spotify authentication failed: {exc}"
         return RedirectResponse(f"/settings?message={quote(message)}", status_code=303)

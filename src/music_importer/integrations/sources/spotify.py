@@ -3,10 +3,9 @@ import re
 from pathlib import Path
 
 import spotipy
-from spotipy.cache_handler import CacheFileHandler
-from spotipy.oauth2 import SpotifyPKCE
 
 from ...domain.models import AcquiredTrack, PlaylistInfo, SourceTrack
+from .spotify_auth import SpotifyAuthenticator
 
 logger = logging.getLogger(__name__)
 _PLAYLIST_RE = re.compile(r"(?:open\.spotify\.com/playlist/|spotify:playlist:)([A-Za-z0-9]+)")
@@ -23,18 +22,17 @@ class SpotifySource:
         self.token_cache = token_cache
         self.client: spotipy.Spotify | None = None
         self.user_id: str | None = None
+        self.authenticator = SpotifyAuthenticator(client_id, redirect_uri, token_cache)
 
     def login(self) -> None:
-        self.token_cache.parent.mkdir(parents=True, exist_ok=True)
-        auth = SpotifyPKCE(
-            client_id=self.client_id,
-            redirect_uri=self.redirect_uri,
-            scope="playlist-read-private playlist-read-collaborative",
-            cache_handler=CacheFileHandler(cache_path=str(self.token_cache)),
-            open_browser=True,
-        )
-        self.client = spotipy.Spotify(auth_manager=auth)
-        self.user_id = self.client.current_user().get("id")
+        self.client, self.user_id = self.authenticator.login()
+        logger.info("Authenticated with Spotify")
+
+    def authorization_url(self) -> str:
+        return self.authenticator.authorization_url()
+
+    def complete_authorization(self, code: str, state: str) -> None:
+        self.client, self.user_id = self.authenticator.complete(code, state)
         logger.info("Authenticated with Spotify")
 
     def _api(self) -> spotipy.Spotify:
