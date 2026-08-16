@@ -54,6 +54,22 @@ def wait_for_job(repository: ImportRepository, job_id: str):
 
 
 class WebShellTests(unittest.TestCase):
+    def test_import_can_be_deleted_when_no_job_is_active(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            client = TestClient(create_app(config(directory), repository))
+
+            detail = client.get(f"/imports/{imported.id}")
+            response = client.post(f"/imports/{imported.id}/delete", follow_redirects=False)
+
+            with self.assertRaises(KeyError):
+                repository.get_import(imported.id)
+
+        self.assertIn(f'action="/imports/{imported.id}/delete"', detail.text)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "/")
+
     def test_playlist_update_preview_and_apply(self):
         class Source:
             entry_reads = 0

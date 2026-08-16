@@ -14,6 +14,7 @@ from .presentation import WebUI
 from .routes import (
     catalogue,
     dashboard,
+    import_deletion,
     imports,
     jobs,
     lidarr,
@@ -44,6 +45,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         catalogue,
         playlist_updates,
         imports,
+        import_deletion,
         jobs,
         review,
         review_actions,
