@@ -150,7 +150,9 @@ Live source catalogue reads, initial playlist acquisition, update previews, and 
 persisted background jobs so slow Spotify or TIDAL responses do not hold the browser request open.
 Catalogue reads remain live: choosing a source starts a fresh read rather than reusing a cached list.
 
-An existing import can be refreshed with **Update playlist**. The app previews additions, removals, and moves before applying them. Stable source-track IDs and ISRCs retain existing automatic and manual mappings, including duplicate occurrences; new tracks return to resolution. Each applied update stores before-and-after snapshots that can be inspected from the import's update history.
+An existing import can be refreshed with **Refresh playlist**. The app presents one filterable diff with added, metadata-updated, removed, moved, and unchanged tracks before applying it. Stable source-track IDs and ISRCs retain existing automatic and manual mappings, including duplicate occurrences; new tracks return to resolution. Each applied update stores before-and-after snapshots that can be inspected from the import's update history.
+
+**Reuse mappings** compares two imports by exact, non-empty ISRC. The confirmation table lets you accept or ignore each proposed mapping override and distinguishes unresolved targets, existing mappings, already-identical mappings, and conflicting source mappings. Applying selected rows records them as manual reused mappings and supersedes stale Lidarr plans.
 
 ## Authentication
 

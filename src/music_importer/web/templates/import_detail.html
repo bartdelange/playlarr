@@ -30,7 +30,7 @@
 {% endif %}
 
 {% if imported.last_error %}<div class="alert">{{ imported.last_error }}</div>{% endif %}
-{% if revisions %}<details class="history"><summary>Playlist refresh history ({{ revisions|length }})</summary>{% for revision in revisions %}<p><a href="/imports/{{ imported.id }}/revisions/{{ revision.id }}">{{ revision.created_at }}</a> · {{ revision.added }} added · {{ revision.removed }} removed · {{ revision.moved }} moved</p>{% endfor %}</details>{% endif %}
+{% if revisions %}<details class="history"><summary>Playlist refresh history ({{ revisions|length }})</summary>{% for revision in revisions %}<p><a href="/imports/{{ imported.id }}/revisions/{{ revision.id }}">{{ revision.created_at }}</a> · {{ revision.added }} added · {{ revision.updated }} updated · {{ revision.removed }} removed · {{ revision.moved }} moved</p>{% endfor %}</details>{% endif %}
 
 <div class="filters">
   <button class="active" onclick="filterRows('all',this)">All{% if workflow_step == 3 %} ({{ library_availability_counts.downloaded + library_availability_counts.downloadable + library_availability_counts.not_downloadable }}){% endif %}</button>
