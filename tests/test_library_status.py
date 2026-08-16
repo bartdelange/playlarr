@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import Mock
 
-from music_importer.models import MusicBrainzResult
-from music_importer.services import LibraryStatusService, library_availability
+from music_importer.application.library_status import LibraryStatusService, library_availability
+from music_importer.domain.models import MusicBrainzResult
 
 
 class LibraryStatusServiceTests(unittest.TestCase):

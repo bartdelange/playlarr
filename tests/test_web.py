@@ -8,7 +8,8 @@ from unittest.mock import ANY, Mock, patch
 
 from fastapi.testclient import TestClient
 
-from music_importer.models import (
+from music_importer.application.library_status import LibraryTrackStatus
+from music_importer.domain.models import (
     AcquiredTrack,
     LidarrExecutionResult,
     LidarrPlan,
@@ -18,8 +19,7 @@ from music_importer.models import (
     SourceTrack,
 )
 from music_importer.persistence import ImportRepository
-from music_importer.services import LibraryTrackStatus
-from music_importer.web import create_app
+from music_importer.web.app import create_app
 
 
 def config(directory: str):
@@ -247,8 +247,10 @@ class WebShellTests(unittest.TestCase):
             )
 
             with (
-                patch("music_importer.web.ResolutionService") as resolution_service,
-                patch("music_importer.web.LidarrClient") as lidarr_client,
+                patch(
+                    "music_importer.web.routes.catalogue.ResolutionService"
+                ) as resolution_service,
+                patch("music_importer.web.routes.catalogue.LidarrClient") as lidarr_client,
             ):
                 resolution_service.return_value.resolve_tracks.return_value = batch
                 lidarr_client.return_value.compare.return_value = ({}, {})
@@ -692,8 +694,13 @@ class WebShellTests(unittest.TestCase):
             lidarr.execute_plan.return_value = [LidarrExecutionResult(action, "queued")]
 
             with (
-                patch("music_importer.web.LidarrClient", return_value=lidarr),
-                patch("music_importer.web.LibraryStatusService") as status_service,
+                patch(
+                    "music_importer.web.routes.lidarr_execution.LidarrClient",
+                    return_value=lidarr,
+                ),
+                patch(
+                    "music_importer.web.routes.lidarr_execution.LibraryStatusService"
+                ) as status_service,
             ):
                 status_service.return_value.refresh.return_value = [
                     LibraryTrackStatus(0, "release_monitored_missing")

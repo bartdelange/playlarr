@@ -1,12 +1,10 @@
 import unittest
 from unittest.mock import Mock, call
 
-from music_importer.models import MusicBrainzResult, PlaylistInfo, SourceTrack
-from music_importer.services import (
-    PlaylistExportService,
-    PlaylistService,
-    ResolutionService,
-)
+from music_importer.application.acquisition import PlaylistService
+from music_importer.application.playlist_export import PlaylistExportService
+from music_importer.application.resolution import ResolutionService
+from music_importer.domain.models import MusicBrainzResult, PlaylistInfo, SourceTrack
 
 
 class PlaylistServiceTests(unittest.TestCase):

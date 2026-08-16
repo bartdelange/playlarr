@@ -5,14 +5,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from music_importer.reports import (
-    FIELDS,
-    load_mapping_report,
+from music_importer.exports.lidarr_reports import (
     write_lidarr_action_report,
     write_resumed_matched_report,
     write_resumed_missing_report,
 )
-from music_importer.workflow import resume_lidarr
+from music_importer.exports.mapping_report import FIELDS, load_mapping_report
+from music_importer.workflows.resume import resume_lidarr
 
 
 class ResumeTests(unittest.TestCase):
@@ -129,7 +128,7 @@ class ResumeTests(unittest.TestCase):
                 writer.writerow(row)
             client = Mock()
             client.compare.return_value = ({0: "release_missing"}, {})
-            with patch("music_importer.workflow.LidarrClient", return_value=client):
+            with patch("music_importer.workflows.resume.LidarrClient", return_value=client):
                 resume_lidarr(mapping, SimpleNamespace(lidarr_enabled=True), missing_in_lidarr=True)
 
             self.assertTrue(mapping.with_name("spotify_Mix_123_missing_in_lidarr.csv").exists())

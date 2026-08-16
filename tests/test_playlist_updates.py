@@ -1,7 +1,7 @@
 import unittest
 
-from music_importer.models import AcquiredTrack, SourceTrack
-from music_importer.playlist_updates import playlist_snapshot_token
+from music_importer.domain.models import AcquiredTrack, SourceTrack
+from music_importer.domain.playlist_updates import playlist_snapshot_token
 
 
 class PlaylistSnapshotTokenTests(unittest.TestCase):

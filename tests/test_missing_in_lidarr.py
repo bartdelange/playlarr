@@ -7,9 +7,9 @@ from unittest.mock import Mock
 
 import requests
 
-from music_importer.lidarr import LidarrClient
-from music_importer.models import MusicBrainzResult, PlaylistInfo, Summary
-from music_importer.reports import write_missing_report
+from music_importer.domain.models import MusicBrainzResult, PlaylistInfo, Summary
+from music_importer.exports.lidarr_reports import write_missing_report
+from music_importer.integrations.lidarr import LidarrClient
 
 
 class MissingInLidarrTests(unittest.TestCase):
@@ -815,7 +815,9 @@ class MissingInLidarrTests(unittest.TestCase):
         client.session = Mock()
         client.session.request.return_value = response
 
-        with self.assertLogs("music_importer.lidarr", logging.ERROR) as captured:
+        with self.assertLogs(
+            "music_importer.integrations.lidarr.client", logging.ERROR
+        ) as captured:
             with self.assertRaises(requests.HTTPError):
                 client._request("POST", "artist", json={})
 

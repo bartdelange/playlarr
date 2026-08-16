@@ -17,33 +17,46 @@
 
 ## Architecture and dependency direction
 
-- `cli.py` and `launcher.py` are the installed command and local-server entry points.
-- `web.py` owns HTTP routing and presentation coordination. Templates and CSS belong in
-  `web_assets/`; presentation-independent behavior does not.
-- `services.py` coordinates source-neutral workflows and must not depend on FastAPI, terminal I/O,
-  templates, or CSV reports.
-- `sources/` contains the source protocol and Spotify/TIDAL adapters. Keep provider payload parsing
-  and authentication inside the owning adapter.
-- `musicbrainz.py`, `lidarr.py`, and `navidrome.py` are external integration boundaries. Do not leak
-  raw provider payload assumptions into routes or templates.
-- `persistence.py` is the SQLite boundary and owns schema migrations and durable record mapping.
-  Schema changes must be forward migrations that retain existing imports.
-- `models.py` contains shared domain value objects. Keep small route-only or module-only types near
-  their owner instead of growing a universal model layer.
-- `reports.py`, `csv_compat.py`, and `m3u.py` own export/import formats. CSV is compatibility and
-  diagnostic data, not the primary application state.
+`music_importer` is organized by capability. Its root is reserved for package metadata and truly
+cross-cutting configuration; it is not the default location for new modules.
 
-Dependencies should point from entry points and presentation toward services and domain/integration
-boundaries. Domain services must not import the web layer.
+- `app/` owns installed commands, local-server launch, and container process bootstrap.
+- `domain/` owns provider-independent value objects and playlist identity rules.
+- `application/` owns source-neutral acquisition, resolution, library-status, playlist-export, and
+  background-task coordination. It must not depend on FastAPI, templates, or terminal I/O.
+- `workflows/` owns end-to-end process workflows and any CLI-specific presentation.
+- `integrations/sources/` owns the source protocol and Spotify/TIDAL adapters.
+- `integrations/musicbrainz/` owns MusicBrainz protocol, matching, and validation details.
+- `integrations/lidarr/` owns Lidarr transport, planning, execution, and library matching. Planning
+  stays read-only and execution must correspond to an approved plan.
+- `persistence/` owns SQLite schema migrations, durable records, and repositories. Migrations must
+  be forward-only and retain existing imports.
+- `exports/` owns CSV compatibility, diagnostic reports, and M3U serialization. CSV is interchange
+  or diagnostic data, never primary state.
+- `web/` owns FastAPI composition, thin capability-oriented handlers, templates, and static assets.
+
+Dependencies flow from `web/` and `app/` through `application/` or `workflows/`, then toward domain
+and infrastructure boundaries. Domain and application logic must never depend on the web UI.
+Circular dependencies are architectural defects and must be removed rather than hidden by local
+imports. External-service payload and protocol details stay behind their integration boundary.
 
 ## File organization and reuse
 
 - Create a module when a responsibility has a stable name and can be tested independently. Do not
   split files solely to reduce line count.
+- Files approaching roughly 100–200 lines should trigger a responsibility review. Line count is a
+  warning signal, not an architectural metric: keep a longer cohesive implementation together, but
+  decompose a module whenever the review reveals distinct reasons to change.
+- New functionality belongs in the package or subpackage that owns its responsibility. Introduce a
+  new top-level package only when it represents a meaningful capability.
+- Keep web handlers thin: translate requests, call application/workflow services, and prepare
+  responses. Do not move business rules into handlers or templates.
 - Colocate small private types and constants with the behavior they describe. Move types only when
   multiple boundaries genuinely share the contract.
 - Use responsibility-specific names such as `playlist_updates.py`; do not introduce `utils.py`,
-  `helpers.py`, `common.py`, or other dumping grounds.
+  `helpers.py`, `misc.py`, `common.py`, or other dumping grounds.
+- Decompose large modules along real responsibility boundaries. Do not create fragments merely to
+  satisfy a line-count target.
 - Prefer a small direct function over a one-use factory or generic framework. New shared helpers
   must express a domain concept, not merely remove matching lines.
 - Avoid barrel modules. Import from the module that owns the behavior.

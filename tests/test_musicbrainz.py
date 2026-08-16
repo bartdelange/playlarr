@@ -1,6 +1,6 @@
 import unittest
 
-from music_importer.musicbrainz import MusicBrainzClient
+from music_importer.integrations.musicbrainz import MusicBrainzClient
 
 
 class MusicBrainzReleaseSelectionTests(unittest.TestCase):

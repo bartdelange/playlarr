@@ -2,8 +2,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-from music_importer.models import PlaylistInfo
-from music_importer.sources.spotify import SpotifySource
+from music_importer.domain.models import PlaylistInfo
+from music_importer.integrations.sources.spotify import SpotifySource
 
 
 class SpotifySourceTests(unittest.TestCase):

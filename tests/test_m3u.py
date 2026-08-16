@@ -5,16 +5,16 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-from music_importer.lidarr import LidarrClient
-from music_importer.m3u import (
+from music_importer.domain.models import MusicBrainzResult
+from music_importer.exports.m3u import (
     cached_mapping,
     default_output_path,
     export_m3u,
     missing_report_path,
     translate_path,
 )
-from music_importer.models import MusicBrainzResult
-from music_importer.reports import FIELDS
+from music_importer.exports.mapping_report import FIELDS
+from music_importer.integrations.lidarr import LidarrClient
 
 
 class M3UTests(unittest.TestCase):
