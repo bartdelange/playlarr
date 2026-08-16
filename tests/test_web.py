@@ -18,6 +18,7 @@ from music_importer.domain.models import (
     PlaylistInfo,
     SourceTrack,
 )
+from music_importer.integrations.navidrome import NavidromeSong
 from music_importer.persistence import ImportRepository
 from music_importer.web.app import create_app
 
@@ -41,6 +42,10 @@ def config(directory: str):
         lidarr_enabled=True,
         lidarr_quality_profile_id=1,
         lidarr_metadata_profile_id=1,
+        navidrome_url="http://navidrome",
+        navidrome_username="user",
+        navidrome_password="password",
+        navidrome_enabled=True,
     )
 
 
@@ -54,6 +59,34 @@ def wait_for_job(repository: ImportRepository, job_id: str):
 
 
 class WebShellTests(unittest.TestCase):
+    @patch("music_importer.web.routes.local_additions.NavidromeClient")
+    def test_local_navidrome_additions_can_repeat_and_be_removed(self, navidrome_client):
+        navidrome_client.return_value.search_songs.return_value = [
+            NavidromeSong("song", "Local song", "Local artist", "Local album", "A/song.flac")
+        ]
+        navidrome_client.return_value.song.return_value = NavidromeSong(
+            "song", "Local song", "Local artist", "Local album", "A/song.flac"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            client = TestClient(create_app(config(directory), repository))
+
+            search = client.get(f"/imports/{imported.id}/local-additions?q=local")
+            client.post(f"/imports/{imported.id}/local-additions", data={"song_id": "song"})
+            client.post(f"/imports/{imported.id}/local-additions", data={"song_id": "song"})
+            additions = repository.local_playlist_additions(imported.id)
+            removed = client.post(
+                f"/imports/{imported.id}/local-additions/{additions[0].id}/delete",
+                follow_redirects=False,
+            )
+            remaining = repository.local_playlist_additions(imported.id)
+
+        self.assertIn("Local song", search.text)
+        self.assertEqual(len(additions), 2)
+        self.assertEqual(removed.status_code, 303)
+        self.assertEqual(len(remaining), 1)
+
     def test_playlist_update_fails_instead_of_starting_interactive_spotify_auth(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = ImportRepository(Path(directory) / "state.db")

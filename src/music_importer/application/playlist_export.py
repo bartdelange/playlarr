@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from ..domain.models import MusicBrainzResult, SourceTrack
+from ..domain.models import LocalPlaylistAddition, MusicBrainzResult, SourceTrack
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +29,10 @@ class PlaylistExportResult:
 
 class DownloadedPathProvider(Protocol):
     def downloaded_paths(self, results: list[MusicBrainzResult]) -> dict[int, str]: ...
+
+
+class LocalPathProvider(Protocol):
+    def paths(self, song_ids: list[str]) -> dict[int, str]: ...
 
 
 class PlaylistExportService:
@@ -70,4 +74,42 @@ class PlaylistExportService:
                     else "not_downloaded_or_unmatched"
                 )
                 missing.append(MissingPlaylistEntry(index, track, reason))
+        return PlaylistExportResult(tuple(entries), tuple(missing))
+
+    def append_local_additions(
+        self,
+        export: PlaylistExportResult,
+        additions: list[LocalPlaylistAddition],
+        provider: LocalPathProvider,
+        path_mappings: list[tuple[str, str]],
+        source_track_count: int,
+    ) -> PlaylistExportResult:
+        paths = provider.paths([addition.provider_track_id for addition in additions])
+        entries = list(export.entries)
+        missing = list(export.missing)
+        for index, addition in enumerate(additions):
+            position = source_track_count + index
+            if index in paths:
+                entries.append(
+                    PlaylistFileEntry(
+                        position,
+                        "; ".join(addition.artists),
+                        addition.title,
+                        self._translate(paths[index], path_mappings),
+                    )
+                )
+            else:
+                missing.append(
+                    MissingPlaylistEntry(
+                        position,
+                        SourceTrack(
+                            addition.provider,
+                            addition.provider_track_id,
+                            addition.title,
+                            addition.artists,
+                            addition.album,
+                        ),
+                        "local_track_unavailable",
+                    )
+                )
         return PlaylistExportResult(tuple(entries), tuple(missing))

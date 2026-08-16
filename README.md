@@ -36,7 +36,8 @@ The GUI stores resumable import state in `.data/music-importer.db`. The file is 
 
 Copy `.env.example` and set `MUSICBRAINZ_USER_AGENT` to an identifying value with a real contact
 address or URL. Spotify requires `SPOTIFY_CLIENT_ID`; Lidarr requires both `LIDARR_URL` and
-`LIDARR_API_KEY`.
+`LIDARR_API_KEY`. Optional Navidrome playlist additions require `NAVIDROME_URL`,
+`NAVIDROME_USERNAME`, and `NAVIDROME_PASSWORD` (or the equivalent saved Settings values).
 
 Storage defaults to `.data`, `output`, and `.secrets`. `DATA_DIR`, `OUTPUT_DIR`,
 `TIDAL_SESSION_FILE`, and `SPOTIFY_TOKEN_CACHE` may override those locations. The complete list of
@@ -142,7 +143,10 @@ docker compose logs -f music-importer
 5. Review unresolved or suspicious tracks. Search MusicBrainz or paste a recording MBID, inspect validation evidence, and explicitly accept warnings when appropriate.
 6. Preview the Lidarr plan. Planning is read-only; Lidarr is changed only after **Apply to Lidarr**.
 7. Refresh download/library status after Lidarr has had time to download albums.
-8. Generate or refresh the M3U8 playlist. Saved path mappings translate Lidarr paths for the playlist consumer.
+8. Optionally search Navidrome under **Local additions** and append songs unavailable from the
+   source playlist. Additions are saved by Navidrome song ID and can include duplicates.
+9. Generate or refresh the M3U8 playlist. Saved path mappings translate library paths for the
+   playlist consumer.
 
 Imports, source entries, resolution evidence, manual decisions, Lidarr plans, execution results, jobs, library state, and generated-playlist information survive restarts. Original playlist positions and duplicate entries are retained.
 
@@ -185,7 +189,11 @@ Lidarr synchronization remains additive. It does not monitor unrelated albums, s
 
 ## Playlist generation
 
-M3U8 generation queries downloaded Lidarr files and retains source order and duplicates. Tracks for which Lidarr does not provide a downloaded file path are skipped. Persisted path mappings translate paths such as `/music` to `/mnt/media/music`.
+M3U8 generation queries downloaded Lidarr files and retains source order and duplicates. It then
+resolves saved local additions against Navidrome and appends them in their saved order. Tracks for
+which Lidarr does not provide a downloaded file path, and additions no longer available from
+Navidrome, are skipped and counted as missing. Persisted path mappings translate paths such as
+`/music` to `/mnt/media/music`; relative paths returned by Navidrome remain relative.
 
 The import page displays the output file, downloaded count, and missing count.
 

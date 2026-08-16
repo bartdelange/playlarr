@@ -52,12 +52,16 @@ class StoredConfigTests(unittest.TestCase):
             lidarr_root_folder="",
             lidarr_quality_profile_id=2,
             lidarr_metadata_profile_id=3,
+            navidrome_url=" http://navidrome/ ",
+            navidrome_username=" user ",
+            navidrome_password=" password ",
             output_dir=" reports ",
         )
 
         self.assertEqual(values["lidarr_url"], "http://lidarr")
         self.assertEqual(values["lidarr_api_key"], "saved-key")
         self.assertEqual(values["output_dir"], Path("reports"))
+        self.assertEqual(values["navidrome_url"], "http://navidrome")
         self.assertEqual(serializable_config(values)["output_dir"], "reports")
 
 

@@ -5,6 +5,7 @@ from .imports import ImportsRepository
 from .jobs import JobsRepository
 from .library import LibraryRepository
 from .lidarr_plans import LidarrPlansRepository
+from .local_playlist_additions import LocalPlaylistAdditionsRepository
 from .playlist_revisions import PlaylistRevisionsRepository
 from .resolutions import ResolutionsRepository
 from .settings import SettingsRepository
@@ -15,6 +16,7 @@ class ImportRepository(
     PlaylistRevisionsRepository,
     ResolutionsRepository,
     LidarrPlansRepository,
+    LocalPlaylistAdditionsRepository,
     LibraryRepository,
     SettingsRepository,
     JobsRepository,

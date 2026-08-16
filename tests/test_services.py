@@ -2,9 +2,14 @@ import unittest
 from unittest.mock import Mock, call
 
 from music_importer.application.acquisition import PlaylistService
-from music_importer.application.playlist_export import PlaylistExportService
+from music_importer.application.playlist_export import PlaylistExportResult, PlaylistExportService
 from music_importer.application.resolution import ResolutionService
-from music_importer.domain.models import MusicBrainzResult, PlaylistInfo, SourceTrack
+from music_importer.domain.models import (
+    LocalPlaylistAddition,
+    MusicBrainzResult,
+    PlaylistInfo,
+    SourceTrack,
+)
 
 
 class PlaylistServiceTests(unittest.TestCase):
@@ -87,6 +92,24 @@ class PlaylistExportServiceTests(unittest.TestCase):
     def test_rejects_misaligned_tracks_and_results(self):
         with self.assertRaisesRegex(ValueError, "equal length"):
             PlaylistExportService(Mock()).build([], [MusicBrainzResult()], [])
+
+    def test_appends_duplicate_local_tracks_and_reports_unavailable_songs(self):
+        service = PlaylistExportService(Mock())
+        additions = [
+            LocalPlaylistAddition(None, "import", "navidrome", "same", 0, "Local", ("A",), "X"),
+            LocalPlaylistAddition(None, "import", "navidrome", "same", 1, "Local", ("A",), "X"),
+            LocalPlaylistAddition(None, "import", "navidrome", "gone", 2, "Gone", ("B",), "Y"),
+        ]
+        provider = Mock()
+        provider.paths.return_value = {0: "/music/local.flac", 1: "/music/local.flac"}
+
+        export = service.append_local_additions(
+            PlaylistExportResult((), ()), additions, provider, [("/music", "/media")], 4
+        )
+
+        self.assertEqual([entry.position for entry in export.entries], [4, 5])
+        self.assertEqual([entry.path for entry in export.entries], ["/media/local.flac"] * 2)
+        self.assertEqual(export.missing[0].reason, "local_track_unavailable")
 
 
 if __name__ == "__main__":

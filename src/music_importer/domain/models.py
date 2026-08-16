@@ -25,6 +25,19 @@ class SourceTrack:
 
 
 @dataclass(frozen=True, slots=True)
+class LocalPlaylistAddition:
+    id: int | None
+    import_id: str
+    provider: str
+    provider_track_id: str
+    ordinal: int
+    title: str
+    artists: tuple[str, ...]
+    album: str
+    path_snapshot: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class AcquiredTrack:
     position: int
     track: SourceTrack

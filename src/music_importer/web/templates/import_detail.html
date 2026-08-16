@@ -16,6 +16,7 @@
       {% if can_plan %}<a class="button secondary" href="/imports/{{ imported.id }}?stage=lidarr">Open Lidarr plan</a>{% endif %}
     {% else %}
       {% if can_refresh %}<form method="post" action="/imports/{{ imported.id }}/library-status"><button>Refresh monitored &amp; downloaded</button></form>{% endif %}
+      <a class="button secondary" href="/imports/{{ imported.id }}/local-additions">Local additions{% if local_additions %} ({{ local_additions|length }}){% endif %}</a>
       {% if can_generate %}<form method="post" action="/imports/{{ imported.id }}/playlist"><button class="secondary">Export M3U</button></form>{% endif %}
     {% endif %}
   </div>

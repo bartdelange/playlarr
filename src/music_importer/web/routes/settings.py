@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ...config import serializable_config, service_config_values
 from ...integrations.lidarr import LidarrClient
+from ...integrations.navidrome import NavidromeClient
 from ...integrations.sources.spotify import SpotifySource
 from ...integrations.sources.tidal import TidalSource
 from ..presentation import WebUI
@@ -40,6 +41,9 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
         lidarr_root_folder: str = Form(""),
         lidarr_quality_profile_id: int = Form(1),
         lidarr_metadata_profile_id: int = Form(1),
+        navidrome_url: str = Form(""),
+        navidrome_username: str = Form(""),
+        navidrome_password: str = Form(""),
         output_dir: str = Form("output"),
         debug_logging: bool = Form(False),
     ):
@@ -56,6 +60,9 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
             lidarr_root_folder=lidarr_root_folder,
             lidarr_quality_profile_id=lidarr_quality_profile_id,
             lidarr_metadata_profile_id=lidarr_metadata_profile_id,
+            navidrome_url=navidrome_url,
+            navidrome_username=navidrome_username,
+            navidrome_password=navidrome_password,
             output_dir=output_dir,
         )
         repository.set_setting("debug_logging", debug_logging)
@@ -77,6 +84,8 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
         try:
             if service == "lidarr":
                 LidarrClient(config)._request("GET", "system/status")
+            elif service == "navidrome":
+                NavidromeClient(config).search_songs("", limit=1)
             elif service in {"spotify", "tidal"}:
                 raise HTTPException(400, f"use Authenticate {service.title()}")
             else:
