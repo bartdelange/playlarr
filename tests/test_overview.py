@@ -4,13 +4,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from music_importer.models import MusicBrainzResult, PlaylistInfo, SourceTrack
-from music_importer.workflow import overview
+from music_importer.domain.models import MusicBrainzResult, PlaylistInfo, SourceTrack
+from music_importer.workflows.overview import overview
 
 
 class OverviewTests(unittest.TestCase):
-    @patch("music_importer.workflow.LidarrClient")
-    @patch("music_importer.workflow.MusicBrainzClient")
+    @patch("music_importer.workflows.overview.LidarrClient")
+    @patch("music_importer.workflows.overview.MusicBrainzClient")
     def test_scans_every_playlist_and_writes_artist_counts(self, mb_class, lidarr_class):
         source = Mock(name="source")
         source.name = "spotify"

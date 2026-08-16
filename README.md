@@ -6,10 +6,12 @@ The application runs entirely on your computer and binds only to `127.0.0.1`.
 
 ## Architecture
 
-The installed `music-import` command starts the FastAPI application in `web.py`. Routes coordinate
-the application services in `services.py`; source adapters under `sources/` isolate Spotify and
-TIDAL APIs; `musicbrainz.py` and `lidarr.py` own their respective integrations;
-and `persistence.py` is the SQLite boundary. Templates and CSS live under `web_assets/`.
+The installed `music-import` command starts the process through `app/`. FastAPI composition,
+capability-oriented routes, templates, and static assets live under `web/`; source-neutral use cases
+live under `application/` and `workflows/`; and provider-independent records and rules live under
+`domain/`. Spotify, TIDAL, MusicBrainz, and Lidarr details are isolated under `integrations/`.
+SQLite repositories and migrations live under `persistence/`, while CSV and M3U formats live under
+`exports/`.
 
 SQLite is the durable application state. CSV reports and M3U8 playlists are exports, not inputs to
 the core workflow, except for the explicit legacy CSV import path. Background work is executed by

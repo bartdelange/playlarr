@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import Mock
 
-from music_importer.models import MusicBrainzResult, SourceTrack
-from music_importer.musicbrainz import MusicBrainzClient
+from music_importer.domain.models import MusicBrainzResult, SourceTrack
+from music_importer.integrations.musicbrainz import MusicBrainzClient
 
 
 def client() -> MusicBrainzClient:

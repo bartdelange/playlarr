@@ -2,8 +2,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from music_importer.lidarr import LidarrClient
-from music_importer.models import LidarrPlan, LidarrPlanAction, MusicBrainzResult
+from music_importer.domain.models import LidarrPlan, LidarrPlanAction, MusicBrainzResult
+from music_importer.integrations.lidarr import LidarrClient
 
 
 class LidarrPlanningTests(unittest.TestCase):

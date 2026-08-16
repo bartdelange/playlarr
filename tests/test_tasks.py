@@ -3,8 +3,8 @@ import threading
 import unittest
 from pathlib import Path
 
+from music_importer.application.tasks import TaskManager
 from music_importer.persistence import ImportRepository
-from music_importer.tasks import TaskManager
 
 
 class TaskManagerTests(unittest.TestCase):

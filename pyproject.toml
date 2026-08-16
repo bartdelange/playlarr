@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-music-import = "music_importer.cli:main"
+music-import = "music_importer.app.cli:main"
 
 [build-system]
 requires = ["hatchling"]

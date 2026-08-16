@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from music_importer.models import MusicBrainzResult
-from music_importer.reports import artist_additions, write_artist_impact_report
+from music_importer.domain.models import MusicBrainzResult
+from music_importer.exports.artist_impact import artist_additions, write_artist_impact_report
 
 
 class ArtistImpactTests(unittest.TestCase):

@@ -5,15 +5,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from music_importer.csv_compat import import_mapping_csv
-from music_importer.models import (
+from music_importer.domain.models import (
     AcquiredTrack,
     MusicBrainzResult,
     PlaylistInfo,
     SourceTrack,
 )
+from music_importer.exports.csv_compat import import_mapping_csv
+from music_importer.exports.mapping_report import FIELDS
 from music_importer.persistence import ImportRepository
-from music_importer.reports import FIELDS
 
 
 class ImportRepositoryTests(unittest.TestCase):
