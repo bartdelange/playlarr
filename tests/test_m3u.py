@@ -11,6 +11,7 @@ from music_importer.exports.m3u import (
     default_output_path,
     export_m3u,
     missing_report_path,
+    playlist_output_path,
     translate_path,
 )
 from music_importer.exports.mapping_report import FIELDS
@@ -237,6 +238,10 @@ class M3UTests(unittest.TestCase):
         )
         self.assertEqual(
             missing_report_path(Path("spotify_Mix_id.m3u8")), Path("spotify_Mix_id_missing.csv")
+        )
+        self.assertEqual(
+            playlist_output_path(Path("output"), "Road Trip Mix"),
+            Path("output/Road-Trip-Mix.m3u8"),
         )
 
     def test_cached_mapping_uses_playlist_id_and_prefers_newest(self):

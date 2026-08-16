@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 
 from ...application.playlist_export import PlaylistExportService
-from ...exports.m3u import write_m3u
+from ...exports.m3u import playlist_output_path, write_m3u
 from ...integrations.lidarr import LidarrClient
 from ..presentation import WebUI
 
@@ -37,17 +37,7 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
                 [entry.result for entry in entries],
                 path_mappings,
             )
-            safe_name = (
-                "".join(
-                    character if character.isalnum() or character in "-_" else "-"
-                    for character in imported.playlist_name
-                ).strip("-")
-                or "playlist"
-            )
-            output = (
-                config.output_dir
-                / f"{imported.source}_{safe_name}_{imported.source_playlist_id}.m3u8"
-            )
+            output = playlist_output_path(config.output_dir, imported.playlist_name)
             write_m3u(output, export)
             repository.record_playlist_export(
                 import_id,
