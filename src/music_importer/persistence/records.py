@@ -53,11 +53,23 @@ class ManualMatchSuggestion:
 
 
 @dataclass(frozen=True, slots=True)
+class PlaylistChange:
+    state: str
+    old_position: int | None
+    new_position: int | None
+    old_track: SourceTrack | None
+    new_track: SourceTrack | None
+    changed_fields: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class PlaylistUpdate:
     added: int
     removed: int
+    updated: int
     moved: int
     unchanged: int
+    changes: tuple[PlaylistChange, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,5 +78,13 @@ class PlaylistRevision:
     created_at: str
     added: int
     removed: int
+    updated: int
     moved: int
     unchanged: int
+
+
+@dataclass(frozen=True, slots=True)
+class MappingOverrideCandidate:
+    target: StoredEntry
+    source: StoredEntry | None
+    status: str

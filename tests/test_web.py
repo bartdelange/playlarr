@@ -136,12 +136,62 @@ class WebShellTests(unittest.TestCase):
         self.assertEqual(preview_start.status_code, 303)
         self.assertIn("1</strong> added", preview.text)
         self.assertIn("1</strong> removed", preview.text)
+        self.assertIn('data-state="added"', preview.text)
+        self.assertIn('data-state="removed"', preview.text)
+        self.assertNotIn("Stored snapshot", preview.text)
         self.assertEqual(applied.status_code, 303)
         self.assertEqual(applied.headers["location"], f"/jobs/{job_id}")
         self.assertEqual(job_status, "completed")
         self.assertEqual(app.state.context.sources["spotify"].entry_reads, 1)
         self.assertEqual([entry.track.source_track_id for entry in entries], ["added", "kept"])
         self.assertIn("Playlist refresh history (1)", detail.text)
+
+    def test_mapping_override_page_previews_and_applies_selected_isrc_matches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            source_import = repository.create_import(PlaylistInfo("spotify", "source", "A"))
+            target_import = repository.create_import(PlaylistInfo("tidal", "target", "B"))
+            repository.replace_tracks(
+                source_import.id,
+                [SourceTrack("spotify", "one", "Source", ("Artist",), "Album", isrc="MATCH")],
+            )
+            repository.replace_tracks(
+                target_import.id,
+                [SourceTrack("tidal", "two", "Target", ("Artist",), "Album", isrc="MATCH")],
+            )
+            source_entry = repository.entries(source_import.id)[0]
+            target_entry = repository.entries(target_import.id)[0]
+            repository.save_manual_resolution(
+                source_entry.id,
+                MusicBrainzResult(
+                    resolved_via="manual_mbid",
+                    recording_title="Mapped title",
+                    recording_ids=("recording",),
+                ),
+                method="manual_mbid",
+                validation_status="valid",
+            )
+            client = TestClient(create_app(config(directory), repository))
+
+            preview = client.get(
+                f"/imports/{target_import.id}/mapping-overrides",
+                params={"source_import_id": source_import.id},
+            )
+            applied = client.post(
+                f"/imports/{target_import.id}/mapping-overrides",
+                data={
+                    "source_import_id": source_import.id,
+                    "target_entry_ids": str(target_entry.id),
+                },
+                follow_redirects=False,
+            )
+            saved = repository.entry(target_entry.id)
+
+        self.assertIn("Overrides existing", preview.text)
+        self.assertIn("Accepted and ignored", preview.text)
+        self.assertIn("Mapped title", preview.text)
+        self.assertEqual(applied.status_code, 303)
+        self.assertEqual(saved.result.recording_ids, ("recording",))
 
     def test_failed_playlist_update_job_stays_on_error_page(self):
         class Source:

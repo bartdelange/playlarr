@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .timestamps import now
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 class DatabaseRepository:
@@ -195,6 +195,17 @@ class DatabaseRepository:
                     ALTER TABLE jobs ADD COLUMN result_json TEXT;
                     PRAGMA user_version = 6;
                 """)
+                version = 6
+            if version < 7:
+                revisions = db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'playlist_revisions'"
+                ).fetchone()
+                if revisions is not None:
+                    db.execute(
+                        "ALTER TABLE playlist_revisions "
+                        "ADD COLUMN updated INTEGER NOT NULL DEFAULT 0"
+                    )
+                db.execute("PRAGMA user_version = 7")
             db.execute(
                 "UPDATE jobs SET status = 'interrupted', updated_at = ? WHERE status = 'running'",
                 (now(),),

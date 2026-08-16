@@ -171,6 +171,7 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
             library_availability=library_availability_by_position,
             library_availability_counts=library_availability_counts,
             revisions=repository.playlist_revisions(import_id),
+            mapping_source_count=sum(item.id != import_id for item in repository.list_imports()),
         )
 
     @app.post("/imports/{import_id}/resolve")

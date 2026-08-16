@@ -54,7 +54,7 @@ class ImportRepositoryTests(unittest.TestCase):
                     "SELECT result_json FROM jobs WHERE id = 'job'"
                 ).fetchone()[0]
 
-        self.assertEqual(version, 6)
+        self.assertEqual(version, 7)
         self.assertEqual(json.loads(result_json), {"source": "spotify"})
 
     def test_import_survives_restart_and_preserves_order_and_duplicates(self):
@@ -240,6 +240,75 @@ class ImportRepositoryTests(unittest.TestCase):
         self.assertEqual(updated_name, "New Mix")
         self.assertEqual(len(revisions), 1)
         self.assertEqual((revisions[0].added, revisions[0].removed), (1, 1))
+
+    def test_playlist_update_detects_and_applies_metadata_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.repository(directory)
+            imported = repository.create_import(PlaylistInfo("tidal", "playlist", "Mix"))
+            repository.replace_tracks(
+                imported.id,
+                [SourceTrack("tidal", "old-id", "Old title", ("Artist",), "Album", isrc="ISRC")],
+            )
+            current = [
+                AcquiredTrack(
+                    0,
+                    SourceTrack("tidal", "new-id", "New title", ("Artist",), "Album", isrc="ISRC"),
+                )
+            ]
+
+            preview = repository.preview_playlist_update(imported.id, current)
+            repository.apply_playlist_update(
+                imported.id, PlaylistInfo("tidal", "playlist", "Mix"), current
+            )
+            saved = repository.entries(imported.id)[0]
+
+        self.assertEqual((preview.added, preview.removed, preview.updated), (0, 0, 1))
+        self.assertEqual(preview.changes[0].state, "updated")
+        self.assertEqual(preview.changes[0].changed_fields, ("title",))
+        self.assertEqual(saved.track.title, "New title")
+
+    def test_bulk_mapping_override_uses_exact_isrc_and_selected_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.repository(directory)
+            source_import = repository.create_import(PlaylistInfo("spotify", "source", "A"))
+            target_import = repository.create_import(PlaylistInfo("tidal", "target", "B"))
+            repository.replace_tracks(
+                source_import.id,
+                [SourceTrack("spotify", "one", "Source", ("Artist",), "Album", isrc="MATCH")],
+            )
+            repository.replace_tracks(
+                target_import.id,
+                [
+                    SourceTrack("tidal", "two", "Target", ("Artist",), "Album", isrc="MATCH"),
+                    SourceTrack("tidal", "three", "Other", ("Artist",), "Album", isrc="OTHER"),
+                ],
+            )
+            source_entry = repository.entries(source_import.id)[0]
+            target_entries = repository.entries(target_import.id)
+            repository.save_manual_resolution(
+                source_entry.id,
+                MusicBrainzResult(
+                    resolved_via="manual_mbid",
+                    recording_title="Mapped title",
+                    recording_ids=("recording",),
+                    release_group_ids=("group",),
+                ),
+                method="manual_mbid",
+                validation_status="valid",
+            )
+
+            candidates = repository.mapping_override_candidates(target_import.id, source_import.id)
+            applied = repository.apply_mapping_overrides(
+                target_import.id, source_import.id, {target_entries[0].id}
+            )
+            saved = repository.entries(target_import.id)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].status, "will_map")
+        self.assertEqual(applied, 1)
+        self.assertEqual(saved[0].result.recording_ids, ("recording",))
+        self.assertEqual(saved[0].resolution_method, "reused_manual")
+        self.assertFalse(saved[1].result.resolved_via)
 
     def test_settings_survive_restart(self):
         with tempfile.TemporaryDirectory() as directory:

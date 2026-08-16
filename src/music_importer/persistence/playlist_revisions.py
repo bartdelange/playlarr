@@ -4,11 +4,26 @@ import json
 import uuid
 
 from ..domain.models import AcquiredTrack, PlaylistInfo
-from .records import PlaylistRevision, PlaylistUpdate, StoredEntry
+from .records import PlaylistChange, PlaylistRevision, PlaylistUpdate, StoredEntry
 from .timestamps import now
 
 
 class PlaylistRevisionsRepository:
+    @staticmethod
+    def _changed_fields(old: StoredEntry, new: AcquiredTrack) -> tuple[str, ...]:
+        fields = {
+            "title": (old.track.title, new.track.title),
+            "artists": (old.track.artists, new.track.artists),
+            "album": (old.track.album, new.track.album),
+            "ISRC": (old.track.isrc, new.track.isrc),
+            "duration": (old.track.duration_ms, new.track.duration_ms),
+            "availability": (
+                old.resolution_method == "source_skip",
+                bool(new.skip_reason),
+            ),
+        }
+        return tuple(name for name, values in fields.items() if values[0] != values[1])
+
     @staticmethod
     def _match_update(old_entries: list[StoredEntry], new_entries: list[AcquiredTrack]):
         """Match duplicate playlist occurrences without collapsing them."""
@@ -38,9 +53,51 @@ class PlaylistRevisionsRepository:
     ) -> PlaylistUpdate:
         old_entries = self.entries(import_id)
         matches, removed = self._match_update(old_entries, entries)
-        moved = sum(old.position != entries[index].position for index, old in matches.items())
+        changes: list[PlaylistChange] = []
+        updated = moved = unchanged = 0
+        for index, acquired in enumerate(entries):
+            old = matches.get(index)
+            if old is None:
+                changes.append(
+                    PlaylistChange("added", None, acquired.position, None, acquired.track)
+                )
+                continue
+            changed_fields = self._changed_fields(old, acquired)
+            if changed_fields:
+                state = "updated"
+                updated += 1
+            elif old.position != acquired.position:
+                state = "moved"
+                moved += 1
+            else:
+                state = "unchanged"
+                unchanged += 1
+            changes.append(
+                PlaylistChange(
+                    state,
+                    old.position,
+                    acquired.position,
+                    old.track,
+                    acquired.track,
+                    changed_fields,
+                )
+            )
+        changes.extend(
+            PlaylistChange("removed", old.position, None, old.track, None) for old in removed
+        )
+        changes.sort(
+            key=lambda item: (
+                item.new_position if item.new_position is not None else item.old_position or 0,
+                item.state == "removed",
+            )
+        )
         return PlaylistUpdate(
-            len(entries) - len(matches), len(removed), moved, len(matches) - moved
+            len(entries) - len(matches),
+            len(removed),
+            updated,
+            moved,
+            unchanged,
+            tuple(changes),
         )
 
     def apply_playlist_update(
@@ -48,12 +105,7 @@ class PlaylistRevisionsRepository:
     ) -> PlaylistUpdate:
         old_entries = self.entries(import_id)
         matches, removed = self._match_update(old_entries, entries)
-        summary = PlaylistUpdate(
-            len(entries) - len(matches),
-            len(removed),
-            sum(old.position != entries[index].position for index, old in matches.items()),
-            sum(old.position == entries[index].position for index, old in matches.items()),
-        )
+        summary = self.preview_playlist_update(import_id, entries)
         timestamp = now()
 
         def snapshot(items):
@@ -164,7 +216,7 @@ class PlaylistRevisionsRepository:
             db.execute(
                 """INSERT INTO playlist_revisions
                 (id, import_id, created_at, before_json, after_json,
-                 added, removed, moved, unchanged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 added, removed, updated, moved, unchanged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     str(uuid.uuid4()),
                     import_id,
@@ -173,6 +225,7 @@ class PlaylistRevisionsRepository:
                     json.dumps(snapshot(entries)),
                     summary.added,
                     summary.removed,
+                    summary.updated,
                     summary.moved,
                     summary.unchanged,
                 ),
@@ -182,7 +235,7 @@ class PlaylistRevisionsRepository:
     def playlist_revisions(self, import_id: str) -> list[PlaylistRevision]:
         with self.connect() as db:
             rows = db.execute(
-                """SELECT id, created_at, added, removed, moved, unchanged
+                """SELECT id, created_at, added, removed, updated, moved, unchanged
                 FROM playlist_revisions WHERE import_id = ? ORDER BY created_at DESC""",
                 (import_id,),
             ).fetchall()
@@ -192,6 +245,7 @@ class PlaylistRevisionsRepository:
                 row["created_at"],
                 row["added"],
                 row["removed"],
+                row["updated"],
                 row["moved"],
                 row["unchanged"],
             )
@@ -214,6 +268,7 @@ class PlaylistRevisionsRepository:
             "after": json.loads(row["after_json"]),
             "added": row["added"],
             "removed": row["removed"],
+            "updated": row["updated"],
             "moved": row["moved"],
             "unchanged": row["unchanged"],
         }

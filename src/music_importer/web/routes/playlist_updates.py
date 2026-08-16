@@ -121,7 +121,7 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
                 job_id, current=1, current_item="Applying the approved playlist update"
             )
             update = repository.preview_playlist_update(import_id, entries)
-            if update.added or update.removed or update.moved:
+            if update.added or update.removed or update.updated or update.moved:
                 repository.apply_playlist_update(import_id, playlist, entries)
             repository.update_job(job_id, current=2, current_item="Playlist update complete")
 
