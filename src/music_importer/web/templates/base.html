@@ -1,14 +1,40 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Playlarr{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
-</head>
-<body>
-  <header><a class="brand" href="/">Playlarr</a><nav><a href="/imports/new">New Import</a><a href="/jobs">Background Jobs</a><a href="/settings">Settings</a>{% if authorization_enabled and csrf_token %}<form method="post" action="/logout" class="inline"><button class="link-button">Log out</button></form>{% endif %}</nav></header>
-  <main>{% block content %}{% endblock %}</main>
-  {% if csrf_token %}<script>document.querySelectorAll('form[method="post"]').forEach(form=>{if(!form.querySelector('input[name="csrf_token"]')){const input=document.createElement('input');input.type='hidden';input.name='csrf_token';input.value={{ csrf_token|tojson }};form.appendChild(input)}})</script>{% endif %}
-</body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Playlarr{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Playlarr</a>
+      <nav>
+        <a href="/imports/new">New Import</a>
+        <a href="/jobs">Background Jobs</a>
+        <a href="/settings">Settings</a>
+        {% if authorization_enabled and csrf_token %}
+          <form method="post" action="/logout" class="inline">
+            <button class="link-button">Log out</button>
+          </form>
+        {% endif %}
+      </nav>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    {% if csrf_token %}
+      <script>
+        document.querySelectorAll('form[method="post"]').forEach(form => {
+        if (!form.querySelector('input[name="csrf_token"]')) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'csrf_token';
+          input.value = {{ csrf_token|tojson }};
+          form.appendChild(input);
+        }
+        });
+      </script>
+    {% endif %}
+  </body>
 </html>

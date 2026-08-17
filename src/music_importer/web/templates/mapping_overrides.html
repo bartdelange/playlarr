@@ -1,14 +1,119 @@
 {% extends "base.html" %}
 {% block title %}Reuse mappings · {{ imported.playlist_name }}{% endblock %}
 {% block content %}
-<p class="eyebrow">Bulk mapping reuse</p><h1>Reuse mappings in {{ imported.playlist_name }}</h1>
-<section class="card"><h2>Choose a source import</h2><p>Only exact, non-empty ISRC matches are considered. Nothing changes until you review and apply the selected rows.</p><form method="get"><select name="source_import_id" required><option value="">Select an import…</option>{% for source in sources %}<option value="{{ source.id }}" {{ 'selected' if selected_source and source.id == selected_source.id else '' }}>{{ source.playlist_name }} · {{ source.source }}</option>{% endfor %}</select><button>Compare mappings</button></form></section>
-{% if selected_source %}<form method="post" action="/imports/{{ imported.id }}/mapping-overrides"><input type="hidden" name="source_import_id" value="{{ selected_source.id }}">
-<div class="mapping-filters"><input id="override-search" placeholder="Filter by title, artist, album, or ISRC…" oninput="filterOverrides()"><select id="selection-filter" onchange="filterOverrides()"><option value="all">Accepted and ignored</option><option value="accepted">Accepted</option><option value="ignored">Ignored</option></select><select id="override-state-filter" onchange="filterOverrides()"><option value="all">All mapping states</option><option value="will_override">Overrides existing</option><option value="will_map">Maps unresolved</option><option value="already_same">Already the same</option><option value="conflict">Conflicting source mappings</option></select><span id="override-count" class="muted"></span></div>
-<div class="table-wrap"><table><thead><tr><th>Accept</th><th>Target track</th><th>Current mapping</th><th>Mapping from {{ selected_source.playlist_name }}</th><th>Status</th></tr></thead><tbody id="override-rows">
-{% for candidate in candidates %}<tr data-state="{{ candidate.status }}" data-search="{{ (candidate.target.track.title ~ ' ' ~ candidate.target.track.artists|join(' ') ~ ' ' ~ candidate.target.track.album ~ ' ' ~ candidate.target.track.isrc)|lower }}"><td><input class="checkbox override-checkbox" type="checkbox" name="target_entry_ids" value="{{ candidate.target.id }}" {{ 'checked' if candidate.status in ['will_override','will_map'] else 'disabled' }} onchange="filterOverrides()"></td><td><strong>{{ candidate.target.track.title }}</strong><small>{{ candidate.target.track.artists|join(', ') }} · {{ candidate.target.track.isrc }}</small></td><td>{{ candidate.target.result.recording_title or 'Not mapped' }}<small>{{ candidate.target.result.recording_ids|join(', ') }}</small></td><td><strong>{{ candidate.source.result.recording_title }}</strong><small>{{ candidate.source.result.artist_names|join(', ') }} · {{ candidate.source.result.recording_ids|join(', ') }}</small></td><td><span class="badge">{{ candidate.status|replace('_',' ') }}</span>{% if candidate.status == 'conflict' %}<small>Source import has different mappings for this ISRC; resolve it there first.</small>{% endif %}</td></tr>{% endfor %}
-</tbody></table></div><div class="actions mapping-override-actions"><button>Apply selected overrides</button><a class="button secondary" href="/imports/{{ imported.id }}?stage=match">Cancel</a></div></form>
-{% if not candidates %}<p class="empty">No exact ISRC matches with resolved source mappings were found.</p>{% endif %}
-<script>function filterOverrides(){const q=document.getElementById('override-search').value.toLowerCase(),selection=document.getElementById('selection-filter').value,state=document.getElementById('override-state-filter').value;let visible=0,accepted=0;document.querySelectorAll('#override-rows tr').forEach(row=>{const checkbox=row.querySelector('.override-checkbox'),isAccepted=checkbox.checked,selectionMatch=selection==='all'||selection==='accepted'&&isAccepted||selection==='ignored'&&!isAccepted,stateMatch=state==='all'||row.dataset.state===state,show=selectionMatch&&stateMatch&&row.dataset.search.includes(q);row.hidden=!show;if(show)visible++;if(isAccepted)accepted++});document.getElementById('override-count').textContent=visible+' shown · '+accepted+' accepted'}filterOverrides()</script>
-{% endif %}
+  <p class="eyebrow">Bulk mapping reuse</p>
+  <h1>Reuse mappings in {{ imported.playlist_name }}</h1>
+  <section class="card">
+    <h2>Choose a source import</h2>
+    <p>Only exact, non-empty ISRC matches are considered. Nothing changes until you review and apply the selected rows.</p>
+    <form method="get">
+      <select name="source_import_id" required>
+        <option value="">Select an import…</option>
+        {% for source in sources %}
+          <option value="{{ source.id }}" {{ 'selected' if selected_source and source.id == selected_source.id else '' }}>
+            {{ source.playlist_name }} · {{ source.source }}
+          </option>
+        {% endfor %}
+      </select>
+      <button>Compare mappings</button>
+    </form>
+  </section>
+  {% if selected_source %}
+    <form method="post" action="/imports/{{ imported.id }}/mapping-overrides">
+      <input type="hidden" name="source_import_id" value="{{ selected_source.id }}" />
+      <div class="mapping-filters">
+        <input id="override-search" placeholder="Filter by title, artist, album, or ISRC…" oninput="filterOverrides()" />
+        <select id="selection-filter" onchange="filterOverrides()">
+          <option value="all">Accepted and ignored</option>
+          <option value="accepted">Accepted</option>
+          <option value="ignored">Ignored</option>
+        </select>
+        <select id="override-state-filter" onchange="filterOverrides()">
+          <option value="all">All mapping states</option>
+          <option value="will_override">Overrides existing</option>
+          <option value="will_map">Maps unresolved</option>
+          <option value="already_same">Already the same</option>
+          <option value="conflict">Conflicting source mappings</option>
+        </select>
+        <span id="override-count" class="muted"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Accept</th>
+              <th>Target track</th>
+              <th>Current mapping</th>
+              <th>Mapping from {{ selected_source.playlist_name }}</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="override-rows">
+            {% for candidate in candidates %}
+              {% set search_text = candidate.target.track.title
+                ~ ' ' ~ candidate.target.track.artists|join(' ')
+                ~ ' ' ~ candidate.target.track.album
+                ~ ' ' ~ candidate.target.track.isrc %}
+              <tr data-state="{{ candidate.status }}" data-search="{{ search_text|lower }}">
+                <td>
+                  <input
+                    class="checkbox override-checkbox"
+                    type="checkbox"
+                    name="target_entry_ids"
+                    value="{{ candidate.target.id }}"
+                    {{ 'checked' if candidate.status in ['will_override','will_map'] else 'disabled' }}
+                    onchange="filterOverrides()"
+                  />
+                </td>
+                <td>
+                  <strong>{{ candidate.target.track.title }}</strong>
+                  <small>{{ candidate.target.track.artists|join(", ") }} · {{ candidate.target.track.isrc }}</small>
+                </td>
+                <td>
+                  {{ candidate.target.result.recording_title or 'Not mapped' }}
+                  <small>{{ candidate.target.result.recording_ids|join(", ") }}</small>
+                </td>
+                <td>
+                  <strong>{{ candidate.source.result.recording_title }}</strong>
+                  <small>{{ candidate.source.result.artist_names|join(", ") }} · {{ candidate.source.result.recording_ids|join(", ") }}</small>
+                </td>
+                <td>
+                  <span class="badge">{{ candidate.status|replace('_', ' ') }}</span>
+                  {% if candidate.status == 'conflict' %}
+                    <small>Source import has different mappings for this ISRC; resolve it there first.</small>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="actions mapping-override-actions">
+        <button>Apply selected overrides</button>
+        <a class="button secondary" href="/imports/{{ imported.id }}?stage=match">Cancel</a>
+      </div>
+    </form>
+    {% if not candidates %}<p class="empty">No exact ISRC matches with resolved source mappings were found.</p>{% endif %}
+    <script>
+      function filterOverrides() {
+        const q = document.getElementById("override-search").value.toLowerCase(),
+          selection = document.getElementById("selection-filter").value,
+          state = document.getElementById("override-state-filter").value;
+        let visible = 0,
+          accepted = 0;
+        document.querySelectorAll("#override-rows tr").forEach((row) => {
+          const checkbox = row.querySelector(".override-checkbox"),
+            isAccepted = checkbox.checked,
+            selectionMatch = selection === "all" || (selection === "accepted" && isAccepted) || (selection === "ignored" && !isAccepted),
+            stateMatch = state === "all" || row.dataset.state === state,
+            show = selectionMatch && stateMatch && row.dataset.search.includes(q);
+          row.hidden = !show;
+          if (show) visible++;
+          if (isAccepted) accepted++;
+        });
+        document.getElementById("override-count").textContent = visible + " shown · " + accepted + " accepted";
+      }
+      filterOverrides();
+    </script>
+  {% endif %}
 {% endblock %}

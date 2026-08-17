@@ -1,68 +1,279 @@
 {% extends "base.html" %}
 {% block title %}{{ imported.playlist_name }} · Playlarr{% endblock %}
 {% block content %}
-{% include "_playlist_header.html" %}
-{% include "_workflow_steps.html" %}
-
-<div class="step-actions">
-  <div>
-    <p class="eyebrow">Current step</p>
-    <h2>{{ 'Final' if workflow_step == 3 else 'Music match' }}</h2>
+  {% include "_playlist_header.html" %}
+  {% include "_workflow_steps.html" %}
+  <div class="step-actions">
+    <div>
+      <p class="eyebrow">Current step</p>
+      <h2>{{ 'Final' if workflow_step == 3 else 'Music match' }}</h2>
+    </div>
+    <div class="actions">
+      {% if workflow_step == 1 %}
+        {% if has_resolvable %}
+          <form method="post" action="/imports/{{ imported.id }}/resolve">
+            <button>Resolve {{ resolvable_count }} tracks</button>
+          </form>
+        {% endif %}
+        {% if review_count %}<a class="button secondary" href="/imports/{{ imported.id }}/review">Review {{ review_count }} tracks</a>{% endif %}
+        {% if can_plan %}<a class="button secondary" href="/imports/{{ imported.id }}?stage=lidarr">Open Lidarr plan</a>{% endif %}
+      {% else %}
+        {% if can_refresh %}
+          <form method="post" action="/imports/{{ imported.id }}/library-status">
+            <button>Refresh monitored &amp; downloaded</button>
+          </form>
+        {% endif %}
+        <a class="button secondary" href="/imports/{{ imported.id }}/local-additions">
+          Local additions{% if local_additions %}({{ local_additions|length }}){% endif %}
+        </a>
+        {% if can_generate %}
+          <form method="post" action="/imports/{{ imported.id }}/playlist">
+            <button class="secondary">Export M3U</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
   </div>
-  <div class="actions">
-    {% if workflow_step == 1 %}
-      {% if has_resolvable %}<form method="post" action="/imports/{{ imported.id }}/resolve"><button>Resolve {{ resolvable_count }} tracks</button></form>{% endif %}
-      {% if review_count %}<a class="button secondary" href="/imports/{{ imported.id }}/review">Review {{ review_count }} tracks</a>{% endif %}
-      {% if can_plan %}<a class="button secondary" href="/imports/{{ imported.id }}?stage=lidarr">Open Lidarr plan</a>{% endif %}
+  {% if workflow_step == 1 %}
+    {% if pending_count %}
+      <div class="next-step">
+        <strong>{{ pending_count }} tracks are waiting for matching.</strong>
+        <span>Run automatic MusicBrainz matching, then review the result.</span>
+      </div>
+    {% elif review_count %}
+      <div class="next-step">
+        <strong>{{ review_count }} tracks need a decision.</strong>
+        <span>Match or skip them before continuing to Lidarr.</span>
+      </div>
     {% else %}
-      {% if can_refresh %}<form method="post" action="/imports/{{ imported.id }}/library-status"><button>Refresh monitored &amp; downloaded</button></form>{% endif %}
-      <a class="button secondary" href="/imports/{{ imported.id }}/local-additions">Local additions{% if local_additions %} ({{ local_additions|length }}){% endif %}</a>
-      {% if can_generate %}<form method="post" action="/imports/{{ imported.id }}/playlist"><button class="secondary">Export M3U</button></form>{% endif %}
+      <div class="next-step">
+        <strong>Music matching is complete.</strong>
+        <span>Review any track below or continue to the Lidarr plan.</span>
+      </div>
+    {% endif %}
+  {% elif has_unapplied_lidarr_plan %}
+    <div class="next-step">
+      <div>
+        <strong>There are unapplied Lidarr changes.</strong>
+        <span>This Final view is provisional. Apply the active Lidarr plan, then refresh monitored and downloaded status.</span>
+      </div>
+      <a class="button" href="/plans/{{ lidarr_plan_id }}">Open Lidarr plan</a>
+    </div>
+  {% elif latest_export %}
+    <div class="card playlist-result">
+      <div>
+        <p class="eyebrow">Latest M3U</p>
+        <h2>{{ latest_export.output_path }}</h2>
+        <p>{{ latest_export.written_tracks }} exported · {{ latest_export.missing_tracks }} missing</p>
+      </div>
+      <span class="status ok">Ready</span>
+    </div>
+  {% endif %}
+  {% if imported.last_error %}<div class="alert">{{ imported.last_error }}</div>{% endif %}
+  {% if revisions %}
+    <details class="history">
+      <summary>Playlist refresh history ({{ revisions|length }})</summary>
+      {% for revision in revisions %}
+        <p>
+          <a href="/imports/{{ imported.id }}/revisions/{{ revision.id }}">{{ revision.created_at }}</a>
+          · {{ revision.added }} added · {{ revision.updated }} updated · {{ revision.removed }} removed · {{ revision.moved }} moved
+        </p>
+      {% endfor %}
+    </details>
+  {% endif %}
+  <div class="filters">
+    <button class="active" onclick="filterRows('all',this)">
+      All
+      {% if workflow_step == 3 %}
+        ({{ library_availability_counts.downloaded + library_availability_counts.downloadable + library_availability_counts.not_downloadable }})
+      {% endif %}
+    </button>
+    {% if workflow_step == 3 %}
+      <button onclick="filterRows('downloaded',this)">Downloaded ({{ library_availability_counts.downloaded }})</button>
+      <button onclick="filterRows('downloadable',this)">Missing but downloadable ({{ library_availability_counts.downloadable }})</button>
+      <button onclick="filterRows('not_downloadable',this)">Not downloadable ({{ library_availability_counts.not_downloadable }})</button>
+    {% else %}
+      <button onclick="filterRows('review',this)">Needs review</button>
+      <button onclick="filterRows('automatic',this)">Automatic</button>
+      <button onclick="filterRows('manual',this)">Manual</button>
     {% endif %}
   </div>
-</div>
+  <p id="filter-empty" class="empty-filter" hidden>No tracks in this filter.</p>
+  <details class="column-picker">
+    <summary>Choose visible columns</summary>
+    <div id="column-options"></div>
+  </details>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Status</th>
+          <th>Source track</th>
+          {% if workflow_step == 1 %}
+            <th>Matched recording</th>
+            <th>Method</th>
+          {% else %}
+            <th>Lidarr matched</th>
+            <th>Library state</th>
+          {% endif %}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+          {% set library_item = library.get(entry.position) %}
+          {% set availability = library_availability.get(entry.position) %}
+          {% set executed = execution_context.get(entry.position, []) %}
+          {% set lidarr_match = lidarr_matches.get(entry.position) %}
+          <tr
+            data-state="{{ entry.resolution_state }}"
+            data-manual="{{ 1 if entry.is_manual else 0 }}"
+            data-availability="{{ availability or 'not_refreshed' }}"
+          >
+            <td>{{ entry.position + 1 }}</td>
+            <td><span class="badge">{{ entry.resolution_state|replace('_', ' ') }}</span></td>
+            <td>
+              <strong>{{ entry.track.title }}</strong>
+              <small>{{ entry.track.artists|join(", ") }}{% if entry.track.album %} · {{ entry.track.album }}{% endif %}</small>
+            </td>
+            {% if workflow_step == 1 %}
+              <td>
+                <strong>{{ entry.result.recording_title or 'Not matched' }}</strong>
+                <small>{{ entry.result.artist_names|join(", ") }}</small>
+              </td>
+              <td>{{ entry.resolution_method or '—' }}</td>
+            {% else %}
+              <td>
+                {% if lidarr_match %}
+                  <div class="matched-lidarr-track">
+                    <span class="eyebrow">Matched Lidarr track</span>
+                    <strong>{{ lidarr_match.track.title or entry.track.title }}</strong>
+                    <small>
+                      {% if lidarr_match.track.track_number %}Track {{ lidarr_match.track.track_number }} ·{% endif %}
+                      {% if lidarr_match.track.foreign_recording_id %}
+                        <a href="https://musicbrainz.org/recording/{{ lidarr_match.track.foreign_recording_id }}" target="_blank" rel="noreferrer">
+                          Recording {{ lidarr_match.track.foreign_recording_id }}
+                        </a>
+                        ·
+                      {% endif %}{{ 'Exact recording ID' if lidarr_match.track.match_method == 'recording_id' else 'Normalized title fallback' }}
+                      ·
+                      {{ 'File downloaded' if lidarr_match.track.has_file else 'No file' }}{% if lidarr_match.track.track_file_id %}
+                        · Lidarr file {{ lidarr_match.track.track_file_id }}
+                      {% endif %}
+                    </small>
+                    {% if lidarr_match.release_group_id %}
+                      <small>
+                        {% if config.lidarr_url %}
+                          <a href="{{ config.lidarr_url }}/album/{{ lidarr_match.release_group_id }}" target="_blank" rel="noreferrer">
+                            {{ lidarr_match.album_title or entry.track.album or 'Lidarr release' }}
+                          </a>
+                        {% else %}
+                          {{ lidarr_match.album_title or entry.track.album }}
+                        {% endif %}
+                      </small>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <span class="muted">No matched Lidarr track</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if library_item %}
+                  <span class="status {{ 'ok' if availability == 'downloaded' else 'attention' }}">
+                    {% if availability == 'downloaded' %}
+                      Downloaded
+                    {% elif availability == 'downloadable' %}
+                      Missing but downloadable
+                    {% else %}
+                      Not downloadable
+                    {% endif %}
+                  </span>
+                  {% if availability == 'downloaded' and library_item[1] %}
+                    <small>{{ library_item[1] }}</small>
+                  {% else %}
+                    <small>
+                      {% if executed|selectattr('reason','equalto','various_artists_album')|list %}
+                        Not added: selected release is a Various Artists compilation excluded by the safety policy.
+                      {% elif library_item[0] == 'release_monitored_missing' %}
+                        Release exists and is monitored, but this recording has not downloaded yet.
+                      {% elif library_item[0] == 'release_unmonitored_missing' %}
+                        Release exists but is unmonitored and this recording has no file.
+                      {% elif library_item[0] == 'release_missing' %}
+                        Selected release is not currently present in Lidarr.
+                      {% elif library_item[0] == 'artist_missing' %}
+                        Artist is not currently present in Lidarr.
+                      {% else %}
+                        {{ library_item[0]|replace('_', ' ') }}
+                      {% endif %}
+                    </small>
+                    {% for action in executed %}
+                      {% if action.outcome == 'failed'
+                        or action.reason == 'various_artists_album'
+                        or action.action in ['create_release','monitor_release','queue_search'] %}
+                      <small class="execution-note">
+                        <strong>{{ action.action|replace('_', ' ') }}: {{ action.outcome }}</strong>
+                        {% if action.details %}
+                          — {{ action.details|replace('_', ' ') }}
+                        {% elif action.reason %}
+                          — {{ action.reason|replace('_', ' ') }}
+                        {% endif %}
+                      </small>
+                      {% endif %}
+                    {% endfor %}
+                  {% endif %}
+                {% else %}
+                  <span class="status attention">Not refreshed</span>
+                {% endif %}
+              </td>
+            {% endif %}
+            <td><a href="/entries/{{ entry.id }}/review">Review</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script>
+    const importTable = document.querySelector(".column-picker + .table-wrap table");
 
-{% if workflow_step == 1 %}
-  {% if pending_count %}<div class="next-step"><strong>{{ pending_count }} tracks are waiting for matching.</strong><span>Run automatic MusicBrainz matching, then review the result.</span></div>{% elif review_count %}<div class="next-step"><strong>{{ review_count }} tracks need a decision.</strong><span>Match or skip them before continuing to Lidarr.</span></div>{% else %}<div class="next-step"><strong>Music matching is complete.</strong><span>Review any track below or continue to the Lidarr plan.</span></div>{% endif %}
-{% elif has_unapplied_lidarr_plan %}
-  <div class="next-step"><div><strong>There are unapplied Lidarr changes.</strong><span>This Final view is provisional. Apply the active Lidarr plan, then refresh monitored and downloaded status.</span></div><a class="button" href="/plans/{{ lidarr_plan_id }}">Open Lidarr plan</a></div>
-{% elif latest_export %}
-  <div class="card playlist-result"><div><p class="eyebrow">Latest M3U</p><h2>{{ latest_export.output_path }}</h2><p>{{ latest_export.written_tracks }} exported · {{ latest_export.missing_tracks }} missing</p></div><span class="status ok">Ready</span></div>
-{% endif %}
-
-{% if imported.last_error %}<div class="alert">{{ imported.last_error }}</div>{% endif %}
-{% if revisions %}<details class="history"><summary>Playlist refresh history ({{ revisions|length }})</summary>{% for revision in revisions %}<p><a href="/imports/{{ imported.id }}/revisions/{{ revision.id }}">{{ revision.created_at }}</a> · {{ revision.added }} added · {{ revision.updated }} updated · {{ revision.removed }} removed · {{ revision.moved }} moved</p>{% endfor %}</details>{% endif %}
-
-<div class="filters">
-  <button class="active" onclick="filterRows('all',this)">All{% if workflow_step == 3 %} ({{ library_availability_counts.downloaded + library_availability_counts.downloadable + library_availability_counts.not_downloadable }}){% endif %}</button>
-  {% if workflow_step == 3 %}
-    <button onclick="filterRows('downloaded',this)">Downloaded ({{ library_availability_counts.downloaded }})</button>
-    <button onclick="filterRows('downloadable',this)">Missing but downloadable ({{ library_availability_counts.downloadable }})</button>
-    <button onclick="filterRows('not_downloadable',this)">Not downloadable ({{ library_availability_counts.not_downloadable }})</button>
-  {% else %}
-    <button onclick="filterRows('review',this)">Needs review</button><button onclick="filterRows('automatic',this)">Automatic</button><button onclick="filterRows('manual',this)">Manual</button>
-  {% endif %}
-</div>
-<p id="filter-empty" class="empty-filter" hidden>No tracks in this filter.</p>
-<details class="column-picker"><summary>Choose visible columns</summary><div id="column-options"></div></details>
-<div class="table-wrap"><table><thead><tr><th>#</th><th>Status</th><th>Source track</th>{% if workflow_step == 1 %}<th>Matched recording</th><th>Method</th>{% else %}<th>Lidarr matched</th><th>Library state</th>{% endif %}<th></th></tr></thead><tbody>
-{% for entry in entries %}{% set library_item = library.get(entry.position) %}{% set availability = library_availability.get(entry.position) %}{% set executed = execution_context.get(entry.position, []) %}{% set lidarr_match = lidarr_matches.get(entry.position) %}
-<tr data-state="{{ entry.resolution_state }}" data-manual="{{ 1 if entry.is_manual else 0 }}" data-availability="{{ availability or 'not_refreshed' }}">
-  <td>{{ entry.position + 1 }}</td>
-  <td><span class="badge">{{ entry.resolution_state|replace('_',' ') }}</span></td>
-  <td><strong>{{ entry.track.title }}</strong><small>{{ entry.track.artists|join(', ') }}{% if entry.track.album %} · {{ entry.track.album }}{% endif %}</small></td>
-  {% if workflow_step == 1 %}
-    <td><strong>{{ entry.result.recording_title or 'Not matched' }}</strong><small>{{ entry.result.artist_names|join(', ') }}</small></td><td>{{ entry.resolution_method or '—' }}</td>
-  {% else %}
-    <td>{% if lidarr_match %}<div class="matched-lidarr-track"><span class="eyebrow">Matched Lidarr track</span><strong>{{ lidarr_match.track.title or entry.track.title }}</strong><small>{% if lidarr_match.track.track_number %}Track {{ lidarr_match.track.track_number }} · {% endif %}{% if lidarr_match.track.foreign_recording_id %}<a href="https://musicbrainz.org/recording/{{ lidarr_match.track.foreign_recording_id }}" target="_blank" rel="noreferrer">Recording {{ lidarr_match.track.foreign_recording_id }}</a> · {% endif %}{{ 'Exact recording ID' if lidarr_match.track.match_method == 'recording_id' else 'Normalized title fallback' }} · {{ 'File downloaded' if lidarr_match.track.has_file else 'No file' }}{% if lidarr_match.track.track_file_id %} · Lidarr file {{ lidarr_match.track.track_file_id }}{% endif %}</small>{% if lidarr_match.release_group_id %}<small>{% if config.lidarr_url %}<a href="{{ config.lidarr_url }}/album/{{ lidarr_match.release_group_id }}" target="_blank" rel="noreferrer">{{ lidarr_match.album_title or entry.track.album or 'Lidarr release' }}</a>{% else %}{{ lidarr_match.album_title or entry.track.album }}{% endif %}</small>{% endif %}</div>{% else %}<span class="muted">No matched Lidarr track</span>{% endif %}</td>
-    <td>{% if library_item %}<span class="status {{ 'ok' if availability == 'downloaded' else 'attention' }}">{% if availability == 'downloaded' %}Downloaded{% elif availability == 'downloadable' %}Missing but downloadable{% else %}Not downloadable{% endif %}</span>{% if availability == 'downloaded' and library_item[1] %}<small>{{ library_item[1] }}</small>{% else %}<small>{% if executed|selectattr('reason','equalto','various_artists_album')|list %}Not added: selected release is a Various Artists compilation excluded by the safety policy.{% elif library_item[0] == 'release_monitored_missing' %}Release exists and is monitored, but this recording has not downloaded yet.{% elif library_item[0] == 'release_unmonitored_missing' %}Release exists but is unmonitored and this recording has no file.{% elif library_item[0] == 'release_missing' %}Selected release is not currently present in Lidarr.{% elif library_item[0] == 'artist_missing' %}Artist is not currently present in Lidarr.{% else %}{{ library_item[0]|replace('_',' ') }}{% endif %}</small>{% for action in executed %}{% if action.outcome == 'failed' or action.reason == 'various_artists_album' or action.action in ['create_release','monitor_release','queue_search'] %}<small class="execution-note"><strong>{{ action.action|replace('_',' ') }}: {{ action.outcome }}</strong>{% if action.details %} — {{ action.details|replace('_',' ') }}{% elif action.reason %} — {{ action.reason|replace('_',' ') }}{% endif %}</small>{% endif %}{% endfor %}{% endif %}{% else %}<span class="status attention">Not refreshed</span>{% endif %}</td>
-  {% endif %}
-  <td><a href="/entries/{{ entry.id }}/review">Review</a></td>
-</tr>{% endfor %}
-</tbody></table></div>
-<script>
-const importTable=document.querySelector('.column-picker + .table-wrap table');
-function filterRows(f,b){let visible=0;importTable.querySelectorAll('tbody tr').forEach(r=>{const s=r.dataset.state,m=r.dataset.manual==='1',a=r.dataset.availability;const show=f==='all'||['downloaded','downloadable','not_downloadable'].includes(f)&&a===f||f==='review'&&['unresolved','ambiguous','validation_failed'].includes(s)||f==='automatic'&&s==='automatically_resolved'||f==='manual'&&m;r.hidden=!show;if(show)visible++});document.querySelectorAll('.filters button').forEach(x=>x.classList.toggle('active',x===b));document.getElementById('filter-empty').hidden=visible!==0}
-const columnOptions=document.getElementById('column-options'),columnKey='import-table-columns:{{ workflow_step }}',stored=JSON.parse(sessionStorage.getItem(columnKey)||'{}');importTable.querySelectorAll('thead th').forEach((header,index)=>{const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.className='checkbox';input.checked=stored[index]!==false;label.append(input,document.createTextNode(header.textContent.trim()||'Actions'));columnOptions.append(label);const apply=()=>{importTable.querySelectorAll('tr').forEach(row=>{if(row.children[index])row.children[index].hidden=!input.checked});stored[index]=input.checked;sessionStorage.setItem(columnKey,JSON.stringify(stored))};input.addEventListener('change',apply);apply()})
-</script>
+    function filterRows(f, b) {
+      let visible = 0;
+      importTable.querySelectorAll("tbody tr").forEach((r) => {
+        const s = r.dataset.state,
+          m = r.dataset.manual === "1",
+          a = r.dataset.availability;
+        const show =
+          f === "all" ||
+          (["downloaded", "downloadable", "not_downloadable"].includes(f) && a === f) ||
+          (f === "review" && ["unresolved", "ambiguous", "validation_failed"].includes(s)) ||
+          (f === "automatic" && s === "automatically_resolved") ||
+          (f === "manual" && m);
+        r.hidden = !show;
+        if (show) visible++;
+      });
+      document.querySelectorAll(".filters button").forEach((x) => x.classList.toggle("active", x === b));
+      document.getElementById("filter-empty").hidden = visible !== 0;
+    }
+    const columnOptions = document.getElementById("column-options"),
+      columnKey = "import-table-columns:{{ workflow_step }}",
+      stored = JSON.parse(sessionStorage.getItem(columnKey) || "{}");
+    importTable.querySelectorAll("thead th").forEach((header, index) => {
+      const label = document.createElement("label"),
+        input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "checkbox";
+      input.checked = stored[index] !== false;
+      label.append(input, document.createTextNode(header.textContent.trim() || "Actions"));
+      columnOptions.append(label);
+      const apply = () => {
+        importTable.querySelectorAll("tr").forEach((row) => {
+          if (row.children[index]) row.children[index].hidden = !input.checked;
+        });
+        stored[index] = input.checked;
+        sessionStorage.setItem(columnKey, JSON.stringify(stored));
+      };
+      input.addEventListener("change", apply);
+      apply();
+    });
+  </script>
 {% endblock %}

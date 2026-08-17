@@ -1,12 +1,19 @@
 <div class="playlist-context">
   <div>
-    <div class="playlist-meta"><span class="badge">{{ imported.source }}</span><span>{{ playlist_track_count }} tracks</span></div>
+    <div class="playlist-meta">
+      <span class="badge">{{ imported.source }}</span>
+      <span>{{ playlist_track_count }} tracks</span>
+    </div>
     <h1>{{ imported.playlist_name }}</h1>
   </div>
   <div class="actions">
     <a class="button secondary" href="/imports/{{ imported.id }}/update">Refresh playlist</a>
     {% if mapping_source_count %}<a class="button secondary" href="/imports/{{ imported.id }}/mapping-overrides">Reuse mappings</a>{% endif %}
-    <form method="post" action="/imports/{{ imported.id }}/delete" onsubmit="return confirm('Delete this import and all of its history? Generated playlist files will remain on disk.')">
+    <form
+      method="post"
+      action="/imports/{{ imported.id }}/delete"
+      onsubmit="return confirm('Delete this import and all of its history? Generated playlist files will remain on disk.')"
+    >
       <button class="secondary">Delete import</button>
     </form>
   </div>

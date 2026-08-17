@@ -12,6 +12,10 @@ from music_importer.persistence import ImportRepository
 from music_importer.web.app import create_app
 
 
+def csrf_token(html: str) -> str:
+    return re.search(r'input\.value\s*=\s*"([a-f0-9]+)"', html).group(1)
+
+
 class WebSecurityTests(unittest.TestCase):
     def app(self, directory: str):
         with patch.dict("os.environ", {"MUSICBRAINZ_USER_AGENT": "test@example.com"}, clear=True):
@@ -46,7 +50,7 @@ class WebSecurityTests(unittest.TestCase):
 
             skipped = client.post("/setup/skip", follow_redirects=False)
             dashboard = client.get("/")
-            csrf = re.search(r'input\.value="([a-f0-9]+)"', dashboard.text).group(1)
+            csrf = csrf_token(dashboard.text)
             rejected = client.post("/settings/path-mappings", data={})
             accepted = client.post(
                 "/settings/path-mappings",
@@ -75,7 +79,7 @@ class WebSecurityTests(unittest.TestCase):
                 data={"password": "long-test-password", "confirm_password": "long-test-password"},
             )
             dashboard = client.get("/")
-            csrf = re.search(r'input\.value="([a-f0-9]+)"', dashboard.text).group(1)
+            csrf = csrf_token(dashboard.text)
 
             missing = client.post("/settings/path-mappings", data={})
             cross_site = client.post(
@@ -117,7 +121,7 @@ class WebSecurityTests(unittest.TestCase):
                 data={"password": "long-test-password", "confirm_password": "long-test-password"},
             )
             dashboard = client.get("/")
-            csrf = re.search(r'input\.value="([a-f0-9]+)"', dashboard.text).group(1)
+            csrf = csrf_token(dashboard.text)
             old_session = client.cookies.get("playlarr_session")
 
             changed = client.post(
@@ -151,7 +155,7 @@ class WebSecurityTests(unittest.TestCase):
                 data={"password": "long-test-password", "confirm_password": "long-test-password"},
             )
             dashboard = client.get("/")
-            csrf = re.search(r'input\.value="([a-f0-9]+)"', dashboard.text).group(1)
+            csrf = csrf_token(dashboard.text)
 
             disabled = client.post(
                 "/settings/authorization",
@@ -161,7 +165,7 @@ class WebSecurityTests(unittest.TestCase):
             client.cookies.clear()
             direct = client.get("/")
             settings = client.get("/settings")
-            csrf = re.search(r'input\.value="([a-f0-9]+)"', settings.text).group(1)
+            csrf = csrf_token(settings.text)
             enabled = client.post(
                 "/settings/authorization",
                 data={"csrf_token": csrf, "authorization_enabled": "true"},

@@ -1,20 +1,114 @@
 {% extends "base.html" %}
 {% block title %}Update {{ imported.playlist_name }} · Playlarr{% endblock %}
 {% block content %}
-<p class="eyebrow">{{ imported.source }} playlist update</p>
-<h1>Review changes to {{ imported.playlist_name }}</h1>
-<div class="card">
-  <h2>Proposed update</h2>
-  <p><strong>{{ update.added }}</strong> added · <strong>{{ update.updated }}</strong> updated · <strong>{{ update.removed }}</strong> removed · <strong>{{ update.moved }}</strong> moved · <strong>{{ update.unchanged }}</strong> unchanged</p>
-  <p>Existing matches and manual corrections are retained for tracks matched by source track ID or ISRC. Added tracks will wait for resolution. Removed tracks remain available in the update audit snapshot.</p>
-  <div class="actions">
-    {% if update.added or update.removed or update.updated or update.moved %}<form method="post" action="/imports/{{ imported.id }}/update"><input type="hidden" name="update_token" value="{{ update_token }}"><input type="hidden" name="preview_job" value="{{ preview_job }}"><button>Apply update</button></form>{% else %}<span class="status ok">Already up to date</span>{% endif %}
-    <a class="button secondary" href="/imports/{{ imported.id }}">Cancel</a>
+  <p class="eyebrow">{{ imported.source }} playlist update</p>
+  <h1>Review changes to {{ imported.playlist_name }}</h1>
+  <div class="card">
+    <h2>Proposed update</h2>
+    <p>
+      <strong>{{ update.added }}</strong>
+      added ·
+      <strong>{{ update.updated }}</strong>
+      updated ·
+      <strong>{{ update.removed }}</strong>
+      removed ·
+      <strong>{{ update.moved }}</strong>
+      moved ·
+      <strong>{{ update.unchanged }}</strong>
+      unchanged
+    </p>
+    <p>
+      Existing matches and manual corrections are retained for tracks matched by source track ID or ISRC. Added tracks will wait for resolution.
+      Removed tracks remain available in the update audit snapshot.
+    </p>
+    <div class="actions">
+      {% if update.added or update.removed or update.updated or update.moved %}
+        <form method="post" action="/imports/{{ imported.id }}/update">
+          <input type="hidden" name="update_token" value="{{ update_token }}" />
+          <input type="hidden" name="preview_job" value="{{ preview_job }}" />
+          <button>Apply update</button>
+        </form>
+      {% else %}
+        <span class="status ok">Already up to date</span>
+      {% endif %}
+      <a class="button secondary" href="/imports/{{ imported.id }}">Cancel</a>
+    </div>
   </div>
-</div>
-<div class="mapping-filters"><input id="change-search" placeholder="Filter by title, artist, album, or ISRC…" oninput="filterChanges()"><select id="change-filter" onchange="filterChanges()"><option value="all">All changes</option><option value="added">Added</option><option value="updated">Updated</option><option value="removed">Removed</option><option value="moved">Moved</option><option value="unchanged">No change</option></select><span id="change-count" class="muted"></span></div>
-<div class="table-wrap"><table><thead><tr><th>State</th><th>Position</th><th>Track</th><th>Album / ISRC</th><th>Details</th></tr></thead><tbody id="change-rows">
-{% for change in update.changes %}{% set track = change.new_track or change.old_track %}<tr class="playlist-change playlist-change-{{ change.state }}" data-state="{{ change.state }}" data-search="{{ (track.title ~ ' ' ~ track.artists|join(' ') ~ ' ' ~ track.album ~ ' ' ~ (track.isrc or ''))|lower }}"><td><span class="badge">{{ 'no change' if change.state == 'unchanged' else change.state }}</span></td><td>{% if change.old_position is not none and change.new_position is not none and change.old_position != change.new_position %}{{ change.old_position + 1 }} → {{ change.new_position + 1 }}{% elif change.new_position is not none %}{{ change.new_position + 1 }}{% else %}{{ change.old_position + 1 }}{% endif %}</td><td><strong>{% if change.state == 'updated' and change.old_track.title != change.new_track.title %}<del>{{ change.old_track.title }}</del><br>{{ change.new_track.title }}{% else %}{{ track.title }}{% endif %}</strong><small>{{ track.artists|join(', ') }}</small></td><td>{{ track.album }}<small>{{ track.isrc or 'No ISRC' }}</small></td><td>{{ change.changed_fields|join(', ') if change.changed_fields else ('position changed' if change.state == 'moved' else '—') }}</td></tr>{% endfor %}
-</tbody></table></div>
-<script>function filterChanges(){const q=document.getElementById('change-search').value.toLowerCase(),state=document.getElementById('change-filter').value;let visible=0;document.querySelectorAll('#change-rows tr').forEach(row=>{const show=(state==='all'||row.dataset.state===state)&&row.dataset.search.includes(q);row.hidden=!show;if(show)visible++});document.getElementById('change-count').textContent=visible+' tracks'}filterChanges()</script>
+  <div class="mapping-filters">
+    <input id="change-search" placeholder="Filter by title, artist, album, or ISRC…" oninput="filterChanges()" />
+    <select id="change-filter" onchange="filterChanges()">
+      <option value="all">All changes</option>
+      <option value="added">Added</option>
+      <option value="updated">Updated</option>
+      <option value="removed">Removed</option>
+      <option value="moved">Moved</option>
+      <option value="unchanged">No change</option>
+    </select>
+    <span id="change-count" class="muted"></span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>State</th>
+          <th>Position</th>
+          <th>Track</th>
+          <th>Album / ISRC</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody id="change-rows">
+        {% for change in update.changes %}
+          {% set track = change.new_track or change.old_track %}
+          <tr
+            class="playlist-change playlist-change-{{ change.state }}"
+            data-state="{{ change.state }}"
+            data-search="{{ (track.title ~ ' ' ~ track.artists|join(' ') ~ ' ' ~ track.album ~ ' ' ~ (track.isrc or ''))|lower }}"
+          >
+            <td><span class="badge">{{ 'no change' if change.state == 'unchanged' else change.state }}</span></td>
+            <td>
+              {% if change.old_position is not none and change.new_position is not none and change.old_position != change.new_position %}
+                {{ change.old_position + 1 }} → {{ change.new_position + 1 }}
+              {% elif change.new_position is not none %}
+                {{ change.new_position + 1 }}
+              {% else %}
+                {{ change.old_position + 1 }}
+              {% endif %}
+            </td>
+            <td>
+              <strong>
+                {% if change.state == 'updated' and change.old_track.title != change.new_track.title %}
+                  <del>{{ change.old_track.title }}</del>
+                  <br />
+                  {{ change.new_track.title }}
+                {% else %}
+                  {{ track.title }}
+                {% endif %}
+              </strong>
+              <small>{{ track.artists|join(", ") }}</small>
+            </td>
+            <td>
+              {{ track.album }}
+              <small>{{ track.isrc or 'No ISRC' }}</small>
+            </td>
+            <td>{{ change.changed_fields|join(", ") if change.changed_fields else ('position changed' if change.state == 'moved' else '—') }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script>
+    function filterChanges() {
+      const q = document.getElementById("change-search").value.toLowerCase(),
+        state = document.getElementById("change-filter").value;
+      let visible = 0;
+      document.querySelectorAll("#change-rows tr").forEach((row) => {
+        const show = (state === "all" || row.dataset.state === state) && row.dataset.search.includes(q);
+        row.hidden = !show;
+        if (show) visible++;
+      });
+      document.getElementById("change-count").textContent = visible + " tracks";
+    }
+    filterChanges();
+  </script>
 {% endblock %}
