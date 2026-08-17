@@ -60,7 +60,7 @@ The container creates its persistent directories on first start and makes the mo
 by the application user. To prepare them manually instead:
 
 ```bash
-mkdir -p /mnt/user/appdata/tidal-to-lidarr/{data,secrets,output}
+mkdir -p /mnt/user/appdata/tidal-to-lidarr /mnt/user/music/playlists
 chown -R 1000:1000 /mnt/user/appdata/tidal-to-lidarr
 ```
 
@@ -99,33 +99,35 @@ For local development, the repository also includes a Compose configuration:
 
 ```bash
 cp .env.example .env
-mkdir -p container-data container-playlists container-secrets
+mkdir -p container-config container-playlists
 docker compose up -d --build
 ```
 
 Open `http://UNRAID-IP:8787`. The mounts contain:
 
-- `/data`: SQLite state and all resumable workflow progress;
-- `/playlists`: generated M3U8 files;
-- `/secrets`: Spotify token and TIDAL session files.
+- `/config/data`: SQLite state and all resumable workflow progress;
+- `/config/secrets`: Spotify token and TIDAL session files;
+- `/playlists`: generated M3U8 files.
 
 For an Unraid Compose stack, replace the relative host paths with persistent shares such as:
 
 ```yaml
 volumes:
-  - /mnt/user/appdata/music-importer/data:/data
-  - /mnt/user/appdata/music-importer/secrets:/secrets
+  - /mnt/user/appdata/tidal-to-lidarr:/config
   - /mnt/user/music:/playlists
 ```
 
-The startup process prepares the three mount roots and then runs the application as UID/GID
-`1000:1000`. To move the current installation without losing progress, stop the local application
-and copy `.data/music-importer.db` to the host directory mounted at `/data/music-importer.db`.
+The startup process prepares both mount roots and then runs the application as UID/GID `1000:1000`.
+To move a current container installation without losing progress, stop it, move the contents of the
+old `/data` host directory into `<config-host-path>/data`, move the contents of the old `/secrets`
+host directory into `<config-host-path>/secrets`, replace both mounts with the single `/config`
+mount, and then start the updated container. For a local installation, copy
+`.data/music-importer.db` to `<config-host-path>/data/music-importer.db`.
 
 Spotify authentication returns through the application's `/callback` route. For a headless Unraid
 deployment, set `SPOTIFY_REDIRECT_URI` to the externally reachable application URL ending in
 `/callback`, and register that exact URI in the Spotify developer dashboard. TIDAL's device login
-persists its session under `/secrets`.
+persists its session under `/config/secrets`.
 
 The health check is available at `/health`. View status and logs with:
 

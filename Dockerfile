@@ -12,22 +12,22 @@ FROM python:3.13-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DATA_DIR=/data \
+    DATA_DIR=/config/data \
     OUTPUT_DIR=/playlists \
-    TIDAL_SESSION_FILE=/secrets/tidal-session.json \
-    SPOTIFY_TOKEN_CACHE=/secrets/spotify-token.json
+    TIDAL_SESSION_FILE=/config/secrets/tidal-session.json \
+    SPOTIFY_TOKEN_CACHE=/config/secrets/spotify-token.json
 
 RUN groupadd --gid 1000 music-importer \
     && useradd --uid 1000 --gid music-importer --create-home music-importer \
-    && mkdir -p /data /playlists /secrets \
-    && chown -R music-importer:music-importer /data /playlists /secrets
+    && mkdir -p /config /playlists \
+    && chown -R music-importer:music-importer /config /playlists
 
 COPY --from=builder /wheels /wheels
 RUN python -m pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 WORKDIR /app
 EXPOSE 8787
-VOLUME ["/data", "/playlists", "/secrets"]
+VOLUME ["/config", "/playlists"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]

@@ -7,7 +7,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-CONTAINER_STORAGE_DIRS = (Path("/data"), Path("/playlists"), Path("/secrets"))
+CONTAINER_STORAGE_DIRS = (Path("/config"), Path("/playlists"))
 APPLICATION_UID = 1000
 APPLICATION_GID = 1000
 
