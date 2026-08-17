@@ -39,6 +39,33 @@ class WebSecurityTests(unittest.TestCase):
         self.assertTrue(str(stored).startswith("$argon2"))
         self.assertNotIn("long-test-password", str(stored))
 
+    def test_setup_can_skip_authorization_while_retaining_csrf_protection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, repository = self.app(directory)
+            client = TestClient(app)
+
+            skipped = client.post("/setup/skip", follow_redirects=False)
+            dashboard = client.get("/")
+            csrf = re.search(r'input\.value="([a-f0-9]+)"', dashboard.text).group(1)
+            rejected = client.post("/settings/path-mappings", data={})
+            accepted = client.post(
+                "/settings/path-mappings",
+                data={
+                    "csrf_token": csrf,
+                    "lidarr_prefix": "/music",
+                    "consumer_prefix": "/music",
+                },
+                follow_redirects=False,
+            )
+            auth_mode = repository.get_setting("web_auth_mode")
+
+        self.assertEqual(skipped.headers["location"], "/")
+        self.assertEqual(auth_mode, "disabled")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotIn("Log out", dashboard.text)
+        self.assertEqual(rejected.status_code, 403)
+        self.assertEqual(accepted.status_code, 303)
+
     def test_csrf_and_origin_checks_protect_state_changes(self):
         with tempfile.TemporaryDirectory() as directory:
             app, _ = self.app(directory)
@@ -114,6 +141,41 @@ class WebSecurityTests(unittest.TestCase):
         self.assertEqual(changed.headers["location"], "/login")
         self.assertEqual(revoked.headers["location"], "/login")
         self.assertEqual(logged_in.headers["location"], "/")
+
+    def test_settings_can_disable_and_reenable_authorization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, repository = self.app(directory)
+            client = TestClient(app)
+            client.post(
+                "/setup",
+                data={"password": "long-test-password", "confirm_password": "long-test-password"},
+            )
+            dashboard = client.get("/")
+            csrf = re.search(r'input\.value="([a-f0-9]+)"', dashboard.text).group(1)
+
+            disabled = client.post(
+                "/settings/authorization",
+                data={"csrf_token": csrf},
+                follow_redirects=False,
+            )
+            client.cookies.clear()
+            direct = client.get("/")
+            settings = client.get("/settings")
+            csrf = re.search(r'input\.value="([a-f0-9]+)"', settings.text).group(1)
+            enabled = client.post(
+                "/settings/authorization",
+                data={"csrf_token": csrf, "authorization_enabled": "true"},
+                follow_redirects=False,
+            )
+            protected = client.get("/", follow_redirects=False)
+            auth_mode = repository.get_setting("web_auth_mode")
+
+        self.assertEqual(disabled.status_code, 303)
+        self.assertEqual(direct.status_code, 200)
+        self.assertNotIn('name="authorization_enabled" value="true" checked', settings.text)
+        self.assertEqual(enabled.headers["location"], "/login")
+        self.assertEqual(auth_mode, "password")
+        self.assertEqual(protected.headers["location"], "/login")
 
 
 if __name__ == "__main__":

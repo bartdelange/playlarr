@@ -61,9 +61,9 @@ Playlarr changes Lidarr only after you inspect a plan and select **Apply to Lida
 
 ## Installing Playlarr
 
-The web UI listens on port `8787`. On first launch, Playlarr requires you to create a password
-before any application route can be accessed. It does not terminate TLS, so keep it on a trusted
-LAN or place it behind an HTTPS reverse proxy.
+The web UI listens on port `8787`. On first launch, Playlarr asks you to create a password or
+explicitly delegate authorization to a trusted SSO gateway such as Authelia. It does not terminate
+TLS, so keep it on a trusted LAN or place it behind an HTTPS reverse proxy.
 
 ### Unraid
 
@@ -84,7 +84,7 @@ ghcr.io/bartdelange/playlists-to-lidarr:latest
 3. Select **Add Container**.
 4. Choose `playlarr` under **User templates**.
 5. Fill in the service settings and create the container.
-6. Open `http://UNRAID-IP:8787` and create the initial Playlarr password.
+6. Open `http://UNRAID-IP:8787` and choose the initial authorization mode.
 
 <!-- TODO: Screenshot — Unraid Playlarr template / configuration -->
 
@@ -379,9 +379,12 @@ release.
 
 Playlarr handles API keys and OAuth sessions. Never commit `.env`, `.secrets/`, `.data/`, OAuth
 sessions, API keys, generated reports, or container data. The supplied ignore files already exclude
-them. The web UI uses a single-user password, signed expiring sessions, login throttling, and CSRF
-protection. Passwords are stored as Argon2 hashes. Playlarr does not provide TLS, so it should remain
-on a trusted network or sit behind a trusted HTTPS reverse proxy.
+them. The web UI supports a single-user password with signed expiring sessions and login throttling.
+Passwords are stored as Argon2 hashes. Installations fully protected by an SSO gateway can skip or
+disable Playlarr authorization during setup or from Settings. CSRF protection remains enabled in
+both modes. Never disable authorization when Playlarr is directly reachable around the gateway.
+Playlarr does not provide TLS, so it should remain on a trusted network or sit behind a trusted
+HTTPS reverse proxy.
 
 Authentication is enabled by default. `PLAYLARR_AUTH_ENABLED=false` disables it for isolated test
 or development environments; do not use that setting on a network-accessible installation. The

@@ -17,10 +17,13 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 SESSION_COOKIE = "playlarr_session"
 SESSION_LIFETIME_SECONDS = 30 * 24 * 60 * 60
-PUBLIC_PATHS = {"/health", "/login", "/setup"}
+PUBLIC_PATHS = {"/health", "/login", "/setup", "/setup/skip"}
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 LOGIN_WINDOW_SECONDS = 5 * 60
 LOGIN_ATTEMPTS = 5
+AUTH_MODE_SETTING = "web_auth_mode"
+AUTH_MODE_PASSWORD = "password"
+AUTH_MODE_DISABLED = "disabled"
 
 
 class WebSecurity:
@@ -31,6 +34,23 @@ class WebSecurity:
 
     @property
     def configured(self) -> bool:
+        return self.mode in {AUTH_MODE_PASSWORD, AUTH_MODE_DISABLED}
+
+    @property
+    def mode(self) -> str | None:
+        mode = self.repository.get_setting(AUTH_MODE_SETTING)
+        if mode in {AUTH_MODE_PASSWORD, AUTH_MODE_DISABLED}:
+            return mode
+        if self.has_password:
+            return AUTH_MODE_PASSWORD
+        return None
+
+    @property
+    def authorization_enabled(self) -> bool:
+        return self.mode == AUTH_MODE_PASSWORD
+
+    @property
+    def has_password(self) -> bool:
         return bool(self.repository.get_setting("web_auth_password_hash"))
 
     def _secret(self) -> bytes:
@@ -63,6 +83,17 @@ class WebSecurity:
 
     def set_password(self, password: str) -> None:
         self.repository.set_setting("web_auth_password_hash", self.password_hasher.hash(password))
+        self.repository.set_setting(AUTH_MODE_SETTING, AUTH_MODE_PASSWORD)
+
+    def disable_authorization(self) -> None:
+        self.repository.set_setting(AUTH_MODE_SETTING, AUTH_MODE_DISABLED)
+        self.rotate_sessions()
+
+    def enable_authorization(self) -> None:
+        if not self.has_password:
+            raise ValueError("create a password before enabling authorization")
+        self.repository.set_setting(AUTH_MODE_SETTING, AUTH_MODE_PASSWORD)
+        self.rotate_sessions()
 
     def rotate_sessions(self) -> None:
         self.repository.set_setting("web_auth_session_secret", secrets.token_urlsafe(48))
@@ -107,13 +138,21 @@ class SecurityMiddleware:
         path = scope.get("path", "")
         public = path in PUBLIC_PATHS or path.startswith("/static/")
 
-        if not self.security.configured and path not in {"/setup", "/health"}:
+        if not self.security.configured and path not in {"/setup", "/setup/skip", "/health"}:
             await RedirectResponse("/setup", status_code=303)(scope, receive, send)
             return
 
         session = request.cookies.get(SESSION_COOKIE)
+        issue_session = False
+        if (
+            self.security.configured
+            and not self.security.authorization_enabled
+            and not self.security.valid_session(session)
+        ):
+            session = self.security.create_session()
+            issue_session = True
         authenticated = self.security.valid_session(session)
-        if not public and not authenticated:
+        if self.security.authorization_enabled and not public and not authenticated:
             await RedirectResponse("/login", status_code=303)(scope, receive, send)
             return
 
@@ -137,6 +176,9 @@ class SecurityMiddleware:
 
         scope.setdefault("state", {})["authenticated"] = authenticated
         scope["state"]["csrf_token"] = self.security.csrf_token(session) if authenticated else ""
+        scope["state"]["authorization_enabled"] = self.security.authorization_enabled
+        if issue_session:
+            send = self._set_session_cookie(send, session or "")
         await self.app(scope, receive, send)
 
     @staticmethod
@@ -160,6 +202,21 @@ class SecurityMiddleware:
 
         return receive
 
+    @staticmethod
+    def _set_session_cookie(send: Send, session: str) -> Send:
+        async def wrapped(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                cookie = (
+                    f"{SESSION_COOKIE}={session}; HttpOnly; Max-Age={SESSION_LIFETIME_SECONDS}; "
+                    "Path=/; SameSite=lax"
+                )
+                headers.append((b"set-cookie", cookie.encode()))
+                message = {**message, "headers": headers}
+            await send(message)
+
+        return wrapped
+
 
 def register_security_routes(app: FastAPI, templates, security: WebSecurity) -> None:
     def page(request: Request, template: str, **values):
@@ -180,6 +237,13 @@ def register_security_routes(app: FastAPI, templates, security: WebSecurity) -> 
         if password != confirm_password:
             return HTMLResponse("Passwords do not match", status_code=400)
         security.set_password(password)
+        return _authenticated_redirect(security)
+
+    @app.post("/setup/skip")
+    def skip_setup():
+        if security.configured:
+            return RedirectResponse("/", status_code=303)
+        security.disable_authorization()
         return _authenticated_redirect(security)
 
     @app.get("/login", response_class=HTMLResponse)
@@ -223,9 +287,30 @@ def register_security_routes(app: FastAPI, templates, security: WebSecurity) -> 
         response.delete_cookie(SESSION_COOKIE)
         return response
 
+    @app.post("/settings/authorization")
+    def change_authorization(
+        authorization_enabled: bool = Form(False),
+        password: str = Form(""),
+        confirm_password: str = Form(""),
+    ):
+        if not authorization_enabled:
+            security.disable_authorization()
+            return _authenticated_redirect(security, "/settings?message=Authorization%20disabled")
+        if not security.has_password:
+            if len(password) < 12:
+                return HTMLResponse("Password must be at least 12 characters", status_code=400)
+            if password != confirm_password:
+                return HTMLResponse("Passwords do not match", status_code=400)
+            security.set_password(password)
+        else:
+            security.enable_authorization()
+        response = RedirectResponse("/login", status_code=303)
+        response.delete_cookie(SESSION_COOKIE)
+        return response
 
-def _authenticated_redirect(security: WebSecurity) -> RedirectResponse:
-    response = RedirectResponse("/", status_code=303)
+
+def _authenticated_redirect(security: WebSecurity, location: str = "/") -> RedirectResponse:
+    response = RedirectResponse(location, status_code=303)
     response.set_cookie(
         SESSION_COOKIE,
         security.create_session(),

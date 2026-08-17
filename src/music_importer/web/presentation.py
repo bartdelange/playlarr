@@ -44,6 +44,7 @@ class WebUI:
                 "config": self.context.config,
                 "imports": self.repository.list_imports(),
                 "csrf_token": getattr(request.state, "csrf_token", ""),
+                "authorization_enabled": getattr(request.state, "authorization_enabled", False),
                 **values,
             },
         )
