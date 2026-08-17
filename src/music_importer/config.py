@@ -42,6 +42,7 @@ class Config:
     navidrome_url: str | None
     navidrome_username: str | None
     navidrome_password: str | None
+    web_auth_enabled: bool
 
     @property
     def lidarr_enabled(self) -> bool:
@@ -145,4 +146,6 @@ def load_config() -> Config:
         navidrome_url=(os.getenv("NAVIDROME_URL") or "").rstrip("/") or None,
         navidrome_username=os.getenv("NAVIDROME_USERNAME") or None,
         navidrome_password=os.getenv("NAVIDROME_PASSWORD") or None,
+        web_auth_enabled=os.getenv("PLAYLARR_AUTH_ENABLED", "true").lower()
+        not in {"0", "false", "no"},
     )

@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Lidarr Plan · Playlarr{% endblock %}
 {% block content %}
-{% include "_playlist_header.html" %}
-{% include "_workflow_steps.html" %}
-
-<div class="step-actions">
-  <div>
-    <p class="eyebrow">Current step</p>
-    <h2>Lidarr plan</h2>
-    <p><span class="badge">Not created</span></p>
+  {% include "_playlist_header.html" %}
+  {% include "_workflow_steps.html" %}
+  <div class="step-actions">
+    <div>
+      <p class="eyebrow">Current step</p>
+      <h2>Lidarr plan</h2>
+      <p><span class="badge">Not created</span></p>
+    </div>
+    <div class="actions">
+      <form method="post" action="/imports/{{ imported.id }}/plan">
+        <button>Create Lidarr plan</button>
+      </form>
+    </div>
   </div>
-  <div class="actions">
-    <form method="post" action="/imports/{{ imported.id }}/plan"><button>Create Lidarr plan</button></form>
+  <div class="next-step">
+    <div>
+      <strong>No Lidarr plan exists yet.</strong>
+      <span>Create a read-only preview of the exact Lidarr changes before anything is applied.</span>
+    </div>
   </div>
-</div>
-
-<div class="next-step">
-  <div>
-    <strong>No Lidarr plan exists yet.</strong>
-    <span>Create a read-only preview of the exact Lidarr changes before anything is applied.</span>
-  </div>
-</div>
 {% endblock %}

@@ -9,7 +9,7 @@
   <Project>https://github.com/bartdelange/playlists-to-lidarr</Project>
   <Support>https://github.com/bartdelange/playlists-to-lidarr/issues</Support>
   <WebUI>http://[IP]:[PORT:8787]/</WebUI>
-  <Overview>Playlarr turns playlists from music subscription services into a local Lidarr-managed library and ordered M3U8 playlists.</Overview>
+  <Overview>Playlarr turns playlists from music subscription services into a local Lidarr-managed library and ordered M3U8 playlists. Choose a Playlarr password or trusted SSO gateway when you first open the application.</Overview>
   <Category>MediaApp:Music</Category>
   <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="Port used to access the web interface." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
   <Config Name="AppData Config Path" Target="/config" Default="/mnt/user/appdata/tidal-to-lidarr" Mode="rw" Description="Playlarr workflow state and authentication data. The legacy host path is retained so upgrades preserve existing installations." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr</Config>

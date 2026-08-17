@@ -1,13 +1,81 @@
 {% extends "base.html" %}
 {% block title %}Local additions · {{ imported.playlist_name }}{% endblock %}
 {% block content %}
-{% include "_playlist_header.html" %}
-<div class="step-actions"><div><p class="eyebrow">Export enrichment</p><h2>Local additions</h2><p>Add Navidrome-only songs after the imported playlist tracks.</p></div><a class="button secondary" href="/imports/{{ imported.id }}?stage=final">Back to final</a></div>
-{% if error %}<div class="alert">{{ error }}</div>{% endif %}
-{% if not config.navidrome_enabled %}<div class="next-step"><strong>Navidrome is not configured.</strong><span>Add its URL and credentials in Settings.</span></div>{% else %}
-<form method="get" class="card"><label>Search Navidrome<input name="q" value="{{ query }}" placeholder="Song, artist, or album"></label><button>Search</button></form>
-{% endif %}
-{% if results %}<div class="table-wrap"><table><thead><tr><th>Song</th><th>Album</th><th></th></tr></thead><tbody>{% for song in results %}<tr><td><strong>{{ song.title }}</strong><small>{{ song.artist }}</small></td><td>{{ song.album }}</td><td><form method="post"><input type="hidden" name="song_id" value="{{ song.id }}"><button>Add</button></form></td></tr>{% endfor %}</tbody></table></div>{% endif %}
-<section class="card"><div class="section-heading"><div><p class="eyebrow">Appended on export</p><h2>{{ additions|length }} local songs</h2></div></div>
-{% if additions %}<ol>{% for addition in additions %}<li><strong>{{ addition.title }}</strong> — {{ addition.artists|join(', ') }}{% if addition.album %} · {{ addition.album }}{% endif %}<form method="post" action="/imports/{{ imported.id }}/local-additions/{{ addition.id }}/delete" class="inline"><button class="secondary">Remove</button></form></li>{% endfor %}</ol>{% else %}<p class="muted">No local songs have been added.</p>{% endif %}</section>
+  {% include "_playlist_header.html" %}
+  <div class="step-actions">
+    <div>
+      <p class="eyebrow">Export enrichment</p>
+      <h2>Local additions</h2>
+      <p>Add Navidrome-only songs after the imported playlist tracks.</p>
+    </div>
+    <a class="button secondary" href="/imports/{{ imported.id }}?stage=final">Back to final</a>
+  </div>
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  {% if not config.navidrome_enabled %}
+    <div class="next-step">
+      <strong>Navidrome is not configured.</strong>
+      <span>Add its URL and credentials in Settings.</span>
+    </div>
+  {% else %}
+    <form method="get" class="card">
+      <label>
+        Search Navidrome
+        <input name="q" value="{{ query }}" placeholder="Song, artist, or album" />
+      </label>
+      <button>Search</button>
+    </form>
+  {% endif %}
+  {% if results %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Song</th>
+            <th>Album</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for song in results %}
+            <tr>
+              <td>
+                <strong>{{ song.title }}</strong>
+                <small>{{ song.artist }}</small>
+              </td>
+              <td>{{ song.album }}</td>
+              <td>
+                <form method="post">
+                  <input type="hidden" name="song_id" value="{{ song.id }}" />
+                  <button>Add</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+  <section class="card">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Appended on export</p>
+        <h2>{{ additions|length }} local songs</h2>
+      </div>
+    </div>
+    {% if additions %}
+      <ol>
+        {% for addition in additions %}
+          <li>
+            <strong>{{ addition.title }}</strong>
+            — {{ addition.artists|join(", ") }}{% if addition.album %} · {{ addition.album }}{% endif %}
+            <form method="post" action="/imports/{{ imported.id }}/local-additions/{{ addition.id }}/delete" class="inline">
+              <button class="secondary">Remove</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="muted">No local songs have been added.</p>
+    {% endif %}
+  </section>
 {% endblock %}

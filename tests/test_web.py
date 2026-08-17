@@ -58,6 +58,14 @@ def wait_for_job(repository: ImportRepository, job_id: str):
     return repository.get_job(job_id)
 
 
+def normalized_html(value: str) -> str:
+    """Collapse formatting whitespace while preserving meaningful rendered content."""
+    value = re.sub(r"\s+", " ", value)
+    value = re.sub(r">\s+", ">", value)
+    value = re.sub(r"\s+<", "<", value)
+    return re.sub(r"\s+>", ">", value)
+
+
 class WebShellTests(unittest.TestCase):
     @patch("music_importer.web.routes.local_additions.NavidromeClient")
     def test_local_navidrome_additions_can_repeat_and_be_removed(self, navidrome_client):
@@ -167,8 +175,9 @@ class WebShellTests(unittest.TestCase):
 
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview_start.status_code, 303)
-        self.assertIn("1</strong> added", preview.text)
-        self.assertIn("1</strong> removed", preview.text)
+        preview_html = normalized_html(preview.text)
+        self.assertIn("1</strong>added", preview_html)
+        self.assertIn("1</strong>removed", preview_html)
         self.assertIn('data-state="added"', preview.text)
         self.assertIn('data-state="removed"', preview.text)
         self.assertNotIn("Stored snapshot", preview.text)
@@ -267,7 +276,7 @@ class WebShellTests(unittest.TestCase):
 
         self.assertEqual(job.status, "failed")
         self.assertIn("the source playlist changed", job.error)
-        self.assertIn("j.status==='completed'", job_page.text)
+        self.assertIn("j.status === 'completed'", job_page.text)
 
     def test_playlist_catalogue_is_loaded_live_in_a_background_job(self):
         class Source:
@@ -404,14 +413,15 @@ class WebShellTests(unittest.TestCase):
 
             response = client.get(f"/imports/{imported.id}?stage=final")
 
-        self.assertIn(">All (2)</button>", response.text)
-        self.assertIn(">Downloaded (1)</button>", response.text)
-        self.assertIn(">Missing but downloadable (1)</button>", response.text)
-        self.assertIn(">Not downloadable (0)</button>", response.text)
-        self.assertNotIn(">Automatic</button>", response.text)
+        html = normalized_html(response.text)
+        self.assertIn(">All (2)</button>", html)
+        self.assertIn(">Downloaded (1)</button>", html)
+        self.assertIn(">Missing but downloadable (1)</button>", html)
+        self.assertIn(">Not downloadable (0)</button>", html)
+        self.assertNotIn(">Automatic</button>", html)
         self.assertIn('data-availability="downloaded"', response.text)
         self.assertIn('data-availability="downloadable"', response.text)
-        self.assertIn(">Missing but downloadable</span>", response.text)
+        self.assertIn(">Missing but downloadable</span>", html)
         self.assertIn("/music/downloaded.flac", response.text)
         self.assertIn("Selected release is not currently present in Lidarr", response.text)
         self.assertIn("Choose visible columns", response.text)
@@ -527,7 +537,7 @@ class WebShellTests(unittest.TestCase):
             response = client.get(f"/imports/{imported.id}?stage=final")
 
         self.assertIn("Not added: selected release is a Various Artists compilation", response.text)
-        self.assertIn(">Not downloadable</span>", response.text)
+        self.assertIn(">Not downloadable</span>", normalized_html(response.text))
         self.assertIn("skip: unchanged", response.text)
 
     def test_matching_session_advances_after_each_decision_and_finishes(self):
@@ -679,8 +689,9 @@ class WebShellTests(unittest.TestCase):
         self.assertIn("Song", detail.text)
         self.assertIn("pending", detail.text)
         self.assertIn("Resolve 1 tracks", detail.text)
-        self.assertIn('class="active" href="/imports/', detail.text)
-        self.assertIn('aria-current="step">1 Music match', detail.text)
+        detail_html = normalized_html(detail.text)
+        self.assertIn('class="active" href="/imports/', detail_html)
+        self.assertIn('aria-current="step">1 Music match', detail_html)
         self.assertIn('aria-current="step">2 Playlist', source_step.text)
         self.assertIn("Authorization Code + PKCE", source_start.text)
         self.assertNotIn("Authorization Code + PKCE", source_step.text)
@@ -734,7 +745,7 @@ class WebShellTests(unittest.TestCase):
             detail = client.get(f"/imports/{imported.id}")
             job_page = client.get(f"/jobs/{job.id}")
 
-        self.assertIn('aria-current="step">2 Lidarr', detail.text)
+        self.assertIn('aria-current="step">2 Lidarr', normalized_html(detail.text))
         self.assertIn("Apply to Lidarr", detail.text)
         self.assertIn(f"/imports/{imported.id}?stage=lidarr", job_page.text)
 
@@ -850,7 +861,7 @@ class WebShellTests(unittest.TestCase):
         self.assertIn("1 new", response.text)
         self.assertIn("Searches queued", response.text)
         self.assertIn("monitor release", response.text)
-        self.assertIn('aria-current="step">2 Lidarr', response.text)
+        self.assertIn('aria-current="step">2 Lidarr', normalized_html(response.text))
 
     def test_plan_page_links_source_song_to_selected_lidarr_release(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -932,33 +943,31 @@ class WebShellTests(unittest.TestCase):
             response = client.get(f"/plans/{plan_id}")
             review_stage = client.get(f"/imports/{imported.id}?stage=review")
 
-        self.assertIn("Songs and Lidarr releases", response.text)
-        self.assertIn("Source Compilation", response.text)
-        self.assertIn("Canonical Album", response.text)
-        self.assertNotIn("Lidarr artist", response.text)
-        self.assertIn("Noisecontrollers ·", response.text)
-        self.assertIn(
-            "Rebound because this Lidarr release contains the selected track", response.text
-        )
-        self.assertIn("The Theme (Radio Edit)", response.text)
-        self.assertIn("Track 3-12", response.text)
-        self.assertIn("Lidarr file 91", response.text)
-        self.assertNotIn("https://musicbrainz.org/recording/recording-id", response.text)
-        self.assertIn("reuse downloaded release", response.text)
-        self.assertIn("The release is already monitored", response.text)
-        self.assertIn("No Lidarr changes are needed for this artist", response.text)
-        self.assertEqual(response.text.count("Artist-level action"), 2)
-        self.assertIn("Change track", response.text)
-        self.assertIn("All Lidarr mutations", response.text)
-        self.assertIn(
-            'data-actions="create_artist reuse_downloaded_release unchanged"', response.text
-        )
+        html = normalized_html(response.text)
+        self.assertIn("Songs and Lidarr releases", html)
+        self.assertIn("Source Compilation", html)
+        self.assertIn("Canonical Album", html)
+        self.assertNotIn("Lidarr artist", html)
+        self.assertIn("Noisecontrollers ·", html)
+        self.assertIn("Rebound because this Lidarr release contains the selected track", html)
+        self.assertIn("The Theme (Radio Edit)", html)
+        self.assertIn("Track 3-12", html)
+        self.assertIn("Lidarr file 91", html)
+        self.assertNotIn("https://musicbrainz.org/recording/recording-id", html)
+        self.assertIn("reuse downloaded release", html)
+        self.assertIn("The release is already monitored", html)
+        self.assertIn("No Lidarr changes are needed for this artist", html)
+        self.assertEqual(html.count("Artist-level action"), 2)
+        self.assertIn("Change track", html)
+        self.assertIn("All Lidarr mutations", html)
+        self.assertIn('data-actions="create_artist reuse_downloaded_release unchanged"', html)
         self.assertIn('data-mutates="1"', response.text)
         self.assertIn("Artist-level action", response.text)
         self.assertIn("create artist", response.text)
-        self.assertIn(f'href="/imports/{imported.id}?stage=match"', response.text)
-        self.assertIn('aria-current="step">1 Music match', review_stage.text)
-        self.assertNotIn('aria-current="step">2 Lidarr', review_stage.text)
+        self.assertIn(f'href="/imports/{imported.id}?stage=match"', html)
+        review_html = normalized_html(review_stage.text)
+        self.assertIn('aria-current="step">1 Music match', review_html)
+        self.assertNotIn('aria-current="step">2 Lidarr', review_html)
         self.assertIn(f'href="/plans/{plan_id}"', review_stage.text)
 
     def test_plan_page_does_not_rebind_other_tracks_from_shared_compilation(self):
@@ -1251,7 +1260,8 @@ class WebShellTests(unittest.TestCase):
             response = client.get(f"/plans/{plan_id}")
 
         self.assertIn(
-            f'href="/entries/{entry.id}/review?plan_id={plan_id}">Resolve track</a>', response.text
+            f'href="/entries/{entry.id}/review?plan_id={plan_id}">Resolve track</a>',
+            normalized_html(response.text),
         )
 
     def test_dashboard_and_jobs_page_link_back_to_active_job(self):

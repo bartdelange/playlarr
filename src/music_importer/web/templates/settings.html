@@ -1,11 +1,184 @@
 {% extends "base.html" %}
-{% block content %}<p class="eyebrow">Configuration</p><h1>Settings</h1>{% if message %}<div class="alert">{{ message }}</div>{% endif %}<form method="post" action="/settings/services"><div class="settings-grid">
-<section class="card"><h2>MusicBrainz</h2><label>User-Agent<input name="mb_user_agent" value="{{ config.mb_user_agent }}"></label></section>
-<section class="card"><h2>Spotify</h2><label>Client ID<input name="spotify_client_id" placeholder="{{ 'Configured — enter to replace' if config.spotify_client_id else 'Required' }}"></label><label>Redirect URI<input name="spotify_redirect_uri" value="{{ config.spotify_redirect_uri }}"></label><p>Token: <span class="status {{ 'ok' if config.spotify_token_cache.exists() else '' }}">{{ 'Authenticated' if config.spotify_token_cache.exists() else 'Not authenticated' }}</span></p></section>
-<section class="card"><h2>TIDAL</h2><p>Session: {{ config.tidal_session_file }}</p><p><span class="status {{ 'ok' if config.tidal_session_file.exists() else '' }}">{{ 'Authenticated' if config.tidal_session_file.exists() else 'Not authenticated' }}</span></p></section>
-<section class="card"><h2>Lidarr</h2><label>URL<input name="lidarr_url" value="{{ config.lidarr_url or '' }}"></label><label>API key<input type="password" name="lidarr_api_key" placeholder="{{ 'Configured — enter to replace' if config.lidarr_api_key else 'Required' }}"></label><label>Root folder<input name="lidarr_root_folder" value="{{ config.lidarr_root_folder }}"></label><label>Quality profile ID<input type="number" name="lidarr_quality_profile_id" value="{{ config.lidarr_quality_profile_id }}"></label><label>Metadata profile ID<input type="number" name="lidarr_metadata_profile_id" value="{{ config.lidarr_metadata_profile_id }}"></label><p>Monitoring: requested releases only; new items disabled</p></section>
-<section class="card"><h2>Navidrome</h2><label>URL<input name="navidrome_url" value="{{ config.navidrome_url or '' }}"></label><label>Username<input name="navidrome_username" placeholder="{{ 'Configured — enter to replace' if config.navidrome_username else 'Required' }}"></label><label>Password<input type="password" name="navidrome_password" placeholder="{{ 'Configured — enter to replace' if config.navidrome_password else 'Required' }}"></label><p>Read-only library access for local playlist additions.</p></section>
-<section class="card"><h2>Application</h2><p>Data directory: {{ config.data_dir }}</p><label>Playlist export directory<input name="output_dir" value="{{ config.output_dir }}"></label><label><input class="checkbox" type="checkbox" name="debug_logging" value="true" {% if config.debug_logging|default(false) %}checked{% endif %}> Debug logging</label></section>
-</div><p><button>Save service settings</button></p></form>
-<div class="connection-tests"><form method="post" action="/settings/auth/spotify"><button class="secondary">Authenticate Spotify</button></form><form method="post" action="/settings/auth/tidal"><button class="secondary">Authenticate TIDAL</button></form><form method="post" action="/settings/test/lidarr"><button class="secondary">Test Lidarr</button></form><form method="post" action="/settings/test/navidrome"><button class="secondary">Test Navidrome</button></form></div>
-<section class="card"><h2>Playlist paths</h2><form method="post" action="/settings/path-mappings"><label>Lidarr library path<input name="lidarr_prefix" value="{{ path_mappings[0][0] }}"></label><label>Playlist consumer path<input name="consumer_prefix" value="{{ path_mappings[0][1] }}"></label><button>Save mapping</button></form></section>{% endblock %}
+{% block content %}
+  <div class="settings-page">
+    <p class="eyebrow">Configuration</p>
+    <h1>Settings</h1>
+    {% if message %}<div class="alert">{{ message }}</div>{% endif %}
+    <form method="post" action="/settings/services" class="settings-stack">
+      <section class="card">
+        <h2>MusicBrainz</h2>
+        <p class="muted">Metadata matching and recording identification.</p>
+        <label>
+          User-Agent
+          <input name="mb_user_agent" value="{{ config.mb_user_agent }}" />
+        </label>
+      </section>
+      <section class="card">
+        <h2>Spotify</h2>
+        <p class="muted">Playlist source using Authorization Code with PKCE.</p>
+        <label>
+          Client ID
+          <input name="spotify_client_id" placeholder="{{ 'Configured — enter to replace' if config.spotify_client_id else 'Required' }}" />
+        </label>
+        <label>
+          Redirect URI
+          <input name="spotify_redirect_uri" value="{{ config.spotify_redirect_uri }}" />
+        </label>
+        <p>
+          Token:
+          <span class="status {{ 'ok' if config.spotify_token_cache.exists() else '' }}">
+            {{ 'Authenticated' if config.spotify_token_cache.exists() else 'Not authenticated' }}
+          </span>
+        </p>
+      </section>
+      <section class="card">
+        <h2>TIDAL</h2>
+        <p class="muted">Playlist source using TIDAL device authentication.</p>
+        <p>Session: {{ config.tidal_session_file }}</p>
+        <p>
+          <span class="status {{ 'ok' if config.tidal_session_file.exists() else '' }}">
+            {{ 'Authenticated' if config.tidal_session_file.exists() else 'Not authenticated' }}
+          </span>
+        </p>
+      </section>
+      <section class="card">
+        <h2>Lidarr</h2>
+        <p class="muted">Library planning and approved acquisition actions.</p>
+        <label>
+          URL
+          <input name="lidarr_url" value="{{ config.lidarr_url or '' }}" />
+        </label>
+        <label>
+          API key
+          <input
+            type="password"
+            name="lidarr_api_key"
+            placeholder="{{ 'Configured — enter to replace' if config.lidarr_api_key else 'Required' }}"
+          />
+        </label>
+        <label>
+          Root folder
+          <input name="lidarr_root_folder" value="{{ config.lidarr_root_folder }}" />
+        </label>
+        <label>
+          Quality profile ID
+          <input type="number" name="lidarr_quality_profile_id" value="{{ config.lidarr_quality_profile_id }}" />
+        </label>
+        <label>
+          Metadata profile ID
+          <input type="number" name="lidarr_metadata_profile_id" value="{{ config.lidarr_metadata_profile_id }}" />
+        </label>
+        <p>Monitoring: requested releases only; new items disabled.</p>
+      </section>
+      <section class="card">
+        <h2>Navidrome</h2>
+        <p class="muted">Optional read-only local additions during playlist export.</p>
+        <label>
+          URL
+          <input name="navidrome_url" value="{{ config.navidrome_url or '' }}" />
+        </label>
+        <label>
+          Username
+          <input name="navidrome_username" placeholder="{{ 'Configured — enter to replace' if config.navidrome_username else 'Required' }}" />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            name="navidrome_password"
+            placeholder="{{ 'Configured — enter to replace' if config.navidrome_password else 'Required' }}"
+          />
+        </label>
+      </section>
+      <section class="card">
+        <h2>Application</h2>
+        <p>Data directory: {{ config.data_dir }}</p>
+        <label>
+          Playlist export directory
+          <input name="output_dir" value="{{ config.output_dir }}" />
+        </label>
+        <label>
+          <input class="checkbox" type="checkbox" name="debug_logging" value="true" {% if config.debug_logging|default(false) %}checked{% endif %} />
+          Debug logging
+        </label>
+      </section>
+      <button class="settings-save">Save service settings</button>
+    </form>
+    <section class="card settings-card">
+      <h2>Connection actions</h2>
+      <p class="muted">Authenticate playlist sources or verify configured local services.</p>
+      <div class="connection-tests">
+        <form method="post" action="/settings/auth/spotify">
+          <button class="secondary">Authenticate Spotify</button>
+        </form>
+        <form method="post" action="/settings/auth/tidal">
+          <button class="secondary">Authenticate TIDAL</button>
+        </form>
+        <form method="post" action="/settings/test/lidarr">
+          <button class="secondary">Test Lidarr</button>
+        </form>
+        <form method="post" action="/settings/test/navidrome">
+          <button class="secondary">Test Navidrome</button>
+        </form>
+      </div>
+    </section>
+    <section class="card settings-card">
+      <h2>Playlist paths</h2>
+      <form method="post" action="/settings/path-mappings">
+        <label>
+          Lidarr library path
+          <input name="lidarr_prefix" value="{{ path_mappings[0][0] }}" />
+        </label>
+        <label>
+          Playlist consumer path
+          <input name="consumer_prefix" value="{{ path_mappings[0][1] }}" />
+        </label>
+        <button>Save mapping</button>
+      </form>
+    </section>
+    <section class="card settings-card">
+      <h2>Authorization</h2>
+      <p class="muted">Disable Playlarr's login only when a trusted gateway such as Authelia protects every route.</p>
+      <form method="post" action="/settings/authorization">
+        <label>
+          <input class="checkbox" type="checkbox" name="authorization_enabled" value="true" {% if authorization_enabled %}checked{% endif %} />
+          Enable Playlarr password authorization
+        </label>
+        {% if not authorization_enabled and not request.app.state.security.has_password %}
+          <div class="authorization-password">
+            <label>
+              New password
+              <input type="password" name="password" minlength="12" autocomplete="new-password" />
+            </label>
+            <label>
+              Confirm password
+              <input type="password" name="confirm_password" minlength="12" autocomplete="new-password" />
+            </label>
+          </div>
+        {% endif %}
+        <button>Save authorization mode</button>
+      </form>
+    </section>
+    {% if authorization_enabled %}
+      <section class="card settings-card">
+        <h2>Change password</h2>
+        <p>Changing the password signs out every active Playlarr session.</p>
+        <form method="post" action="/settings/password">
+          <label>
+            Current password
+            <input type="password" name="current_password" autocomplete="current-password" required />
+          </label>
+          <label>
+            New password
+            <input type="password" name="password" minlength="12" autocomplete="new-password" required />
+          </label>
+          <label>
+            Confirm new password
+            <input type="password" name="confirm_password" minlength="12" autocomplete="new-password" required />
+          </label>
+          <button>Change password</button>
+        </form>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

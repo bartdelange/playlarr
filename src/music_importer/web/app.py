@@ -28,6 +28,7 @@ from .routes import (
     review_actions,
     settings,
 )
+from .security import SecurityMiddleware, WebSecurity, register_security_routes
 
 
 def create_app(config: Config | None = None, repository: ImportRepository | None = None) -> FastAPI:
@@ -40,7 +41,15 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
 
     app = FastAPI(title="Playlarr")
     app.state.context = context
+    security = WebSecurity(repository)
+    app.state.security = security
+    app.add_middleware(
+        SecurityMiddleware,
+        security=security,
+        enabled=getattr(config, "web_auth_enabled", False),
+    )
     app.mount("/static", StaticFiles(directory=assets / "static"), name="static")
+    register_security_routes(app, ui.templates, security)
     for routes in (
         dashboard,
         settings,

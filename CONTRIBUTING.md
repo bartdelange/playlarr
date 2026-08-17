@@ -1,56 +1,40 @@
-# Contributing
+# Contributing to Playlarr
 
-Thank you for improving Playlarr. Please open an issue before a large architectural change so
-the intended behavior and migration impact can be agreed first.
+Thanks for improving Playlarr. Open an issue before a substantial architectural or workflow change
+so its user impact and persistence migration can be agreed first.
 
 ## Local setup
 
-Use Python 3.12 or newer and `uv`:
+Use Python 3.12+ and [uv](https://docs.astral.sh/uv):
 
 ```bash
 uv sync --locked --dev
 cp .env.example .env
 uv run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+uv run uvicorn music_importer.web.app:create_app --factory --host 127.0.0.1 --port 8787
 ```
 
-Do not commit credentials, OAuth sessions, SQLite databases, or generated reports. Tests should not
-call live Spotify, TIDAL, MusicBrainz, Lidarr, or Navidrome services.
+Playlarr is a web-only application. Do not commit credentials, OAuth sessions, SQLite databases,
+generated reports, or screenshots containing personal data. Tests must not contact live services.
 
-## Making changes
+## Project structure
 
-- Preserve source playlist order, duplicate occurrences, manual decisions, and Lidarr's additive
-  safety behavior unless a change explicitly intends otherwise.
-- Keep external API details inside their integration modules and persistence details inside
-  `persistence.py`.
-- Add focused regression tests for behavior changes. Prefer observable outcomes over implementation
-  details.
-- Avoid unrelated cleanup in focused fixes and avoid new dependencies for trivial functionality.
+`music_importer` is organized by capability:
 
-## Git workflow
+- `web/` contains FastAPI composition, thin routes, templates, and static assets.
+- `application/` coordinates source-neutral use cases and background tasks.
+- `domain/` owns provider-independent records and rules.
+- `integrations/` isolates Spotify, TIDAL, MusicBrainz, Lidarr, and Navidrome details.
+- `persistence/` owns SQLite migrations and durable repositories.
+- `exports/` owns M3U8, CSV compatibility, and diagnostic reports.
 
-Create a dedicated `feat/`, `fix/`, or `chore/` branch from the latest default branch. Keep commits
-focused and independently reviewable, and do not push directly to the default branch.
+Dependencies flow from web handlers through application services toward domain and infrastructure.
+Keep Lidarr planning read-only, execute only approved plans, preserve playlist positions and duplicate
+occurrences, and retain confirmed manual mappings unless a migration explicitly changes that contract.
 
-Commit headers combine a Gitmoji with a Conventional Commit type and required scope:
+## Validation
 
-```text
-<emoji> <type>(<scope>): <description>
-```
-
-Allowed types are `chore`, `docs`, `feat`, `fix`, `refactor`, `release`, `revert`, and `test`.
-Allowed scopes are `config`, `deployment`, `lidarr`, `musicbrainz`, `persistence`, `playlist`,
-`repo`, `sources`, and `web`. Keep headers at 100 characters or fewer, begin the description with
-lowercase wording, and omit the final period. For example:
-
-```text
-🐛 fix(lidarr): preserve downloaded release selection
-📝 docs(repo): explain local configuration
-```
-
-The installed `commit-msg` hook enforces this format. Do not bypass repository hooks with
-`--no-verify`.
-
-Before submitting a change, run:
+Before opening a pull request, run:
 
 ```bash
 uv run ruff format --check src tests scripts
@@ -60,7 +44,27 @@ uv build
 docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7
 ```
 
-Review the branch diff, push the task branch, and open a non-draft pull request using the repository
-template. Explain user-visible changes, validation, and configuration or migration requirements. Do
-not merge your own pull request as part of the contribution workflow. A license has intentionally
-not been selected yet; contributors should not add one without maintainer approval.
+Add focused regression tests for behavior changes. The suite uses mocks and requires no credentials.
+
+## Git and pull requests
+
+Use a focused `feat/`, `fix/`, or `chore/` branch. Keep commits independently reviewable and do not
+push directly to the default branch. Commit headers use Gitmoji Conventional Commits:
+
+```text
+<emoji> <type>(<scope>): <description>
+```
+
+Allowed types are `chore`, `docs`, `feat`, `fix`, `refactor`, `release`, `revert`, and `test`.
+Allowed scopes are `config`, `deployment`, `lidarr`, `musicbrainz`, `persistence`, `playlist`,
+`repo`, `sources`, and `web`. Headers are at most 100 characters, use lowercase descriptions, and
+omit a final period. For example:
+
+```text
+🐛 fix(lidarr): preserve downloaded release selection
+📝 docs(repo): explain local configuration
+```
+
+Review the full diff, push the branch, and open a non-draft pull request using the repository
+template. Describe user-visible behavior, validation, and any configuration or migration impact.
+See [docs/releasing.md](docs/releasing.md) for maintainer release procedures.
