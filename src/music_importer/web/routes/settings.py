@@ -21,12 +21,31 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
 
     @app.get("/settings", response_class=HTMLResponse)
     def settings(request: Request, message: str | None = None):
+        lidarr_configured = bool(config.lidarr_url and config.lidarr_api_key)
+        root_folders: list[tuple[str, str]] = []
+        quality_profiles: list[tuple[int, str]] = []
+        metadata_profiles: list[tuple[int, str]] = []
+        lidarr_options_error = None
+        if lidarr_configured:
+            try:
+                lidarr = LidarrClient(config)
+                root_folders = lidarr.root_folders()
+                quality_profiles = lidarr.quality_profiles()
+                metadata_profiles = lidarr.metadata_profiles()
+            except Exception as exc:
+                lidarr_options_error = f"Could not load Lidarr options: {exc}"
+
         return render(
             request,
             "settings.html",
             path_mappings=repository.get_setting(
                 "path_mappings", [[config.lidarr_root_folder, config.lidarr_root_folder]]
             ),
+            lidarr_configured=lidarr_configured,
+            lidarr_options_error=lidarr_options_error,
+            root_folders=root_folders,
+            quality_profiles=quality_profiles,
+            metadata_profiles=metadata_profiles,
             message=message,
         )
 

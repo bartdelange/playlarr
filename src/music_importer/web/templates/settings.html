@@ -75,12 +75,47 @@
                 placeholder="{{ 'Configured — enter to replace' if config.lidarr_api_key else 'Required' }}"
               />
             </label>
-            <label>Root folder <input name="lidarr_root_folder" value="{{ config.lidarr_root_folder }}" /></label>
-            <label>Quality profile ID <input type="number" name="lidarr_quality_profile_id" value="{{ config.lidarr_quality_profile_id }}" /></label>
             <label>
-              Metadata profile ID
-              <input type="number" name="lidarr_metadata_profile_id" value="{{ config.lidarr_metadata_profile_id }}" />
+              Root folder
+              <select name="lidarr_root_folder" {{ 'disabled' if not lidarr_configured else '' }}>
+                {% if config.lidarr_root_folder not in root_folders|map(attribute=0)|list %}
+                  <option value="{{ config.lidarr_root_folder }}" selected>{{ config.lidarr_root_folder }}</option>
+                {% endif %}
+                {% for value, label in root_folders %}
+                  <option value="{{ value }}" {{ 'selected' if value == config.lidarr_root_folder else '' }}>{{ label }}</option>
+                {% endfor %}
+              </select>
             </label>
+            <label>
+              Quality profile
+              <select name="lidarr_quality_profile_id" {{ 'disabled' if not lidarr_configured else '' }}>
+                {% if config.lidarr_quality_profile_id not in quality_profiles|map(attribute=0)|list %}
+                  <option value="{{ config.lidarr_quality_profile_id }}" selected>Profile {{ config.lidarr_quality_profile_id }}</option>
+                {% endif %}
+                {% for value, label in quality_profiles %}
+                  <option value="{{ value }}" {{ 'selected' if value == config.lidarr_quality_profile_id else '' }}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Metadata profile
+              <select name="lidarr_metadata_profile_id" {{ 'disabled' if not lidarr_configured else '' }}>
+                {% if config.lidarr_metadata_profile_id not in metadata_profiles|map(attribute=0)|list %}
+                  <option value="{{ config.lidarr_metadata_profile_id }}" selected>Profile {{ config.lidarr_metadata_profile_id }}</option>
+                {% endif %}
+                {% for value, label in metadata_profiles %}
+                  <option value="{{ value }}" {{ 'selected' if value == config.lidarr_metadata_profile_id else '' }}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            {% if not lidarr_configured %}
+              <input type="hidden" name="lidarr_root_folder" value="{{ config.lidarr_root_folder }}" />
+              <input type="hidden" name="lidarr_quality_profile_id" value="{{ config.lidarr_quality_profile_id }}" />
+              <input type="hidden" name="lidarr_metadata_profile_id" value="{{ config.lidarr_metadata_profile_id }}" />
+              <small>Save a Lidarr URL and API key to load these options.</small>
+            {% elif lidarr_options_error %}
+              <small>{{ lidarr_options_error }}</small>
+            {% endif %}
           </form>
           <div class="settings-block-footer">
             <p class="muted">
