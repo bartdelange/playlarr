@@ -61,8 +61,9 @@ Playlarr changes Lidarr only after you inspect a plan and select **Apply to Lida
 
 ## Installing Playlarr
 
-The web UI listens on port `8787`. It has no built-in login or TLS, so expose it only on a trusted
-LAN or place it behind an authenticated reverse proxy.
+The web UI listens on port `8787`. On first launch, Playlarr requires you to create a password
+before any application route can be accessed. It does not terminate TLS, so keep it on a trusted
+LAN or place it behind an HTTPS reverse proxy.
 
 ### Unraid
 
@@ -83,7 +84,7 @@ ghcr.io/bartdelange/playlists-to-lidarr:latest
 3. Select **Add Container**.
 4. Choose `playlarr` under **User templates**.
 5. Fill in the service settings and create the container.
-6. Open `http://UNRAID-IP:8787`.
+6. Open `http://UNRAID-IP:8787` and create the initial Playlarr password.
 
 <!-- TODO: Screenshot — Unraid Playlarr template / configuration -->
 
@@ -378,12 +379,16 @@ release.
 
 Playlarr handles API keys and OAuth sessions. Never commit `.env`, `.secrets/`, `.data/`, OAuth
 sessions, API keys, generated reports, or container data. The supplied ignore files already exclude
-them. The web UI has no application-level authentication or TLS and must remain on a trusted network
-or behind a trusted, authenticated reverse proxy.
+them. The web UI uses a single-user password, signed expiring sessions, login throttling, and CSRF
+protection. Passwords are stored as Argon2 hashes. Playlarr does not provide TLS, so it should remain
+on a trusted network or sit behind a trusted HTTPS reverse proxy.
+
+Authentication is enabled by default. `PLAYLARR_AUTH_ENABLED=false` disables it for isolated test
+or development environments; do not use that setting on a network-accessible installation. The
+session signing secret and password hash live in the protected SQLite database under `/config`.
 
 Before publishing a pre-existing repository, inspect its complete Git history for credentials even
-when the current working tree is clean. A license has intentionally not been selected; do not add
-one without maintainer approval.
+when the current working tree is clean. Playlarr is distributed under the [MIT License](LICENSE).
 
 ## Responsible use
 

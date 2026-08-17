@@ -40,7 +40,12 @@ class WebUI:
         return self.templates.TemplateResponse(
             request,
             template,
-            {"config": self.context.config, "imports": self.repository.list_imports(), **values},
+            {
+                "config": self.context.config,
+                "imports": self.repository.list_imports(),
+                "csrf_token": getattr(request.state, "csrf_token", ""),
+                **values,
+            },
         )
 
     def workflow_step(self, imported, entries=None) -> int:
