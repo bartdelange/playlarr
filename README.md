@@ -5,6 +5,15 @@ tracks from services such as TIDAL and Spotify, sends matched releases to Lidarr
 adds optional local tracks from Navidrome, and generates ordered M3U8 playlists for your local music
 server.
 
+> [!IMPORTANT]
+> **Use Playlarr responsibly.** Playlarr connects playlist metadata from services such as Spotify
+> and TIDAL to a user-controlled Lidarr installation; it does not supply music, rip audio, bypass
+> DRM, or grant permission to download copyrighted material. The project does not condone piracy or
+> any illegal ripping, copying, or downloading. Only acquire and use media you are legally entitled
+> to access, and comply with applicable laws, copyright licenses, and each service's terms. You are
+> solely responsible for how you configure and use Playlarr and the external services connected to
+> it. Playlarr is not affiliated with Spotify, TIDAL, MusicBrainz, Lidarr, or Navidrome.
+
 The application runs entirely on your computer and binds only to `127.0.0.1`.
 
 ## Architecture
