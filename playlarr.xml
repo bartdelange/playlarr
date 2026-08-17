@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>playlarr</Name>
-  <Repository>ghcr.io/bartdelange/playlists-to-lidarr:latest</Repository>
-  <Registry>https://github.com/bartdelange/playlists-to-lidarr/pkgs/container/playlists-to-lidarr</Registry>
+  <Repository>ghcr.io/bartdelange/playlarr:latest</Repository>
+  <Registry>https://github.com/bartdelange/playlarr/pkgs/container/playlarr</Registry>
   <Network>bridge</Network>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Project>https://github.com/bartdelange/playlists-to-lidarr</Project>
-  <Support>https://github.com/bartdelange/playlists-to-lidarr/issues</Support>
+  <Project>https://github.com/bartdelange/playlarr</Project>
+  <Support>https://github.com/bartdelange/playlarr/issues</Support>
   <WebUI>http://[IP]:[PORT:8787]/</WebUI>
   <Overview>Playlarr turns playlists from music subscription services into a local Lidarr-managed library and ordered M3U8 playlists. Choose a Playlarr password or trusted SSO gateway when you first open the application.</Overview>
   <Category>MediaApp:Music</Category>

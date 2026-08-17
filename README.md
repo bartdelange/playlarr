@@ -71,7 +71,7 @@ Unraid is the primary supported installation path. The repository includes
 [`playlarr.xml`](playlarr.xml), a native Unraid Docker template using:
 
 ```text
-ghcr.io/bartdelange/playlists-to-lidarr:latest
+ghcr.io/bartdelange/playlarr:latest
 ```
 
 1. Copy `playlarr.xml` to:
@@ -104,7 +104,7 @@ chown -R 1000:1000 /mnt/user/appdata/playlarr
 ```
 
 The template follows `latest`. For controlled upgrades, pin the Repository field to a published
-version such as `ghcr.io/bartdelange/playlists-to-lidarr:2.0.0`.
+version such as `ghcr.io/bartdelange/playlarr:2.0.0`.
 
 ### Docker Compose
 
@@ -112,8 +112,8 @@ The included [`compose.yaml`](compose.yaml) builds Playlarr locally using the re
 environment and mounts:
 
 ```bash
-git clone https://github.com/bartdelange/playlists-to-lidarr.git
-cd playlists-to-lidarr
+git clone https://github.com/bartdelange/playlarr.git
+cd playlarr
 cp .env.example .env
 mkdir -p container-config container-playlists
 docker compose up -d --build
