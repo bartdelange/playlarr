@@ -8,5 +8,25 @@ export const marked = (title: string) => (title.toLocaleLowerCase().match(/[a-z]
 export function searchTitle(title: string): string { return title.replace(/\s*[([](?:feat|ft)\.?[^)\]]*[)\]]/gi, "").replace(/\s+/g, " ").trim(); }
 export function versionPreference(title: string): number { const terms = new Set(title.toLocaleLowerCase().match(/[a-z]+/g) ?? []); return terms.has("extended") ? 2 : terms.has("radio") || terms.has("edit") ? 0 : 1; }
 export interface MusicBrainzRelease { title?: string; status?: string; "release-group"?: { title?: string; "secondary-types"?: string[] } }
-function similarity(left: string, right: string): number { const previous = Array.from({ length: right.length + 1 }, (_, index) => index); for (let row = 1; row <= left.length; row++) { let diagonal = previous[0]; previous[0] = row; for (let column = 1; column <= right.length; column++) { const above = previous[column]; previous[column] = left[row - 1] === right[column - 1] ? diagonal : Math.min(previous[column] + 1, previous[column - 1] + 1, diagonal + 1); diagonal = above; } } return left || right ? 1 - previous[right.length] / Math.max(left.length, right.length) : 0; }
-export function releaseScore(release: MusicBrainzRelease, sourceAlbum: string): number { const group = release["release-group"] ?? {}; const source = nameKey(sourceAlbum); const titles = [nameKey(release.title ?? ""), nameKey(group.title ?? "")].filter(Boolean); let score = Math.max(0, ...titles.map((title) => similarity(source, title) * 100)); if (source && titles.includes(source)) score += 1000; if ((group["secondary-types"] ?? []).some((type) => type.toLocaleLowerCase() === "compilation") && !titles.includes(source)) score -= 30; if (release.status?.toLocaleLowerCase() === "official") score += 5; return score; }
+/** Match Python's difflib.SequenceMatcher ratio for the short metadata strings used here. */
+export function sequenceSimilarity(left: string, right: string): number {
+  const pending: [number, number, number, number][] = [[0, left.length, 0, right.length]];
+  let matches = 0;
+  while (pending.length) {
+    const [leftStart, leftEnd, rightStart, rightEnd] = pending.pop()!;
+    let bestLeft = leftStart; let bestRight = rightStart; let bestSize = 0;
+    for (let leftIndex = leftStart; leftIndex < leftEnd; leftIndex++) {
+      for (let rightIndex = rightStart; rightIndex < rightEnd; rightIndex++) {
+        let size = 0;
+        while (leftIndex + size < leftEnd && rightIndex + size < rightEnd && left[leftIndex + size] === right[rightIndex + size]) size++;
+        if (size > bestSize) [bestLeft, bestRight, bestSize] = [leftIndex, rightIndex, size];
+      }
+    }
+    if (!bestSize) continue;
+    matches += bestSize;
+    if (leftStart < bestLeft && rightStart < bestRight) pending.push([leftStart, bestLeft, rightStart, bestRight]);
+    if (bestLeft + bestSize < leftEnd && bestRight + bestSize < rightEnd) pending.push([bestLeft + bestSize, leftEnd, bestRight + bestSize, rightEnd]);
+  }
+  return left.length + right.length ? (2 * matches) / (left.length + right.length) : 1;
+}
+export function releaseScore(release: MusicBrainzRelease, sourceAlbum: string): number { const group = release["release-group"] ?? {}; const source = nameKey(sourceAlbum); const titles = [nameKey(release.title ?? ""), nameKey(group.title ?? "")].filter(Boolean); let score = Math.max(0, ...titles.map((title) => sequenceSimilarity(source, title) * 100)); if (source && titles.includes(source)) score += 1000; if ((group["secondary-types"] ?? []).some((type) => type.toLocaleLowerCase() === "compilation") && !titles.includes(source)) score -= 30; if (release.status?.toLocaleLowerCase() === "official") score += 5; return score; }
