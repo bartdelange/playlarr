@@ -54,6 +54,35 @@ class TransportClient:
         matches = self._request("GET", path, params={"term": f"lidarr:{foreign_id}"}) or []
         return next((match for match in matches if match.get(id_field) == foreign_id), {})
 
+    def root_folders(self) -> list[tuple[str, str]]:
+        folders = self._request("GET", "rootfolder") or []
+        return sorted(
+            ((folder["path"], folder["path"]) for folder in folders if folder.get("path")),
+            key=lambda folder: folder[1].casefold(),
+        )
+
+    def quality_profiles(self) -> list[tuple[int, str]]:
+        profiles = self._request("GET", "qualityprofile") or []
+        return sorted(
+            (
+                (profile["id"], profile["name"])
+                for profile in profiles
+                if profile.get("id") is not None and profile.get("name")
+            ),
+            key=lambda profile: profile[1].casefold(),
+        )
+
+    def metadata_profiles(self) -> list[tuple[int, str]]:
+        profiles = self._request("GET", "metadataprofile") or []
+        return sorted(
+            (
+                (profile["id"], profile["name"])
+                for profile in profiles
+                if profile.get("id") is not None and profile.get("name")
+            ),
+            key=lambda profile: profile[1].casefold(),
+        )
+
     def _artist_payload(self, artist_mbid: str, release_groups: set[str]) -> dict:
         payload = self._lookup("artist/lookup", artist_mbid, "foreignArtistId")
         if not payload:

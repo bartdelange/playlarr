@@ -664,7 +664,13 @@ class WebShellTests(unittest.TestCase):
         self.assertEqual(stale_page.status_code, 307)
         self.assertEqual(stale_page.headers["location"], f"/imports/{progressed.id}")
 
-    def test_dashboard_and_import_review_render_persisted_state_without_secrets(self):
+    @patch("music_importer.web.routes.settings.LidarrClient")
+    def test_dashboard_and_import_review_render_persisted_state_without_secrets(
+        self, lidarr_client
+    ):
+        lidarr_client.return_value.root_folders.return_value = [("/music", "/music")]
+        lidarr_client.return_value.quality_profiles.return_value = [(1, "Standard")]
+        lidarr_client.return_value.metadata_profiles.return_value = [(1, "Standard")]
         with tempfile.TemporaryDirectory() as directory:
             repository = ImportRepository(Path(directory) / "state.db")
             imported = repository.create_import(PlaylistInfo("spotify", "playlist", "My Mix"))
@@ -708,6 +714,52 @@ class WebShellTests(unittest.TestCase):
         self.assertIn('for="services-tab">Services</label>', settings.text)
         self.assertIn('for="data-tab">Data Settings</label>', settings.text)
         self.assertNotIn('name="output_dir"', settings.text)
+
+    @patch("music_importer.web.routes.settings.LidarrClient")
+    def test_lidarr_settings_load_named_options_and_preserve_selection(self, lidarr_client):
+        lidarr_client.return_value.root_folders.return_value = [
+            ("/archive", "/archive"),
+            ("/music", "/music"),
+        ]
+        lidarr_client.return_value.quality_profiles.return_value = [
+            (1, "Lossless"),
+            (2, "Standard"),
+        ]
+        lidarr_client.return_value.metadata_profiles.return_value = [
+            (1, "Standard"),
+            (3, "Extended"),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            configured = config(directory)
+            configured.lidarr_quality_profile_id = 2
+            configured.lidarr_metadata_profile_id = 3
+            client = TestClient(
+                create_app(configured, ImportRepository(Path(directory) / "state.db"))
+            )
+
+            response = client.get("/settings")
+
+        html = normalized_html(response.text)
+        self.assertIn('<select name="lidarr_root_folder">', html)
+        self.assertIn('<option value="/music" selected>/music</option>', html)
+        self.assertIn('<option value="2" selected>Standard</option>', html)
+        self.assertIn('<option value="3" selected>Extended</option>', html)
+
+    @patch("music_importer.web.routes.settings.LidarrClient")
+    def test_lidarr_options_are_disabled_without_an_api_key(self, lidarr_client):
+        with tempfile.TemporaryDirectory() as directory:
+            unconfigured = config(directory)
+            unconfigured.lidarr_api_key = None
+            client = TestClient(
+                create_app(unconfigured, ImportRepository(Path(directory) / "state.db"))
+            )
+
+            response = client.get("/settings")
+
+        self.assertEqual(response.text.count('<select name="lidarr_'), 3)
+        self.assertIn('name="lidarr_root_folder" disabled', response.text)
+        self.assertIn("Save a Lidarr URL and API key", response.text)
+        lidarr_client.assert_not_called()
 
     def test_each_service_settings_form_updates_only_its_own_block(self):
         with tempfile.TemporaryDirectory() as directory:

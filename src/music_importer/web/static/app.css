@@ -20,5 +20,6 @@ body{background-color:var(--bg);background-image:radial-gradient(ellipse 95% 75%
 .playlist-change-added{background:#102a20}.playlist-change-added strong{color:#71e8a5}.playlist-change-removed{background:#2d1719;color:#ffaaa2;text-decoration:line-through}.playlist-change-updated{background:#14253a}.playlist-change-updated strong{color:#8bc7ff}.playlist-change-moved{background:#282311}.playlist-change-unchanged{opacity:.72}
 .mapping-override-actions{margin-top:18px}
 input,select{height:46px}
+select:disabled{opacity:.55;cursor:not-allowed}
 input.checkbox{height:auto}
 .settings-block-footer>.status{justify-self:start}
