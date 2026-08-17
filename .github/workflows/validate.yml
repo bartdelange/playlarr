@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  code-quality: write
 
 concurrency:
   group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -28,6 +29,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -60,11 +63,22 @@ jobs:
         run: uv sync --locked --dev
       - name: Validate GitHub Actions
         uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -ignore 'unknown permission scope "code-quality"'
       - name: Check formatting
         run: uv run ruff format --check src tests scripts
       - name: Lint
         run: uv run ruff check src tests scripts
-      - name: Test
-        run: uv run python -m unittest discover -s tests -v
+      - name: Test with coverage
+        run: uv run coverage run -m unittest discover -s tests -v
+      - name: Generate coverage report
+        run: uv run coverage xml -o coverage.xml
+      - name: Upload coverage report
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage.xml
+          language: Python
+          label: code-coverage/unittest
       - name: Build package
         run: uv build
