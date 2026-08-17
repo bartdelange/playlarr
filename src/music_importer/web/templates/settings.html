@@ -14,45 +14,58 @@
         <section class="card">
           <h2>MusicBrainz</h2>
           <p class="muted">Metadata matching and recording identification.</p>
-          <form method="post" action="/settings/services/musicbrainz">
+          <form id="musicbrainz-settings" method="post" action="/settings/services/musicbrainz">
             <label>User-Agent <input name="mb_user_agent" value="{{ config.mb_user_agent }}" /></label>
-            <button>Save MusicBrainz</button>
           </form>
+          <div class="settings-block-footer">
+            <span></span>
+            <button form="musicbrainz-settings">Save MusicBrainz</button>
+          </div>
         </section>
         <section class="card">
           <h2>Spotify</h2>
           <p class="muted">Playlist source using Authorization Code with PKCE.</p>
-          <form method="post" action="/settings/services/spotify">
+          <form id="spotify-settings" method="post" action="/settings/services/spotify">
             <label>
               Client ID
               <input name="spotify_client_id" placeholder="{{ 'Configured — enter to replace' if config.spotify_client_id else 'Required' }}" />
             </label>
             <label>Redirect URI <input name="spotify_redirect_uri" value="{{ config.spotify_redirect_uri }}" /></label>
-            <button>Save Spotify</button>
           </form>
-          <p>
-            Token:
-            <span class="status {{ 'ok' if config.spotify_token_cache.exists() else '' }}">
-              {{ 'Authenticated' if config.spotify_token_cache.exists() else 'Not authenticated' }}
-            </span>
-          </p>
-          <form method="post" action="/settings/auth/spotify"><button class="secondary">Authenticate Spotify</button></form>
+          <div class="settings-block-footer">
+            <p>
+              Token:
+              <span class="status {{ 'ok' if config.spotify_token_cache.exists() else '' }}">
+                {{ 'Authenticated' if config.spotify_token_cache.exists() else 'Not authenticated' }}
+              </span>
+            </p>
+            <div class="settings-block-buttons">
+              <button form="spotify-settings">Save Spotify</button>
+              <form method="post" action="/settings/auth/spotify">
+                <button class="secondary">Authenticate Spotify</button>
+              </form>
+            </div>
+          </div>
         </section>
         <section class="card">
           <h2>TIDAL</h2>
           <p class="muted">Playlist source using TIDAL device authentication.</p>
-          <p>Session: {{ config.tidal_session_file }}</p>
-          <p>
-            <span class="status {{ 'ok' if config.tidal_session_file.exists() else '' }}">
-              {{ 'Authenticated' if config.tidal_session_file.exists() else 'Not authenticated' }}
-            </span>
-          </p>
-          <form method="post" action="/settings/auth/tidal"><button class="secondary">Authenticate TIDAL</button></form>
+          <div class="settings-block-footer">
+            <p>
+              Session:
+              <span class="status {{ 'ok' if config.tidal_session_file.exists() else '' }}">
+                {{ 'Authenticated' if config.tidal_session_file.exists() else 'Not authenticated' }}
+              </span>
+            </p>
+            <form method="post" action="/settings/auth/tidal">
+              <button class="secondary">Authenticate TIDAL</button>
+            </form>
+          </div>
         </section>
         <section class="card">
           <h2>Lidarr</h2>
           <p class="muted">Library planning and approved acquisition actions.</p>
-          <form method="post" action="/settings/services/lidarr">
+          <form id="lidarr-settings" method="post" action="/settings/services/lidarr">
             <label>URL <input name="lidarr_url" value="{{ config.lidarr_url or '' }}" /></label>
             <label>
               API key
@@ -68,15 +81,21 @@
               Metadata profile ID
               <input type="number" name="lidarr_metadata_profile_id" value="{{ config.lidarr_metadata_profile_id }}" />
             </label>
-            <button>Save Lidarr</button>
           </form>
-          <form method="post" action="/settings/test/lidarr"><button class="secondary">Test Lidarr</button></form>
-          <p>Monitoring: requested releases only; new items disabled.</p>
+          <div class="settings-block-footer">
+            <p>Monitoring: requested releases only; new items disabled.</p>
+            <div class="settings-block-buttons">
+              <button form="lidarr-settings">Save Lidarr</button>
+              <form method="post" action="/settings/test/lidarr">
+                <button class="secondary">Test Lidarr</button>
+              </form>
+            </div>
+          </div>
         </section>
         <section class="card">
           <h2>Navidrome</h2>
           <p class="muted">Optional read-only local additions during playlist export.</p>
-          <form method="post" action="/settings/services/navidrome">
+          <form id="navidrome-settings" method="post" action="/settings/services/navidrome">
             <label>URL <input name="navidrome_url" value="{{ config.navidrome_url or '' }}" /></label>
             <label>
               Username
@@ -90,9 +109,18 @@
                 placeholder="{{ 'Configured — enter to replace' if config.navidrome_password else 'Required' }}"
               />
             </label>
-            <button>Save Navidrome</button>
           </form>
-          <form method="post" action="/settings/test/navidrome"><button class="secondary">Test Navidrome</button></form>
+          <div class="settings-block-footer">
+            <span class="status {{ 'ok' if config.navidrome_enabled else '' }}">
+              {{ 'Configured' if config.navidrome_enabled else 'Not configured' }}
+            </span>
+            <div class="settings-block-buttons">
+              <button form="navidrome-settings">Save Navidrome</button>
+              <form method="post" action="/settings/test/navidrome">
+                <button class="secondary">Test Navidrome</button>
+              </form>
+            </div>
+          </div>
         </section>
       </div>
 
@@ -100,16 +128,19 @@
         <section class="card">
           <h2>Playlist paths</h2>
           <p class="muted">Translate Lidarr library paths for the playlist consumer.</p>
-          <form method="post" action="/settings/path-mappings">
+          <form id="playlist-paths-settings" method="post" action="/settings/path-mappings">
             <label>Lidarr library path <input name="lidarr_prefix" value="{{ path_mappings[0][0] }}" /></label>
             <label>Playlist consumer path <input name="consumer_prefix" value="{{ path_mappings[0][1] }}" /></label>
-            <button>Save playlist paths</button>
           </form>
+          <div class="settings-block-footer">
+            <span></span>
+            <button form="playlist-paths-settings">Save playlist paths</button>
+          </div>
         </section>
         <section class="card">
           <h2>Authentication</h2>
           <p class="muted">Disable Playlarr's login only when a trusted gateway such as Authelia protects every route.</p>
-          <form method="post" action="/settings/authorization">
+          <form id="authentication-settings" method="post" action="/settings/authorization">
             <label>
               <input class="checkbox" type="checkbox" name="authorization_enabled" value="true" {% if authorization_enabled %}checked{% endif %} />
               Enable Playlarr password authorization
@@ -120,21 +151,29 @@
                 <label>Confirm password <input type="password" name="confirm_password" minlength="12" autocomplete="new-password" /></label>
               </div>
             {% endif %}
-            <button>Save authentication</button>
           </form>
+          <div class="settings-block-footer">
+            <span class="status {{ 'ok' if authorization_enabled else '' }}">
+              {{ 'Enabled' if authorization_enabled else 'Disabled' }}
+            </span>
+            <button form="authentication-settings">Save authentication</button>
+          </div>
           {% if authorization_enabled %}
             <hr />
             <h3>Change password</h3>
             <p>Changing the password signs out every active Playlarr session.</p>
-            <form method="post" action="/settings/password">
+            <form id="password-settings" method="post" action="/settings/password">
               <label>Current password <input type="password" name="current_password" autocomplete="current-password" required /></label>
               <label>New password <input type="password" name="password" minlength="12" autocomplete="new-password" required /></label>
               <label>
                 Confirm new password
                 <input type="password" name="confirm_password" minlength="12" autocomplete="new-password" required />
               </label>
-              <button>Change password</button>
             </form>
+            <div class="settings-block-footer">
+              <span></span>
+              <button form="password-settings">Change password</button>
+            </div>
           {% endif %}
         </section>
       </div>
