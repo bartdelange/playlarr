@@ -22,6 +22,8 @@ export class ImportRepository {
     return { id: row.id as string, source: row.source as string, sourcePlaylistId: row.source_playlist_id as string, playlistName: row.playlist_name as string, playlistPath: optional(row.playlist_path), workflowState: row.workflow_state as string, createdAt: row.created_at as string, updatedAt: row.updated_at as string, lastError: optional(row.last_error) };
   }
 
+  listImports(limit = 100): StoredImport[] { return (this.database.prepare("SELECT id FROM imports ORDER BY updated_at DESC LIMIT ?").all(limit) as { id: string }[]).map((row) => this.getImport(row.id)); }
+
   entries(importId: string): StoredEntry[] {
     return (this.database.prepare(`SELECT entries.*, imports.source AS import_source, resolutions.state, resolutions.is_manual FROM playlist_entries entries JOIN imports ON imports.id = entries.import_id JOIN resolutions ON resolutions.entry_id = entries.id WHERE entries.import_id = ? ORDER BY entries.position`).all(importId) as Record<string, unknown>[])
       .map((row) => ({ id: row.id as number, importId: row.import_id as string, position: row.position as number, track: { source: row.import_source as string, sourceTrackId: row.source_track_id as string, title: row.title as string, artists: JSON.parse(row.artists_json as string) as string[], album: row.album as string, isrc: optional(row.isrc), durationMs: row.duration_ms as number | undefined }, resolutionState: row.state as string, isManual: Boolean(row.is_manual) }));
