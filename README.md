@@ -220,8 +220,9 @@ Local source checkouts default to `.data`, `output`, and `.secrets`. `DATA_DIR`,
 `TIDAL_SESSION_FILE`, and `SPOTIFY_TOKEN_CACHE` override those paths. Container images set them to
 locations beneath `/config` and `/playlists`.
 
-Values saved through Settings take precedence over `.env`, except explicit `DATA_DIR` and
-`OUTPUT_DIR` deployment overrides. Debug logging is also enabled from Settings.
+Service values saved through Settings take precedence over `.env`. Storage paths, including the
+playlist output directory, remain deployment-owned so a saved UI value cannot break container
+mounts.
 
 ### Spotify authentication
 

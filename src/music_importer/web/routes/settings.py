@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import is_dataclass, replace
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
@@ -31,23 +30,36 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
             message=message,
         )
 
-    @app.post("/settings/services")
+    @app.post("/settings/services/{service}")
     def save_services(
-        mb_user_agent: str = Form(""),
-        spotify_client_id: str = Form(""),
-        spotify_redirect_uri: str = Form(""),
-        lidarr_url: str = Form(""),
-        lidarr_api_key: str = Form(""),
-        lidarr_root_folder: str = Form(""),
-        lidarr_quality_profile_id: int = Form(1),
-        lidarr_metadata_profile_id: int = Form(1),
-        navidrome_url: str = Form(""),
-        navidrome_username: str = Form(""),
-        navidrome_password: str = Form(""),
-        output_dir: str = Form("output"),
-        debug_logging: bool = Form(False),
+        service: str,
+        mb_user_agent: str | None = Form(None),
+        spotify_client_id: str | None = Form(None),
+        spotify_redirect_uri: str | None = Form(None),
+        lidarr_url: str | None = Form(None),
+        lidarr_api_key: str | None = Form(None),
+        lidarr_root_folder: str | None = Form(None),
+        lidarr_quality_profile_id: int | None = Form(None),
+        lidarr_metadata_profile_id: int | None = Form(None),
+        navidrome_url: str | None = Form(None),
+        navidrome_username: str | None = Form(None),
+        navidrome_password: str | None = Form(None),
     ):
         nonlocal config
+        expected_fields = {
+            "musicbrainz": {"mb_user_agent"},
+            "spotify": {"spotify_client_id", "spotify_redirect_uri"},
+            "lidarr": {
+                "lidarr_url",
+                "lidarr_api_key",
+                "lidarr_root_folder",
+                "lidarr_quality_profile_id",
+                "lidarr_metadata_profile_id",
+            },
+            "navidrome": {"navidrome_url", "navidrome_username", "navidrome_password"},
+        }
+        if service not in expected_fields:
+            raise HTTPException(404, "unknown service settings")
         previous = repository.get_setting("service_config", {})
         values = service_config_values(
             config,
@@ -63,11 +75,13 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
             navidrome_url=navidrome_url,
             navidrome_username=navidrome_username,
             navidrome_password=navidrome_password,
-            output_dir=output_dir,
         )
-        repository.set_setting("debug_logging", debug_logging)
-        logging.getLogger().setLevel(logging.DEBUG if debug_logging else logging.INFO)
-        repository.set_setting("service_config", serializable_config(values))
+        if set(values) != expected_fields[service]:
+            raise HTTPException(400, "invalid service settings")
+        stored = previous.copy() if isinstance(previous, dict) else {}
+        stored.pop("output_dir", None)
+        stored.update(serializable_config(values))
+        repository.set_setting("service_config", stored)
         if is_dataclass(config):
             config = replace(config, **values)
             context.config = config
