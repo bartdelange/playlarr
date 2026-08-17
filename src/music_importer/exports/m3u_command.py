@@ -59,7 +59,7 @@ def select_or_resolve_mapping(config, source_name: str) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Create an M3U playlist from a Music Importer mapping and downloaded Lidarr files"
+        description="Create an M3U playlist from a Playlarr mapping and downloaded Lidarr files"
     )
     parser.add_argument("mapping", nargs="?", type=Path, metavar="MAPPING_CSV")
     parser.add_argument(

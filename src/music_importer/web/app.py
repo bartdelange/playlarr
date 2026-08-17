@@ -38,7 +38,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
     assets = Path(__file__).parent
     ui = WebUI(context, Jinja2Templates(directory=assets / "templates"))
 
-    app = FastAPI(title="Music Importer")
+    app = FastAPI(title="Playlarr")
     app.state.context = context
     app.mount("/static", StaticFiles(directory=assets / "static"), name="static")
     for routes in (

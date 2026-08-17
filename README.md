@@ -1,15 +1,18 @@
-# Music Importer
+# Playlarr: Playlists to Lidarr
 
-Music Importer is a local, GUI-first application for bringing Spotify and TIDAL playlists into a Lidarr-managed library. It resolves recordings through MusicBrainz, pauses for human review only when necessary, previews every Lidarr change, follows download state, and generates ordered M3U8 playlists.
+Playlarr turns playlists from music subscription services into a local music library. It resolves
+tracks from services such as TIDAL and Spotify, sends matched releases to Lidarr for acquisition,
+adds optional local tracks from Navidrome, and generates ordered M3U8 playlists for your local music
+server.
 
 The application runs entirely on your computer and binds only to `127.0.0.1`.
 
 ## Architecture
 
-The installed `music-import` command starts the process through `app/`. FastAPI composition,
-capability-oriented routes, templates, and static assets live under `web/`; source-neutral use cases
-live under `application/` and `workflows/`; and provider-independent records and rules live under
-`domain/`. Spotify, TIDAL, MusicBrainz, and Lidarr details are isolated under `integrations/`.
+Container startup lives under `app/`. FastAPI composition, capability-oriented routes, templates,
+and static assets live under `web/`; source-neutral use cases live under `application/` and
+`workflows/`; and provider-independent records and rules live under `domain/`. Spotify, TIDAL,
+MusicBrainz, Lidarr, and Navidrome details are isolated under `integrations/`.
 SQLite repositories and migrations live under `persistence/`, while CSV and M3U formats live under
 `exports/`.
 
@@ -25,10 +28,12 @@ Prerequisites are Python 3.12+, [`uv`](https://docs.astral.sh/uv/), a Spotify or
 ```bash
 uv sync
 cp .env.example .env
-uv run music-import
+uv run uvicorn music_importer.web.app:create_app --factory --host 127.0.0.1 --port 8787
 ```
 
-`music-import` starts the server at `http://127.0.0.1:8787`. Open that address when you want to use the interface. Use `music-import --debug` for diagnostic logging.
+Open `http://127.0.0.1:8787` after starting the server. Playlarr is a web-only application and does
+not install a command-line interface. Set the saved debug-logging option in Settings when diagnostic
+logging is needed.
 
 The GUI stores resumable import state in `.data/music-importer.db`. The file is created with owner-only permissions where supported. Existing `.env` values are used as initial settings; settings saved in the GUI override them. Secret fields are replacement-only and are never rendered back into the page.
 
@@ -46,13 +51,14 @@ the GUI take precedence, except explicit `DATA_DIR` and `OUTPUT_DIR` deployment 
 
 ## Docker and Unraid
 
-The container listens on `0.0.0.0:8787`; the normal `music-import` launcher remains localhost-only. The web UI has no login screen, so expose it only on a trusted LAN or put authentication in front of it. Do not publish it directly to the internet.
+The container listens on `0.0.0.0:8787`. The web UI has no login screen, so expose it only on a
+trusted LAN or put authentication in front of it. Do not publish it directly to the internet.
 
 Published GitHub releases produce `linux/amd64` images at
-`ghcr.io/bartdelange/tidal-to-lidarr`. The root-level
-[`tidal-to-lidarr.xml`](tidal-to-lidarr.xml) file is a native Unraid Docker template. Copy it to
-`/boot/config/plugins/dockerMan/templates-user/my-tidal-to-lidarr.xml`, refresh the Docker page,
-choose **Add Container**, and select `tidal-to-lidarr` from **User templates**. The package must be
+`ghcr.io/bartdelange/playlists-to-lidarr`. The root-level [`playlarr.xml`](playlarr.xml) file is a
+native Unraid Docker template. Copy it to
+`/boot/config/plugins/dockerMan/templates-user/my-playlarr.xml`, refresh the Docker page,
+choose **Add Container**, and select `playlarr` from **User templates**. The package must be
 public in GitHub Container Registry for anonymous pulls; a private package requires GHCR
 credentials on the server.
 
@@ -65,7 +71,8 @@ chown -R 1000:1000 /mnt/user/appdata/tidal-to-lidarr
 ```
 
 The template tracks `latest` so Unraid can detect published updates. Pin its Repository field to a
-release such as `ghcr.io/bartdelange/tidal-to-lidarr:0.1.0` when controlled upgrades are preferred.
+release such as `ghcr.io/bartdelange/playlists-to-lidarr:1.3.0` when controlled upgrades are
+preferred.
 
 ### Releases
 
@@ -133,7 +140,7 @@ The health check is available at `/health`. View status and logs with:
 
 ```bash
 docker compose ps
-docker compose logs -f music-importer
+docker compose logs -f playlarr
 ```
 
 ## Workflow
@@ -210,16 +217,16 @@ CSV is an interchange and debugging format, not application state. From the GUI 
 
 Existing report headers remain compatible; new metadata fields are appended where applicable.
 
-## Launcher
+## Web application
 
-The normal interface is now:
+Playlarr is operated through its web interface. For local development, start it with:
 
 ```bash
-uv run music-import
-uv run music-import --debug
+uv run uvicorn music_importer.web.app:create_app --factory --host 127.0.0.1 --port 8787
 ```
 
-Former switches such as `--overview`, `--resume`, `--dry-run`, `--missing-in-lidarr`, M3U source selection, output selection, and path mappings are represented by persistent GUI workflows and settings. CSV mapping import remains available from **New Import**.
+Former command-line workflows are represented by persistent GUI workflows and settings. CSV
+mapping import remains available from **New Import**.
 
 ## Tests
 

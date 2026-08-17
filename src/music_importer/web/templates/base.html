@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Music Importer{% endblock %}</title>
+  <title>{% block title %}Playlarr{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
 </head>
 <body>
-  <header><a class="brand" href="/">Music Importer</a><nav><a href="/imports/new">New Import</a><a href="/jobs">Background Jobs</a><a href="/settings">Settings</a></nav></header>
+  <header><a class="brand" href="/">Playlarr</a><nav><a href="/imports/new">New Import</a><a href="/jobs">Background Jobs</a><a href="/settings">Settings</a></nav></header>
   <main>{% block content %}{% endblock %}</main>
 </body>
 </html>

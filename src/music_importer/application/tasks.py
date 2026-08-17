@@ -10,7 +10,7 @@ from ..persistence.repository import ImportRepository
 class TaskManager:
     def __init__(self, repository: ImportRepository):
         self.repository = repository
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="music-importer")
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="playlarr")
 
     def submit(
         self,

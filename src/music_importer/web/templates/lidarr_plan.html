@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Lidarr Plan · Music Importer{% endblock %}
+{% block title %}Lidarr Plan · Playlarr{% endblock %}
 {% block content %}
 {% include "_playlist_header.html" %}{% include "_workflow_steps.html" %}
 <div class="step-actions"><div><p class="eyebrow">Current step</p><h2>Lidarr plan</h2><p><span class="badge">{{ plan_status }}</span> {{ plan.actions|length }} actions · {{ plan.mutating_actions|length }} changes</p></div><div class="actions plan-actions">{% if plan_status == 'draft' %}<form method="post" action="/plans/{{ plan_id }}/execute"><button>Apply to Lidarr</button></form>{% endif %}{% if plan_status != 'approved' %}<form method="post" action="/imports/{{ import_id }}/plan"><button class="secondary">Rebuild Lidarr plan</button></form>{% endif %}{% if can_open_final %}<a class="button secondary" href="/imports/{{ import_id }}?stage=final">Open final</a>{% endif %}</div></div>

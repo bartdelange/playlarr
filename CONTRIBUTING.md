@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for improving Music Importer. Please open an issue before a large architectural change so
+Thank you for improving Playlarr. Please open an issue before a large architectural change so
 the intended behavior and migration impact can be agreed first.
 
 ## Local setup
