@@ -41,7 +41,7 @@ uv run ruff format --check src tests scripts
 uv run ruff check src tests scripts
 uv run python -m unittest discover -s tests -v
 uv build
-docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 --ignore 'unknown permission scope "code-quality"'
+docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 --ignore code-quality
 ```
 
 Add focused regression tests for behavior changes. The suite uses mocks and requires no credentials.

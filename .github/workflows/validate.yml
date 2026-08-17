@@ -64,7 +64,7 @@ jobs:
       - name: Validate GitHub Actions
         uses: docker://rhysd/actionlint:1.7.7
         with:
-          args: -ignore 'unknown permission scope "code-quality"'
+          args: -ignore code-quality
       - name: Check formatting
         run: uv run ruff format --check src tests scripts
       - name: Lint
