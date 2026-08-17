@@ -12,7 +12,7 @@
   <Overview>Playlarr turns playlists from music subscription services into a local Lidarr-managed library and ordered M3U8 playlists. Choose a Playlarr password or trusted SSO gateway when you first open the application.</Overview>
   <Category>MediaApp:Music</Category>
   <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="Port used to access the web interface." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
-  <Config Name="AppData Config Path" Target="/config" Default="/mnt/user/appdata/tidal-to-lidarr" Mode="rw" Description="Playlarr workflow state and authentication data. The legacy host path is retained so upgrades preserve existing installations." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr</Config>
+  <Config Name="AppData Config Path" Target="/config" Default="/mnt/user/appdata/playlarr" Mode="rw" Description="Playlarr workflow state and authentication data." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/playlarr</Config>
   <Config Name="Playlist Output" Target="/playlists" Default="/mnt/user/music/playlists" Mode="rw" Description="Generated playlists and diagnostic reports." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/music/playlists</Config>
   <Config Name="Timezone" Target="TZ" Default="Europe/Amsterdam" Description="Container timezone." Type="Variable" Display="always" Required="true" Mask="false">Europe/Amsterdam</Config>
   <Config Name="MusicBrainz User Agent" Target="MUSICBRAINZ_USER_AGENT" Default="" Description="Required identifying user agent containing a real email address or URL." Type="Variable" Display="always" Required="true" Mask="false"/>
