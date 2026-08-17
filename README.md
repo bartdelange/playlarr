@@ -14,7 +14,7 @@ those too.
 > Point Playlarr at a streaming playlist, let Lidarr build the local library, and recreate the
 > playlist using your own music files.
 
-<!-- TODO: Screenshot — Playlarr dashboard / import overview -->
+![Playlarr dashboard showing imports at review, plan, download, and export stages.](docs/images/dashboard.png)
 
 Playlarr coordinates metadata and your existing services; it does not download music itself. Use it
 only with media you are legally entitled to acquire and access. See [Responsible use](#responsible-use)
@@ -85,8 +85,6 @@ ghcr.io/bartdelange/playlists-to-lidarr:latest
 4. Choose `playlarr` under **User templates**.
 5. Fill in the service settings and create the container.
 6. Open `http://UNRAID-IP:8787` and choose the initial authorization mode.
-
-<!-- TODO: Screenshot — Unraid Playlarr template / configuration -->
 
 The template uses two mounts:
 
@@ -159,7 +157,7 @@ Use **Authenticate Spotify** or **Authenticate TIDAL** from Settings when that s
 Secrets are replacement-only: Playlarr never renders saved passwords, API keys, or tokens back into
 the page.
 
-<!-- TODO: Screenshot — Playlarr Settings with service configuration -->
+![Playlarr Settings with vertically arranged service and application configuration cards.](docs/images/settings.png)
 
 ## Import your first playlist
 
@@ -174,13 +172,13 @@ the page.
 9. Optionally open **Local additions** and append Navidrome-only tracks.
 10. Select **Export M3U** to generate the ordered playlist.
 
-<!-- TODO: Screenshot — playlist browser and playlist selection -->
+![Spotify playlist browser with filtering, import, and impact-analysis actions.](docs/images/playlist-browser.png)
 
-<!-- TODO: Screenshot — MusicBrainz matching / unresolved-track review -->
+![Manual MusicBrainz review for an unresolved source track.](docs/images/musicbrainz-review.png)
 
-<!-- TODO: Screenshot — Lidarr plan and proposed actions -->
+![Lidarr plan showing source tracks, mapped releases, and proposed actions before approval.](docs/images/lidarr-plan.png)
 
-<!-- TODO: Screenshot — completed import and generated M3U8 playlist -->
+![Final export view with generated M3U8 path and downloaded local tracks.](docs/images/completed-export.png)
 
 Long-running catalogue reads, resolution, planning, update previews, and library work run as
 persisted background jobs. Their progress remains visible, and an interrupted job is recorded after
@@ -303,95 +301,16 @@ For a previous local installation, copy `.data/music-importer.db` to
 `/mnt/user/appdata/tidal-to-lidarr` host directory unless you intentionally migrate it while the
 container is stopped.
 
-### Architecture
+### Security and maintenance
 
-The `music_importer` package is organized by capability:
+Read [the security guide](docs/security.md) before exposing Playlarr beyond a trusted local network.
+Playlarr is distributed under the [MIT License](LICENSE).
 
-- `app/` owns container startup;
-- `web/` owns FastAPI composition, routes, templates, and static assets;
-- `application/` and `workflows/` own source-neutral use cases and coordination;
-- `domain/` owns provider-independent playlist records and rules;
-- `integrations/` isolates Spotify, TIDAL, MusicBrainz, Lidarr, and Navidrome details;
-- `persistence/` owns SQLite migrations and durable repositories;
-- `exports/` owns CSV compatibility, reports, and M3U serialization.
+### For contributors and maintainers
 
-SQLite stores imports, ordered source occurrences, resolution evidence, manual decisions, Lidarr
-plans and execution results, jobs, library state, playlist revisions, local additions, and export
-history. CSV and M3U8 files are outputs rather than primary state, except for the explicit legacy
-CSV import path.
-
-### Local development
-
-Playlarr is a web-only application with no installed CLI. Run it locally with Python 3.12+ and
-[`uv`](https://docs.astral.sh/uv/):
-
-```bash
-uv sync --locked --dev
-cp .env.example .env
-uv run uvicorn music_importer.web.app:create_app --factory --host 127.0.0.1 --port 8787
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) before making changes. Install the repository hooks with:
-
-```bash
-uv run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
-```
-
-### Tests
-
-Run the complete local validation suite with:
-
-```bash
-uv run ruff format --check src tests scripts
-uv run ruff check src tests scripts
-uv run python -m unittest discover -s tests -v
-uv build
-docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7
-```
-
-The tests protect matching safeguards, persistence and migration, source parsing, ordered
-duplicates, read-only planning, approved execution, cancellation, playlist refreshes, local
-additions, library state, and M3U generation. Automated tests use mocks and require no live-service
-credentials.
-
-### Releases
-
-Maintainers prepare an annotated semantic-version release with:
-
-```bash
-uv run python scripts/release.py prepare patch  # or minor / major
-```
-
-After merging the generated release PR, update local `master` and publish it:
-
-```bash
-git switch master
-git pull --ff-only
-uv run python scripts/release.py publish
-```
-
-The guarded helper updates `pyproject.toml` and `uv.lock`, validates the project, opens the release
-PR, and refuses to move or reuse an existing tag. The release workflow verifies the tag, publishes
-the versioned and `latest` `linux/amd64` images to GHCR with provenance, and creates the GitHub
-release.
-
-### Security and publication
-
-Playlarr handles API keys and OAuth sessions. Never commit `.env`, `.secrets/`, `.data/`, OAuth
-sessions, API keys, generated reports, or container data. The supplied ignore files already exclude
-them. The web UI supports a single-user password with signed expiring sessions and login throttling.
-Passwords are stored as Argon2 hashes. Installations fully protected by an SSO gateway can skip or
-disable Playlarr authorization during setup or from Settings. CSRF protection remains enabled in
-both modes. Never disable authorization when Playlarr is directly reachable around the gateway.
-Playlarr does not provide TLS, so it should remain on a trusted network or sit behind a trusted
-HTTPS reverse proxy.
-
-Authentication is enabled by default. `PLAYLARR_AUTH_ENABLED=false` disables it for isolated test
-or development environments; do not use that setting on a network-accessible installation. The
-session signing secret and password hash live in the protected SQLite database under `/config`.
-
-Before publishing a pre-existing repository, inspect its complete Git history for credentials even
-when the current working tree is clean. Playlarr is distributed under the [MIT License](LICENSE).
+Playlarr is a web-only app; it has no installed CLI. Development setup, architecture, tests, and
+contribution guidance are in [CONTRIBUTING.md](CONTRIBUTING.md). Release preparation and publishing
+are in [docs/releasing.md](docs/releasing.md).
 
 ## Responsible use
 
