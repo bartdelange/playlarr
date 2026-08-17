@@ -1,0 +1,1 @@
+export interface MusicBrainzResult { resolvedVia?: string; recordingTitle?: string; artistNames?: string[]; recordingIds?: string[]; releaseIds?: string[]; releaseGroupIds?: string[]; artistIds?: string[]; primaryArtistId?: string; failureReason?: string }
