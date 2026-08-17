@@ -308,7 +308,7 @@ Playlarr is distributed under the [MIT License](LICENSE).
 
 ### For contributors and maintainers
 
-Playlarr is a web-only app; it has no installed CLI. Development setup, architecture, tests, and
+Development setup, architecture, tests, and
 contribution guidance are in [CONTRIBUTING.md](CONTRIBUTING.md). Release preparation and publishing
 are in [docs/releasing.md](docs/releasing.md).
 
