@@ -8,6 +8,11 @@ MAX_TEMPLATE_LINE_LENGTH = 150
 
 
 class WebTemplateTests(unittest.TestCase):
+    def test_base_template_uses_a_same_origin_stylesheet_url(self):
+        base_template = (TEMPLATE_DIRECTORY / "base.html").read_text()
+
+        self.assertIn('href="/static/app.css"', base_template)
+
     def test_every_template_compiles(self):
         environment = Environment(loader=FileSystemLoader(TEMPLATE_DIRECTORY))
 
