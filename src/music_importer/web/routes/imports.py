@@ -154,6 +154,7 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
             stored_plan=plan,
             library=library,
             latest_export=repository.latest_playlist_export(import_id),
+            local_additions=repository.local_playlist_additions(import_id),
             has_resolvable=has_resolvable,
             resolvable_count=resolvable_count,
             pending_count=pending_count,

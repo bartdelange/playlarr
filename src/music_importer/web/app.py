@@ -20,6 +20,7 @@ from .routes import (
     lidarr,
     lidarr_execution,
     lidarr_plan_detail,
+    local_additions,
     mapping_overrides,
     playlist_export,
     playlist_updates,
@@ -54,6 +55,7 @@ def create_app(config: Config | None = None, repository: ImportRepository | None
         lidarr,
         lidarr_plan_detail,
         lidarr_execution,
+        local_additions,
         playlist_export,
     ):
         routes.register_routes(app, ui)

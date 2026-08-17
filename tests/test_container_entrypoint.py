@@ -6,12 +6,16 @@ from unittest.mock import call, patch
 from music_importer.app.container_entrypoint import (
     APPLICATION_GID,
     APPLICATION_UID,
+    CONTAINER_STORAGE_DIRS,
     prepare_storage,
     run,
 )
 
 
 class ContainerEntrypointTests(unittest.TestCase):
+    def test_container_uses_one_appdata_root_and_a_separate_playlist_mount(self):
+        self.assertEqual(CONTAINER_STORAGE_DIRS, (Path("/config"), Path("/playlists")))
+
     def test_prepare_storage_creates_and_owns_mount_roots(self):
         with tempfile.TemporaryDirectory() as directory:
             storage = Path(directory) / "data"

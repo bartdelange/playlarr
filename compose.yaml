@@ -14,10 +14,12 @@ services:
       LIDARR_ROOT_FOLDER: ${LIDARR_ROOT_FOLDER:-/music}
       LIDARR_QUALITY_PROFILE_ID: ${LIDARR_QUALITY_PROFILE_ID:-1}
       LIDARR_METADATA_PROFILE_ID: ${LIDARR_METADATA_PROFILE_ID:-1}
+      NAVIDROME_URL: ${NAVIDROME_URL:-}
+      NAVIDROME_USERNAME: ${NAVIDROME_USERNAME:-}
+      NAVIDROME_PASSWORD: ${NAVIDROME_PASSWORD:-}
     volumes:
-      - ./container-data:/data
+      - ./container-config:/config
       - ./container-playlists:/playlists
-      - ./container-secrets:/secrets
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
       interval: 30s

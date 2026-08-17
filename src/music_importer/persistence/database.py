@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .timestamps import now
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 
 class DatabaseRepository:
@@ -206,6 +206,26 @@ class DatabaseRepository:
                         "ADD COLUMN updated INTEGER NOT NULL DEFAULT 0"
                     )
                 db.execute("PRAGMA user_version = 7")
+                version = 7
+            if version < 8:
+                db.executescript("""
+                    CREATE TABLE local_playlist_additions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        import_id TEXT NOT NULL REFERENCES imports(id) ON DELETE CASCADE,
+                        provider TEXT NOT NULL,
+                        provider_track_id TEXT NOT NULL,
+                        ordinal INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        artists_json TEXT NOT NULL,
+                        album TEXT NOT NULL,
+                        path_snapshot TEXT NOT NULL DEFAULT '',
+                        created_at TEXT NOT NULL,
+                        UNIQUE(import_id, ordinal)
+                    );
+                    CREATE INDEX local_playlist_additions_import
+                        ON local_playlist_additions(import_id, ordinal);
+                    PRAGMA user_version = 8;
+                """)
             db.execute(
                 "UPDATE jobs SET status = 'interrupted', updated_at = ? WHERE status = 'running'",
                 (now(),),

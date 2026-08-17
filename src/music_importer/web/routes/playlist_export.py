@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from ...application.playlist_export import PlaylistExportService
 from ...exports.m3u import playlist_output_path, write_m3u
 from ...integrations.lidarr import LidarrClient
+from ...integrations.navidrome import NavidromeClient
 from ..presentation import WebUI
 
 
@@ -32,11 +33,19 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
                     "path_mappings", [[config.lidarr_root_folder, config.lidarr_root_folder]]
                 )
             ]
-            export = PlaylistExportService(LidarrClient(config)).build(
+            service = PlaylistExportService(LidarrClient(config))
+            export = service.build(
                 [entry.track for entry in entries],
                 [entry.result for entry in entries],
                 path_mappings,
             )
+            additions = repository.local_playlist_additions(import_id)
+            if additions:
+                if not config.navidrome_enabled:
+                    raise RuntimeError("Navidrome is required to resolve local playlist additions")
+                export = service.append_local_additions(
+                    export, additions, NavidromeClient(config), path_mappings, len(entries)
+                )
             output = playlist_output_path(config.output_dir, imported.playlist_name)
             write_m3u(output, export)
             repository.record_playlist_export(

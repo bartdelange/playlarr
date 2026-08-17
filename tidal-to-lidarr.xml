@@ -12,8 +12,7 @@
   <Overview>Import Spotify and TIDAL playlists into a Lidarr-managed library using MusicBrainz matching.</Overview>
   <Category>MediaApp:Music</Category>
   <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="Port used to access the web interface." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
-  <Config Name="Application Data" Target="/data" Default="/mnt/user/appdata/tidal-to-lidarr/data" Mode="rw" Description="SQLite database and persistent workflow state." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr/data</Config>
-  <Config Name="Authentication Data" Target="/secrets" Default="/mnt/user/appdata/tidal-to-lidarr/secrets" Mode="rw" Description="Spotify token and TIDAL session files." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr/secrets</Config>
+  <Config Name="AppData Config Path" Target="/config" Default="/mnt/user/appdata/tidal-to-lidarr" Mode="rw" Description="SQLite workflow state, Spotify tokens, and TIDAL sessions." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr</Config>
   <Config Name="Playlist Output" Target="/playlists" Default="/mnt/user/music/playlists" Mode="rw" Description="Generated playlists and diagnostic reports." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/music/playlists</Config>
   <Config Name="Timezone" Target="TZ" Default="Europe/Amsterdam" Description="Container timezone." Type="Variable" Display="always" Required="true" Mask="false">Europe/Amsterdam</Config>
   <Config Name="MusicBrainz User Agent" Target="MUSICBRAINZ_USER_AGENT" Default="" Description="Required identifying user agent containing a real email address or URL." Type="Variable" Display="always" Required="true" Mask="false"/>
@@ -24,4 +23,7 @@
   <Config Name="Lidarr Root Folder" Target="LIDARR_ROOT_FOLDER" Default="/music" Description="Root folder configured inside Lidarr; this is a logical path and does not require a volume mount." Type="Variable" Display="advanced" Required="false" Mask="false">/music</Config>
   <Config Name="Lidarr Quality Profile ID" Target="LIDARR_QUALITY_PROFILE_ID" Default="1" Description="Lidarr quality profile ID." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
   <Config Name="Lidarr Metadata Profile ID" Target="LIDARR_METADATA_PROFILE_ID" Default="1" Description="Lidarr metadata profile ID." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+  <Config Name="Navidrome URL" Target="NAVIDROME_URL" Default="" Description="Optional URL through which the container can reach Navidrome for read-only local playlist additions." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Navidrome Username" Target="NAVIDROME_USERNAME" Default="" Description="Navidrome username used for read-only library searches and song lookup." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Navidrome Password" Target="NAVIDROME_PASSWORD" Default="" Description="Navidrome password used to generate Subsonic token authentication." Type="Variable" Display="always" Required="false" Mask="true"/>
 </Container>

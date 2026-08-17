@@ -54,7 +54,7 @@ class ImportRepositoryTests(unittest.TestCase):
                     "SELECT result_json FROM jobs WHERE id = 'job'"
                 ).fetchone()[0]
 
-        self.assertEqual(version, 7)
+        self.assertEqual(version, 8)
         self.assertEqual(json.loads(result_json), {"source": "spotify"})
 
     def test_import_survives_restart_and_preserves_order_and_duplicates(self):
@@ -74,6 +74,24 @@ class ImportRepositoryTests(unittest.TestCase):
         self.assertEqual([entry.position for entry in entries], [0, 1])
         self.assertEqual([entry.track.source_track_id for entry in entries], ["same", "same"])
         self.assertEqual(workflow_state, "ready_to_resolve")
+
+    def test_local_additions_survive_restart_and_preserve_duplicate_occurrences(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.repository(directory)
+            imported = repository.create_import(PlaylistInfo("spotify", "playlist", "Mix"))
+            first = repository.add_local_playlist_track(
+                imported.id, "navidrome", "song", "Local", ("Artist",), "Album", "path.flac"
+            )
+            repository.add_local_playlist_track(
+                imported.id, "navidrome", "song", "Local", ("Artist",), "Album", "path.flac"
+            )
+
+            restarted = self.repository(directory)
+            additions = restarted.local_playlist_additions(imported.id)
+            restarted.remove_local_playlist_track(imported.id, first)
+
+        self.assertEqual([item.provider_track_id for item in additions], ["song", "song"])
+        self.assertEqual([item.ordinal for item in additions], [0, 1])
 
     def test_delete_import_cascades_history_and_rejects_active_jobs(self):
         with tempfile.TemporaryDirectory() as directory:

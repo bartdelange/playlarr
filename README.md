@@ -36,7 +36,8 @@ The GUI stores resumable import state in `.data/music-importer.db`. The file is 
 
 Copy `.env.example` and set `MUSICBRAINZ_USER_AGENT` to an identifying value with a real contact
 address or URL. Spotify requires `SPOTIFY_CLIENT_ID`; Lidarr requires both `LIDARR_URL` and
-`LIDARR_API_KEY`.
+`LIDARR_API_KEY`. Optional Navidrome playlist additions require `NAVIDROME_URL`,
+`NAVIDROME_USERNAME`, and `NAVIDROME_PASSWORD` (or the equivalent saved Settings values).
 
 Storage defaults to `.data`, `output`, and `.secrets`. `DATA_DIR`, `OUTPUT_DIR`,
 `TIDAL_SESSION_FILE`, and `SPOTIFY_TOKEN_CACHE` may override those locations. The complete list of
@@ -59,7 +60,7 @@ The container creates its persistent directories on first start and makes the mo
 by the application user. To prepare them manually instead:
 
 ```bash
-mkdir -p /mnt/user/appdata/tidal-to-lidarr/{data,secrets,output}
+mkdir -p /mnt/user/appdata/tidal-to-lidarr /mnt/user/music/playlists
 chown -R 1000:1000 /mnt/user/appdata/tidal-to-lidarr
 ```
 
@@ -98,33 +99,35 @@ For local development, the repository also includes a Compose configuration:
 
 ```bash
 cp .env.example .env
-mkdir -p container-data container-playlists container-secrets
+mkdir -p container-config container-playlists
 docker compose up -d --build
 ```
 
 Open `http://UNRAID-IP:8787`. The mounts contain:
 
-- `/data`: SQLite state and all resumable workflow progress;
-- `/playlists`: generated M3U8 files;
-- `/secrets`: Spotify token and TIDAL session files.
+- `/config/data`: SQLite state and all resumable workflow progress;
+- `/config/secrets`: Spotify token and TIDAL session files;
+- `/playlists`: generated M3U8 files.
 
 For an Unraid Compose stack, replace the relative host paths with persistent shares such as:
 
 ```yaml
 volumes:
-  - /mnt/user/appdata/music-importer/data:/data
-  - /mnt/user/appdata/music-importer/secrets:/secrets
+  - /mnt/user/appdata/tidal-to-lidarr:/config
   - /mnt/user/music:/playlists
 ```
 
-The startup process prepares the three mount roots and then runs the application as UID/GID
-`1000:1000`. To move the current installation without losing progress, stop the local application
-and copy `.data/music-importer.db` to the host directory mounted at `/data/music-importer.db`.
+The startup process prepares both mount roots and then runs the application as UID/GID `1000:1000`.
+To move a current container installation without losing progress, stop it, move the contents of the
+old `/data` host directory into `<config-host-path>/data`, move the contents of the old `/secrets`
+host directory into `<config-host-path>/secrets`, replace both mounts with the single `/config`
+mount, and then start the updated container. For a local installation, copy
+`.data/music-importer.db` to `<config-host-path>/data/music-importer.db`.
 
 Spotify authentication returns through the application's `/callback` route. For a headless Unraid
 deployment, set `SPOTIFY_REDIRECT_URI` to the externally reachable application URL ending in
 `/callback`, and register that exact URI in the Spotify developer dashboard. TIDAL's device login
-persists its session under `/secrets`.
+persists its session under `/config/secrets`.
 
 The health check is available at `/health`. View status and logs with:
 
@@ -142,7 +145,10 @@ docker compose logs -f music-importer
 5. Review unresolved or suspicious tracks. Search MusicBrainz or paste a recording MBID, inspect validation evidence, and explicitly accept warnings when appropriate.
 6. Preview the Lidarr plan. Planning is read-only; Lidarr is changed only after **Apply to Lidarr**.
 7. Refresh download/library status after Lidarr has had time to download albums.
-8. Generate or refresh the M3U8 playlist. Saved path mappings translate Lidarr paths for the playlist consumer.
+8. Optionally search Navidrome under **Local additions** and append songs unavailable from the
+   source playlist. Additions are saved by Navidrome song ID and can include duplicates.
+9. Generate or refresh the M3U8 playlist. Saved path mappings translate library paths for the
+   playlist consumer.
 
 Imports, source entries, resolution evidence, manual decisions, Lidarr plans, execution results, jobs, library state, and generated-playlist information survive restarts. Original playlist positions and duplicate entries are retained.
 
@@ -185,7 +191,11 @@ Lidarr synchronization remains additive. It does not monitor unrelated albums, s
 
 ## Playlist generation
 
-M3U8 generation queries downloaded Lidarr files and retains source order and duplicates. Tracks for which Lidarr does not provide a downloaded file path are skipped. Persisted path mappings translate paths such as `/music` to `/mnt/media/music`.
+M3U8 generation queries downloaded Lidarr files and retains source order and duplicates. It then
+resolves saved local additions against Navidrome and appends them in their saved order. Tracks for
+which Lidarr does not provide a downloaded file path, and additions no longer available from
+Navidrome, are skipped and counted as missing. Persisted path mappings translate paths such as
+`/music` to `/mnt/media/music`; relative paths returned by Navidrome remain relative.
 
 The import page displays the output file, downloaded count, and missing count.
 
