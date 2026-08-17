@@ -1,0 +1,5 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: #101319; color: #eef2f7; }
+main { max-width: 70rem; margin: 0 auto; padding: 3rem 1.5rem; }
+nav { display: flex; gap: 1rem; margin-top: 2rem; }
+a { color: #8cc8ff; }

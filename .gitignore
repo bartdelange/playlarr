@@ -9,6 +9,10 @@ dist/
 __pycache__/
 .venv/
 .ruff_cache/
+.next/
+node_modules/
+coverage/
+tsconfig.tsbuildinfo
 .DS_Store
 tidal-session*.json
 spotify-token*.json
