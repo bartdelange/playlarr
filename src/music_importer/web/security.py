@@ -138,7 +138,7 @@ class SecurityMiddleware:
         path = scope.get("path", "")
         public = path in PUBLIC_PATHS or path.startswith("/static/")
 
-        if not self.security.configured and path not in {"/setup", "/setup/skip", "/health"}:
+        if not self.security.configured and not public:
             await RedirectResponse("/setup", status_code=303)(scope, receive, send)
             return
 

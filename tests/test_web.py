@@ -777,6 +777,24 @@ class WebShellTests(unittest.TestCase):
             self.assertEqual(response.status_code, 303)
             self.assertEqual(stored, {"mb_user_agent": "playlarr@example.com"})
 
+    def test_service_settings_accept_omitted_controls_and_ignore_other_blocks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            client = TestClient(create_app(config(directory), repository))
+
+            response = client.post(
+                "/settings/services/lidarr",
+                data={
+                    "lidarr_url": "http://new-lidarr",
+                    "spotify_client_id": "must-not-change",
+                },
+                follow_redirects=False,
+            )
+            stored = repository.get_setting("service_config", {})
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(stored, {"lidarr_url": "http://new-lidarr"})
+
     def test_job_status_is_json_and_unknown_import_is_404(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = ImportRepository(Path(directory) / "state.db")

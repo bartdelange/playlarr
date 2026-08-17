@@ -43,6 +43,17 @@ class WebSecurityTests(unittest.TestCase):
         self.assertTrue(str(stored).startswith("$argon2"))
         self.assertNotIn("long-test-password", str(stored))
 
+    def test_first_run_setup_can_load_static_styles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app, _ = self.app(directory)
+            client = TestClient(app)
+
+            response = client.get("/static/app.css", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/css", response.headers["content-type"])
+        self.assertIn(".auth-card", response.text)
+
     def test_setup_can_skip_authorization_while_retaining_csrf_protection(self):
         with tempfile.TemporaryDirectory() as directory:
             app, repository = self.app(directory)
