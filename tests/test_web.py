@@ -705,6 +705,25 @@ class WebShellTests(unittest.TestCase):
         self.assertEqual(premature_library.status_code, 409)
         self.assertNotIn("secret", settings.text)
         self.assertIn("Configured — enter to replace", settings.text)
+        self.assertIn('for="services-tab">Services</label>', settings.text)
+        self.assertIn('for="data-tab">Data Settings</label>', settings.text)
+        self.assertNotIn('name="output_dir"', settings.text)
+
+    def test_each_service_settings_form_updates_only_its_own_block(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = ImportRepository(Path(directory) / "state.db")
+            client = TestClient(create_app(config(directory), repository))
+
+            response = client.post(
+                "/settings/services/musicbrainz",
+                data={"mb_user_agent": "playlarr@example.com"},
+                follow_redirects=False,
+            )
+
+            stored = repository.get_setting("service_config", {})
+
+            self.assertEqual(response.status_code, 303)
+            self.assertEqual(stored, {"mb_user_agent": "playlarr@example.com"})
 
     def test_job_status_is_json_and_unknown_import_is_404(self):
         with tempfile.TemporaryDirectory() as directory:

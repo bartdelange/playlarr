@@ -17,7 +17,7 @@ class StoredConfigTests(unittest.TestCase):
         with patch.dict(os.environ, {"MUSICBRAINZ_USER_AGENT": "test@example.com"}, clear=True):
             self.config = load_config()
 
-    def test_applies_known_values_and_converts_paths(self):
+    def test_applies_known_values_but_ignores_saved_output_path(self):
         updated = apply_stored_config(
             self.config,
             {
@@ -27,7 +27,7 @@ class StoredConfigTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(updated.output_dir, Path("/saved/output"))
+        self.assertEqual(updated.output_dir, self.config.output_dir)
         self.assertEqual(updated.lidarr_url, "http://lidarr")
 
     def test_environment_storage_paths_take_precedence(self):
@@ -55,14 +55,12 @@ class StoredConfigTests(unittest.TestCase):
             navidrome_url=" http://navidrome/ ",
             navidrome_username=" user ",
             navidrome_password=" password ",
-            output_dir=" reports ",
         )
 
         self.assertEqual(values["lidarr_url"], "http://lidarr")
         self.assertEqual(values["lidarr_api_key"], "saved-key")
-        self.assertEqual(values["output_dir"], Path("reports"))
         self.assertEqual(values["navidrome_url"], "http://navidrome")
-        self.assertEqual(serializable_config(values)["output_dir"], "reports")
+        self.assertNotIn("output_dir", serializable_config(values))
 
 
 if __name__ == "__main__":

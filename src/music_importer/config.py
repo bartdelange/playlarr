@@ -53,7 +53,7 @@ class Config:
         return bool(self.navidrome_url and self.navidrome_username and self.navidrome_password)
 
 
-_PATH_FIELDS = {"data_dir", "output_dir", "tidal_session_file", "spotify_token_cache"}
+_PATH_FIELDS = {"data_dir", "tidal_session_file", "spotify_token_cache"}
 
 
 def apply_stored_config(config: Config, stored: object) -> Config:
@@ -65,15 +65,14 @@ def apply_stored_config(config: Config, stored: object) -> Config:
     for key, value in stored.items():
         if not isinstance(key, str) or key not in Config.__dataclass_fields__:
             continue
+        if key == "output_dir":
+            continue
         values[key] = Path(value) if key in _PATH_FIELDS else value
 
     # Container and service managers use these variables to establish storage
     # boundaries. A value saved on another host must never shadow them.
     if os.getenv("DATA_DIR"):
         values.pop("data_dir", None)
-    if os.getenv("OUTPUT_DIR"):
-        values.pop("output_dir", None)
-
     return replace(config, **values)
 
 
@@ -81,43 +80,56 @@ def service_config_values(
     config: Config,
     previous: object,
     *,
-    mb_user_agent: str,
-    spotify_client_id: str,
-    spotify_redirect_uri: str,
-    lidarr_url: str,
-    lidarr_api_key: str,
-    lidarr_root_folder: str,
-    lidarr_quality_profile_id: int,
-    lidarr_metadata_profile_id: int,
-    navidrome_url: str,
-    navidrome_username: str,
-    navidrome_password: str,
-    output_dir: str,
+    mb_user_agent: str | None = None,
+    spotify_client_id: str | None = None,
+    spotify_redirect_uri: str | None = None,
+    lidarr_url: str | None = None,
+    lidarr_api_key: str | None = None,
+    lidarr_root_folder: str | None = None,
+    lidarr_quality_profile_id: int | None = None,
+    lidarr_metadata_profile_id: int | None = None,
+    navidrome_url: str | None = None,
+    navidrome_username: str | None = None,
+    navidrome_password: str | None = None,
 ) -> dict[str, object]:
-    """Normalize settings form values and preserve replacement-only secrets."""
+    """Normalize submitted service values and preserve replacement-only secrets."""
     saved = previous if isinstance(previous, Mapping) else {}
-    return {
-        "mb_user_agent": mb_user_agent.strip(),
-        "spotify_client_id": (
+    values: dict[str, object] = {}
+    if mb_user_agent is not None:
+        values["mb_user_agent"] = mb_user_agent.strip()
+    if spotify_client_id is not None:
+        values["spotify_client_id"] = (
             spotify_client_id.strip() or saved.get("spotify_client_id") or config.spotify_client_id
-        ),
-        "spotify_redirect_uri": spotify_redirect_uri.strip() or config.spotify_redirect_uri,
-        "lidarr_url": lidarr_url.strip().rstrip("/") or None,
-        "lidarr_api_key": lidarr_api_key.strip()
-        or saved.get("lidarr_api_key")
-        or config.lidarr_api_key,
-        "lidarr_root_folder": lidarr_root_folder.strip() or config.lidarr_root_folder,
-        "lidarr_quality_profile_id": lidarr_quality_profile_id,
-        "lidarr_metadata_profile_id": lidarr_metadata_profile_id,
-        "navidrome_url": navidrome_url.strip().rstrip("/") or None,
-        "navidrome_username": navidrome_username.strip()
-        or saved.get("navidrome_username")
-        or config.navidrome_username,
-        "navidrome_password": navidrome_password.strip()
-        or saved.get("navidrome_password")
-        or config.navidrome_password,
-        "output_dir": Path(output_dir.strip() or str(config.output_dir)),
-    }
+        )
+    if spotify_redirect_uri is not None:
+        values["spotify_redirect_uri"] = spotify_redirect_uri.strip() or config.spotify_redirect_uri
+    if lidarr_url is not None:
+        values["lidarr_url"] = lidarr_url.strip().rstrip("/") or None
+    if lidarr_api_key is not None:
+        values["lidarr_api_key"] = (
+            lidarr_api_key.strip() or saved.get("lidarr_api_key") or config.lidarr_api_key
+        )
+    if lidarr_root_folder is not None:
+        values["lidarr_root_folder"] = lidarr_root_folder.strip() or config.lidarr_root_folder
+    if lidarr_quality_profile_id is not None:
+        values["lidarr_quality_profile_id"] = lidarr_quality_profile_id
+    if lidarr_metadata_profile_id is not None:
+        values["lidarr_metadata_profile_id"] = lidarr_metadata_profile_id
+    if navidrome_url is not None:
+        values["navidrome_url"] = navidrome_url.strip().rstrip("/") or None
+    if navidrome_username is not None:
+        values["navidrome_username"] = (
+            navidrome_username.strip()
+            or saved.get("navidrome_username")
+            or config.navidrome_username
+        )
+    if navidrome_password is not None:
+        values["navidrome_password"] = (
+            navidrome_password.strip()
+            or saved.get("navidrome_password")
+            or config.navidrome_password
+        )
+    return values
 
 
 def serializable_config(values: Mapping[str, object]) -> dict[str, object]:
