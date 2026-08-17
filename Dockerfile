@@ -17,10 +17,10 @@ ENV PYTHONUNBUFFERED=1 \
     TIDAL_SESSION_FILE=/config/secrets/tidal-session.json \
     SPOTIFY_TOKEN_CACHE=/config/secrets/spotify-token.json
 
-RUN groupadd --gid 1000 music-importer \
-    && useradd --uid 1000 --gid music-importer --create-home music-importer \
+RUN groupadd --gid 1000 playlarr \
+    && useradd --uid 1000 --gid playlarr --create-home playlarr \
     && mkdir -p /config /playlists \
-    && chown -R music-importer:music-importer /config /playlists
+    && chown -R playlarr:playlarr /config /playlists
 
 COPY --from=builder /wheels /wheels
 RUN python -m pip install --no-cache-dir /wheels/* && rm -rf /wheels

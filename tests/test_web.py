@@ -673,6 +673,8 @@ class WebShellTests(unittest.TestCase):
             )
 
         self.assertEqual(dashboard.status_code, 200)
+        self.assertIn("<title>Playlarr</title>", dashboard.text)
+        self.assertIn('class="brand" href="/">Playlarr</a>', dashboard.text)
         self.assertIn("My Mix", dashboard.text)
         self.assertIn("Song", detail.text)
         self.assertIn("pending", detail.text)

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}New Import · Music Importer{% endblock %}
+{% block title %}New Import · Playlarr{% endblock %}
 {% block content %}<p class="eyebrow">New import</p><h1>{% if source %}Choose a playlist{% else %}Choose a source{% endif %}</h1>
 {% include "_workflow_steps.html" %}
 {% if not source %}<div class="source-grid"><a class="card" href="/imports/new?source=spotify"><h2>Spotify</h2><p>Authorization Code + PKCE</p></a><a class="card" href="/imports/new?source=tidal"><h2>TIDAL</h2><p>Device authentication and saved session</p></a></div>{% endif %}

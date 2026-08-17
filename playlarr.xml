@@ -1,18 +1,18 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>tidal-to-lidarr</Name>
-  <Repository>ghcr.io/bartdelange/tidal-to-lidarr:latest</Repository>
-  <Registry>https://github.com/bartdelange/tidal-to-lidarr/pkgs/container/tidal-to-lidarr</Registry>
+  <Name>playlarr</Name>
+  <Repository>ghcr.io/bartdelange/playlists-to-lidarr:latest</Repository>
+  <Registry>https://github.com/bartdelange/playlists-to-lidarr/pkgs/container/playlists-to-lidarr</Registry>
   <Network>bridge</Network>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Project>https://github.com/bartdelange/tidal-to-lidarr</Project>
-  <Support>https://github.com/bartdelange/tidal-to-lidarr/issues</Support>
+  <Project>https://github.com/bartdelange/playlists-to-lidarr</Project>
+  <Support>https://github.com/bartdelange/playlists-to-lidarr/issues</Support>
   <WebUI>http://[IP]:[PORT:8787]/</WebUI>
-  <Overview>Import Spotify and TIDAL playlists into a Lidarr-managed library using MusicBrainz matching.</Overview>
+  <Overview>Playlarr turns playlists from music subscription services into a local Lidarr-managed library and ordered M3U8 playlists.</Overview>
   <Category>MediaApp:Music</Category>
   <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="Port used to access the web interface." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
-  <Config Name="AppData Config Path" Target="/config" Default="/mnt/user/appdata/tidal-to-lidarr" Mode="rw" Description="SQLite workflow state, Spotify tokens, and TIDAL sessions." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr</Config>
+  <Config Name="AppData Config Path" Target="/config" Default="/mnt/user/appdata/tidal-to-lidarr" Mode="rw" Description="Playlarr workflow state and authentication data. The legacy host path is retained so upgrades preserve existing installations." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tidal-to-lidarr</Config>
   <Config Name="Playlist Output" Target="/playlists" Default="/mnt/user/music/playlists" Mode="rw" Description="Generated playlists and diagnostic reports." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/music/playlists</Config>
   <Config Name="Timezone" Target="TZ" Default="Europe/Amsterdam" Description="Container timezone." Type="Variable" Display="always" Required="true" Mask="false">Europe/Amsterdam</Config>
   <Config Name="MusicBrainz User Agent" Target="MUSICBRAINZ_USER_AGENT" Default="" Description="Required identifying user agent containing a real email address or URL." Type="Variable" Display="always" Required="true" Mask="false"/>

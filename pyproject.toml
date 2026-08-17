@@ -1,7 +1,7 @@
 [project]
-name = "music-importer"
+name = "playlarr"
 version = "1.2.0"
-description = "Import TIDAL or Spotify playlists through MusicBrainz into Lidarr"
+description = "Turn music-service playlists into a local Lidarr-managed library"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -14,9 +14,6 @@ dependencies = [
     "tidalapi>=0.8.8",
     "uvicorn>=0.52.1",
 ]
-
-[project.scripts]
-music-import = "music_importer.app.cli:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,3 +1,3 @@
 {% extends "base.html" %}
-{% block title %}Authenticate TIDAL · Music Importer{% endblock %}
+{% block title %}Authenticate TIDAL · Playlarr{% endblock %}
 {% block content %}<p class="eyebrow">TIDAL authentication</p><h1>Connect TIDAL</h1><div class="card"><p>Open TIDAL and approve this device. This page will continue automatically.</p><p><a class="button" href="{{ authorization_url }}" target="_blank" rel="noreferrer">Open TIDAL authentication</a></p><p id="status">Waiting for approval…</p></div><script>async function poll(){const r=await fetch('/api/settings/auth/tidal'),j=await r.json();if(j.status==='completed')location.href='/settings?message=TIDAL%20connection%20successful';else if(j.status==='failed'){status.textContent=j.error||'Authentication failed'}else setTimeout(poll,1000)}poll()</script>{% endblock %}

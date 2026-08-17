@@ -36,7 +36,7 @@ class NavidromeClient:
                 "t": token,
                 "s": salt,
                 "v": "1.16.1",
-                "c": "music-importer",
+                "c": "playlarr",
                 "f": "json",
                 **params,
             },

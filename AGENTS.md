@@ -96,7 +96,7 @@ Use the locked `uv` environment:
 ```bash
 uv sync --locked --dev
 uv run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
-uv run music-import
+uv run uvicorn music_importer.web.app:create_app --factory --host 127.0.0.1 --port 8787
 uv run ruff format src tests scripts
 uv run ruff format --check src tests scripts
 uv run ruff check src tests scripts
