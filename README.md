@@ -91,16 +91,16 @@ The template uses two mounts:
 - `/config` stores the SQLite workflow database and Spotify/TIDAL authentication state.
 - `/playlists` stores generated M3U8 playlists and diagnostic reports.
 
-The template deliberately retains `/mnt/user/appdata/tidal-to-lidarr` as its default `/config` host
-path so installations created before the Playlarr rename continue to see their existing data. Do
-not casually change that path when upgrading.
+The template uses `/mnt/user/appdata/playlarr` as its default `/config` host path. When upgrading an
+installation that uses an older appdata directory, keep the existing mount override or migrate its
+contents while the container is stopped.
 
 The image runs as UID/GID `1000:1000` and prepares both mount roots on startup. If you prefer to
 prepare the host directories yourself:
 
 ```bash
-mkdir -p /mnt/user/appdata/tidal-to-lidarr /mnt/user/music/playlists
-chown -R 1000:1000 /mnt/user/appdata/tidal-to-lidarr
+mkdir -p /mnt/user/appdata/playlarr /mnt/user/music/playlists
+chown -R 1000:1000 /mnt/user/appdata/playlarr
 ```
 
 The template follows `latest`. For controlled upgrades, pin the Repository field to a published
@@ -131,12 +131,11 @@ docker compose logs -f playlarr
 
 The health endpoint is available at `/health`.
 
-For an Unraid Compose stack, use persistent shares while retaining the compatibility-sensitive
-appdata path:
+For an Unraid Compose stack, use persistent shares:
 
 ```yaml
 volumes:
-  - /mnt/user/appdata/tidal-to-lidarr:/config
+  - /mnt/user/appdata/playlarr:/config
   - /mnt/user/music:/playlists
 ```
 
@@ -298,9 +297,9 @@ the old `/data` contents into `<config-host-path>/data`, move the old `/secrets`
 the updated container.
 
 For a previous local installation, copy `.data/music-importer.db` to
-`<config-host-path>/data/music-importer.db`. Keep the existing
-`/mnt/user/appdata/tidal-to-lidarr` host directory unless you intentionally migrate it while the
-container is stopped.
+`<config-host-path>/data/music-importer.db`. If its appdata uses an older directory name, keep that
+host-path override or migrate the directory to `/mnt/user/appdata/playlarr` while the container is
+stopped.
 
 ### Security and maintenance
 
