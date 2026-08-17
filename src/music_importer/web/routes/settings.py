@@ -80,23 +80,23 @@ def register_routes(app: FastAPI, ui: WebUI) -> None:
         if service not in expected_fields:
             raise HTTPException(404, "unknown service settings")
         previous = repository.get_setting("service_config", {})
-        values = service_config_values(
-            config,
-            previous,
-            mb_user_agent=mb_user_agent,
-            spotify_client_id=spotify_client_id,
-            spotify_redirect_uri=spotify_redirect_uri,
-            lidarr_url=lidarr_url,
-            lidarr_api_key=lidarr_api_key,
-            lidarr_root_folder=lidarr_root_folder,
-            lidarr_quality_profile_id=lidarr_quality_profile_id,
-            lidarr_metadata_profile_id=lidarr_metadata_profile_id,
-            navidrome_url=navidrome_url,
-            navidrome_username=navidrome_username,
-            navidrome_password=navidrome_password,
-        )
-        if set(values) != expected_fields[service]:
-            raise HTTPException(400, "invalid service settings")
+        submitted = {
+            "mb_user_agent": mb_user_agent,
+            "spotify_client_id": spotify_client_id,
+            "spotify_redirect_uri": spotify_redirect_uri,
+            "lidarr_url": lidarr_url,
+            "lidarr_api_key": lidarr_api_key,
+            "lidarr_root_folder": lidarr_root_folder,
+            "lidarr_quality_profile_id": lidarr_quality_profile_id,
+            "lidarr_metadata_profile_id": lidarr_metadata_profile_id,
+            "navidrome_url": navidrome_url,
+            "navidrome_username": navidrome_username,
+            "navidrome_password": navidrome_password,
+        }
+        service_values = {
+            key: value for key, value in submitted.items() if key in expected_fields[service]
+        }
+        values = service_config_values(config, previous, **service_values)
         stored = previous.copy() if isinstance(previous, dict) else {}
         stored.pop("output_dir", None)
         stored.update(serializable_config(values))
