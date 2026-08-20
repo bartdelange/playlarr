@@ -36,7 +36,8 @@ oversized `helpers`, implementation-bearing barrels, broad Client Components, un
 circular imports, and one-use frameworks. Prettier owns formatting; ESLint enforces correctness and
 maintainability rather than competing stylistic rules.
 
-Tests live in `tests-ts`; browser tests live in `e2e` and run against the real application with
+Unit and integration tests live beside the source they exercise under `src`; browser tests live in
+`e2e` and run against the real application with
 deterministic fixtures. Make tests visibly show setup, action, and assertion. Prefer semantic
 Playwright locators (`getByRole`, `getByLabel`) over CSS selectors. Add regressions for persistence,
 matching, execution safety, security, and workflow bugs.

@@ -15,7 +15,7 @@ export default defineConfig([
     "test-results/**",
   ]),
   {
-    files: ["src/**/*.{ts,tsx}", "tests-ts/**/*.ts", "e2e/**/*.ts"],
+    files: ["src/**/*.{ts,tsx}", "e2e/**/*.ts"],
     extends: [
       tseslint.configs.recommended,
       promise.configs["flat/recommended"],

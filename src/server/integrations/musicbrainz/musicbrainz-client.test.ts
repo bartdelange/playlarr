@@ -1,0 +1,26 @@
+import { expect, it, vi } from "vitest";
+import { MusicBrainzClient } from "../../../server/integrations/musicbrainz/client";
+it("retries transient MusicBrainz failures and preserves query parameters", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(new Response("slow", { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ recordings: [] }));
+  const sleep = vi.fn().mockResolvedValue(undefined);
+  const client = new MusicBrainzClient(
+    {
+      baseUrl: "https://musicbrainz.test/ws/2",
+      userAgent: "Playlarr test",
+      requestDelayMs: 0,
+      timeoutMs: 100,
+      maxRetries: 1,
+    },
+    fetcher,
+    sleep,
+  );
+  await expect(
+    client.get("recording", { query: "isrc:ABC", fmt: "json" }),
+  ).resolves.toEqual({ recordings: [] });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(String(fetcher.mock.calls[0][0])).toContain("query=isrc%3AABC");
+  expect(sleep).toHaveBeenCalledWith(250);
+});

@@ -15,7 +15,7 @@ contains provider-neutral values, `application` owns workflows, `integrations` i
 payloads, `persistence` owns schema-v8 SQLite, and `jobs` owns durable background execution. Avoid
 internal HTTP calls from Server Components and keep secrets out of browser bundles.
 
-Tests use Vitest under `tests-ts` and Playwright under `e2e`. External services must be mocked.
+Tests use colocated Vitest files under `src` and Playwright under `e2e`. External services must be mocked.
 For normal changes run `npm run validate`; run `npm run test:e2e` for web workflows and build/run the
 container for deployment changes.
 

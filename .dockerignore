@@ -16,7 +16,6 @@ build
 dist
 *.egg-info
 tests
-tests-ts
 e2e
 spike
 __pycache__
