@@ -1,17 +1,21 @@
 import { defineConfig } from "@playwright/test";
 
+const port = process.env.PLAYLARR_E2E_PORT ?? "8787";
+const baseURL = `http://127.0.0.1:${port}`;
+const serverCommand = process.env.PLAYLARR_E2E_SERVER_COMMAND ?? "dev";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
   globalSetup: "./e2e/global-setup.ts",
   use: {
-    baseURL: "http://127.0.0.1:8787",
+    baseURL,
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev -- --hostname 127.0.0.1",
-    url: "http://127.0.0.1:8787/health",
+    command: `npm run ${serverCommand} -- --hostname 127.0.0.1 --port ${port}`,
+    url: `${baseURL}/health`,
     reuseExistingServer: false,
     env: {
       DATA_DIR: "/private/tmp/playlarr-e2e/data",

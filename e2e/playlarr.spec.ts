@@ -39,7 +39,7 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   ).toBeVisible();
   await expect(
     page
-      .getByRole("navigation", { name: "Playlist workflow" })
+      .getByRole("navigation", { name: "Import navigation" })
       .getByRole("link", { name: "Local additions" }),
   ).toBeVisible();
   await expect(
@@ -48,6 +48,29 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await expect(
     page.getByRole("link", { name: "Reuse mappings" }),
   ).toBeVisible();
+  const importNavigation = page.getByRole("navigation", {
+    name: "Import navigation",
+  });
+  await expect(
+    importNavigation.getByRole("link", { name: "Overview" }),
+  ).toHaveAttribute("aria-current", "page");
+  const workflow = page.getByRole("navigation", { name: "Workflow progress" });
+  await expect(workflow.getByText("1 Music match")).toBeVisible();
+  await expect(workflow.getByText("2 Lidarr")).toBeVisible();
+  await expect(workflow.getByText("3 Final")).toBeVisible();
+  await importNavigation.getByRole("link", { name: "History" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Playlist revisions" }),
+  ).toBeVisible();
+  await importNavigation.getByRole("link", { name: "Reuse mappings" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Fixture Playlist" }),
+  ).toBeVisible();
+  await importNavigation.getByRole("link", { name: "Local additions" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Playlist additions" }),
+  ).toBeVisible();
+  await importNavigation.getByRole("link", { name: "Overview" }).click();
   await page.getByRole("link", { name: "Review" }).click();
   await expect(
     page.getByRole("heading", { name: "Fixture Song" }),

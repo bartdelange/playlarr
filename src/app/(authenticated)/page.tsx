@@ -8,12 +8,14 @@ export default function DashboardPage() {
   return (
     <main>
       <section className="hero">
-        <p className="eyebrow">Music library workflow</p>
-        <h1>Playlists</h1>
-        <p>
-          Continue matching, approve Lidarr releases, and generate synchronized
-          playlists.
-        </p>
+        <div>
+          <p className="eyebrow">Music library workflow</p>
+          <h1>Playlists</h1>
+          <p>
+            Continue matching, approve Lidarr releases, and generate
+            synchronized playlists.
+          </p>
+        </div>
         <Link className="button" href="/imports/new">
           Add playlist
         </Link>
@@ -49,37 +51,77 @@ async function DashboardData() {
           <strong>{counts.complete ?? 0}</strong> ready
         </span>
       </section>
-      <section>
-        <h2>Your imports</h2>
-        {imports.length ? (
-          <div className="card-list">
-            {imports.map((item) => (
-              <Link className="card" href={`/imports/${item.id}`} key={item.id}>
-                <span className="badge">{item.source}</span>
-                <strong>{item.playlistName}</strong>
-                <small>{item.workflowState.replaceAll("_", " ")}</small>
+      <div className="home-layout">
+        <section>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Your imports</p>
+              <h2>Playlist workflows</h2>
+            </div>
+          </div>
+          {imports.length ? (
+            <div className="playlist-home-list">
+              {imports.map((item) => (
+                <Link
+                  className="playlist-home-row"
+                  href={`/imports/${item.id}`}
+                  key={item.id}
+                >
+                  <div>
+                    <span className="badge">{item.source}</span>
+                    <h2>{item.playlistName}</h2>
+                    <small>
+                      Updated {item.updatedAt.slice(0, 16).replace("T", " ")}
+                    </small>
+                  </div>
+                  <div className="playlist-home-state">
+                    <span className="badge">
+                      {item.workflowState.replaceAll("_", " ")}
+                    </span>
+                    <strong>Continue workflow →</strong>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">
+              <h2>No playlists yet</h2>
+              <p>Add a Spotify or TIDAL playlist to begin.</p>
+              <Link className="button" href="/imports/new">
+                Add playlist
               </Link>
-            ))}
+            </div>
+          )}
+        </section>
+        <aside className="jobs-compact">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Background</p>
+              <h2>Jobs</h2>
+            </div>
+            <Link href="/jobs">All jobs</Link>
           </div>
-        ) : (
-          <div className="empty">
-            <h2>No playlists yet</h2>
-            <p>Add a Spotify or TIDAL playlist to begin.</p>
-          </div>
-        )}
-      </section>
-      <section>
-        <h2>Recent jobs</h2>
-        {jobs.map((job) => (
-          <Link href={`/jobs/${job.id}`} className="job-row" key={job.id}>
-            <strong>{job.kind.replaceAll("_", " ")}</strong>
-            <span className={`badge job-${job.status}`}>{job.status}</span>
-            <span>
-              {job.current} / {job.total}
-            </span>
-          </Link>
-        ))}
-      </section>
+          {jobs.length ? (
+            <div className="compact-job-list">
+              {jobs.map((job) => (
+                <Link href={`/jobs/${job.id}`} key={job.id}>
+                  <div>
+                    <strong>{job.kind.replaceAll("_", " ")}</strong>
+                    <small>
+                      {job.currentItem ?? `${job.current} / ${job.total}`}
+                    </small>
+                  </div>
+                  <span className={`badge job-${job.status}`}>
+                    {job.status}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No background activity yet.</p>
+          )}
+        </aside>
+      </div>
     </>
   );
 }

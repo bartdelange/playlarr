@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { logout } from "../actions/security";
 import { security } from "../../server/runtime";
 import { sessionCookie } from "../../server/security/web-security";
+import { ActiveNav } from "../../components/navigation/active-nav";
 export default async function AuthenticatedLayout({
   children,
 }: {
@@ -17,18 +18,24 @@ export default async function AuthenticatedLayout({
   const csrf = security.csrfToken(session!);
   return (
     <>
-      <header>
-        <Link href="/">Playlarr</Link>
-        <nav>
-          <Link href="/imports">Imports</Link>
-          <Link href="/playlists">Playlists</Link>
-          <Link href="/jobs">Jobs</Link>
-          <Link href="/settings">Settings</Link>
-        </nav>
+      <header className="site-header">
+        <Link className="brand" href="/">
+          Playlarr
+        </Link>
+        <ActiveNav
+          label="Primary navigation"
+          className="primary-nav"
+          items={[
+            { href: "/", label: "Playlists", exact: true },
+            { href: "/imports/new", label: "New import", exact: true },
+            { href: "/jobs", label: "Background jobs" },
+            { href: "/settings", label: "Settings" },
+          ]}
+        />
         {security.authorizationEnabled && (
           <form action={logout}>
             <input type="hidden" name="csrf_token" value={csrf} />
-            <button>Log out</button>
+            <button className="link-button">Log out</button>
           </form>
         )}
       </header>

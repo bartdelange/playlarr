@@ -43,88 +43,153 @@ export default async function ImportPage({
           .all(planHeader.id) as { action_json: string }[]
       ).map((row) => JSON.parse(row.action_json) as LidarrPlanAction)
     : [];
+  const matchingComplete = ![
+    "acquired",
+    "ready_to_resolve",
+    "resolving",
+    "review_required",
+  ].includes(imported.workflowState);
+  const finalAvailable = [
+    "waiting_for_downloads",
+    "library_status",
+    "playlist_generated",
+  ].includes(imported.workflowState);
+  const currentStep = finalAvailable ? 3 : matchingComplete ? 2 : 1;
   return (
     <main>
-      <p className="eyebrow">{imported.source}</p>
-      <h1>{imported.playlistName}</h1>
-      <p>
-        <span className="badge">
-          {imported.workflowState.replaceAll("_", " ")}
-        </span>{" "}
-        · {entries.length} tracks
-      </p>
+      <section className="playlist-context">
+        <div>
+          <div className="playlist-meta">
+            <span className="badge">{imported.source}</span>
+            <span>{entries.length} tracks</span>
+            <span className="badge">
+              {imported.workflowState.replaceAll("_", " ")}
+            </span>
+          </div>
+          <h1>{imported.playlistName}</h1>
+        </div>
+      </section>
+      <nav className="steps" aria-label="Workflow progress">
+        <a
+          className={currentStep === 1 ? "active" : "complete"}
+          href="#music-match"
+          aria-current={currentStep === 1 ? "step" : undefined}
+        >
+          1 Music match
+        </a>
+        {matchingComplete ? (
+          <a
+            className={currentStep === 2 ? "active" : "complete"}
+            href="#lidarr-plan"
+            aria-current={currentStep === 2 ? "step" : undefined}
+          >
+            2 Lidarr
+          </a>
+        ) : (
+          <span className="disabled" aria-disabled="true">
+            2 Lidarr
+          </span>
+        )}
+        {finalAvailable ? (
+          <a
+            className={currentStep === 3 ? "active" : undefined}
+            href="#final-library"
+            aria-current={currentStep === 3 ? "step" : undefined}
+          >
+            3 Final
+          </a>
+        ) : (
+          <span className="disabled" aria-disabled="true">
+            3 Final
+          </span>
+        )}
+      </nav>
       {imported.lastError && <p role="alert">{imported.lastError}</p>}
-      <div className="actions">
-        <Link className="button" href={`/imports/${id}/revisions`}>
-          Revision history
-        </Link>
-        <form action={queuePlaylistUpdatePreview}>
-          <input type="hidden" name="csrf_token" value={csrf} />
-          <input type="hidden" name="import_id" value={id} />
-          <button>Check source updates</button>
-        </form>
-        <Link className="button" href={`/imports/${id}/local-additions`}>
-          Local additions
-        </Link>
-        {["library_status", "playlist_generated"].includes(
-          imported.workflowState,
-        ) && (
-          <form action={queuePlaylistGeneration}>
+      <section className="step-actions">
+        <div>
+          <p className="eyebrow">Current step</p>
+          <h2>
+            {currentStep === 1
+              ? "Music match"
+              : currentStep === 2
+                ? "Lidarr planning"
+                : "Final & library"}
+          </h2>
+        </div>
+        <div className="actions">
+          <form action={queuePlaylistUpdatePreview}>
             <input type="hidden" name="csrf_token" value={csrf} />
             <input type="hidden" name="import_id" value={id} />
-            <button>Generate M3U8</button>
+            <button>Check source updates</button>
           </form>
-        )}
-        {["ready_to_resolve", "review_required"].includes(
-          imported.workflowState,
-        ) && (
-          <form action={queueResolution}>
-            <input type="hidden" name="csrf_token" value={csrf} />
-            <input type="hidden" name="import_id" value={id} />
-            <button>Resolve tracks</button>
-          </form>
-        )}
-        {["ready_to_plan", "plan_ready", "execution_failed"].includes(
-          imported.workflowState,
-        ) && (
-          <form action={queueLidarrPlan}>
-            <input type="hidden" name="csrf_token" value={csrf} />
-            <input type="hidden" name="import_id" value={id} />
-            <button>Build Lidarr plan</button>
-          </form>
-        )}
-      </div>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>State</th>
-              <th>Track</th>
-              <th>Album</th>
-              <th>Review</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry) => (
-              <tr key={entry.id}>
-                <td>{entry.position + 1}</td>
-                <td>{entry.resolutionState.replaceAll("_", " ")}</td>
-                <td>
-                  <strong>{entry.track.title}</strong>
-                  <small>{entry.track.artists.join(", ")}</small>
-                </td>
-                <td>{entry.track.album}</td>
-                <td>
-                  <Link href={`/entries/${entry.id}/review`}>Review</Link>
-                </td>
+          {["library_status", "playlist_generated"].includes(
+            imported.workflowState,
+          ) && (
+            <form action={queuePlaylistGeneration}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input type="hidden" name="import_id" value={id} />
+              <button>Generate M3U8</button>
+            </form>
+          )}
+          {["ready_to_resolve", "review_required"].includes(
+            imported.workflowState,
+          ) && (
+            <form action={queueResolution}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input type="hidden" name="import_id" value={id} />
+              <button>Resolve tracks</button>
+            </form>
+          )}
+          {["ready_to_plan", "plan_ready", "execution_failed"].includes(
+            imported.workflowState,
+          ) && (
+            <form action={queueLidarrPlan}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input type="hidden" name="import_id" value={id} />
+              <button>Build Lidarr plan</button>
+            </form>
+          )}
+        </div>
+      </section>
+      <section id="music-match">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Tracks</p>
+            <h2>Music matching</h2>
+          </div>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>State</th>
+                <th>Track</th>
+                <th>Album</th>
+                <th>Review</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.position + 1}</td>
+                  <td>{entry.resolutionState.replaceAll("_", " ")}</td>
+                  <td>
+                    <strong>{entry.track.title}</strong>
+                    <small>{entry.track.artists.join(", ")}</small>
+                  </td>
+                  <td>{entry.track.album}</td>
+                  <td>
+                    <Link href={`/entries/${entry.id}/review`}>Review</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
       {planHeader && (
-        <section>
+        <section id="lidarr-plan">
           <h2>
             Lidarr plan <span className="badge">{planHeader.status}</span>
           </h2>
@@ -153,10 +218,28 @@ export default async function ImportPage({
           )}
         </section>
       )}
-      <form action={deleteImport}>
+      {finalAvailable && (
+        <section id="final-library" className="card">
+          <p className="eyebrow">Final</p>
+          <h2>Library & export</h2>
+          <p className="muted">
+            Refresh downloaded files, add local tracks, then generate the
+            ordered M3U8 playlist.
+          </p>
+          <div className="actions">
+            <Link
+              className="button secondary"
+              href={`/imports/${id}/local-additions`}
+            >
+              Local additions
+            </Link>
+          </div>
+        </section>
+      )}
+      <form className="actions" action={deleteImport}>
         <input type="hidden" name="csrf_token" value={csrf} />
         <input type="hidden" name="import_id" value={id} />
-        <button className="danger">Delete import</button>
+        <button className="danger">Delete import and history</button>
       </form>
     </main>
   );

@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { queueLibraryStatus } from "../../../actions/exports";
 import { requestCsrfToken } from "../../../../server/security/request";
 import { ImportRepository } from "../../../../server/persistence/import-repository";
 import { database } from "../../../../server/runtime";
+import { ActiveNav } from "../../../../components/navigation/active-nav";
 
 export default async function ImportWorkflowLayout({
   children,
@@ -16,11 +16,23 @@ export default async function ImportWorkflowLayout({
   const state = new ImportRepository(database).getImport(id).workflowState;
   return (
     <>
-      <nav className="workflow-nav" aria-label="Playlist workflow">
-        <Link href={`/imports/${id}`}>Overview</Link>
-        <Link href={`/imports/${id}/revisions`}>History</Link>
-        <Link href={`/imports/${id}/mapping-overrides`}>Reuse mappings</Link>
-        <Link href={`/imports/${id}/local-additions`}>Local additions</Link>
+      <div className="import-nav-shell">
+        <ActiveNav
+          className="import-nav"
+          label="Import navigation"
+          items={[
+            { href: `/imports/${id}`, label: "Overview", exact: true },
+            { href: `/imports/${id}/revisions`, label: "History" },
+            {
+              href: `/imports/${id}/mapping-overrides`,
+              label: "Reuse mappings",
+            },
+            {
+              href: `/imports/${id}/local-additions`,
+              label: "Local additions",
+            },
+          ]}
+        />
         {[
           "waiting_for_downloads",
           "library_status",
@@ -32,7 +44,7 @@ export default async function ImportWorkflowLayout({
             <button className="secondary">Refresh library files</button>
           </form>
         )}
-      </nav>
+      </div>
       {children}
     </>
   );
