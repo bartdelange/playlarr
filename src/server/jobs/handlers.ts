@@ -135,7 +135,10 @@ export function productionJobHandlers(
     library.saveStatus(job.importId, statuses);
     const representedLocally = new Set(
       statuses
-        .filter((status) => status.path || status.classification === "represented_locally")
+        .filter(
+          (status) =>
+            status.path || status.classification === "represented_locally",
+        )
         .map((status) => status.position),
     );
     progress(1, 3, "Loading Lidarr artists");
@@ -250,6 +253,10 @@ export function productionJobHandlers(
     if (!job.importId) throw new Error("playlist generation job has no import");
     const imports = new ImportRepository(database);
     const imported = imports.getImport(job.importId);
+    if (
+      !["library_status", "playlist_generated"].includes(imported.workflowState)
+    )
+      throw new Error("refresh download status before generating a playlist");
     const entries = imports.entries(job.importId);
     const rows = database
       .prepare(
@@ -303,6 +310,15 @@ export function productionJobHandlers(
   };
   const libraryStatus: JobHandler = async (job, progress) => {
     if (!job.importId) throw new Error("library status job has no import");
+    const imported = new ImportRepository(database).getImport(job.importId);
+    if (
+      ![
+        "waiting_for_downloads",
+        "library_status",
+        "playlist_generated",
+      ].includes(imported.workflowState)
+    )
+      throw new Error("apply a Lidarr plan before refreshing downloads");
     const results = (
       database
         .prepare(
@@ -315,6 +331,8 @@ export function productionJobHandlers(
           row.result_json,
         ) as import("../domain/musicbrainz").MusicBrainzResult,
     );
+    if (!results.some((result) => result.resolvedVia))
+      throw new Error("there are no resolved tracks to check");
     const client = new LidarrClient({
       url: value("lidarr_url", config.lidarr.url ?? ""),
       apiKey: value("lidarr_api_key", config.lidarr.apiKey ?? ""),

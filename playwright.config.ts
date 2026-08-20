@@ -17,6 +17,8 @@ export default defineConfig({
       DATA_DIR: "/private/tmp/playlarr-e2e/data",
       OUTPUT_DIR: "/private/tmp/playlarr-e2e/playlists",
       MUSICBRAINZ_USER_AGENT: "Playlarr e2e",
+      LIDARR_QUALITY_PROFILE_ID: "1",
+      LIDARR_METADATA_PROFILE_ID: "1",
     },
   },
 });

@@ -9,6 +9,23 @@ import { requireCsrf } from "./security";
 export async function queueLibraryStatus(form: FormData) {
   await requireCsrf(form);
   const importId = String(form.get("import_id"));
+  const imports = new ImportRepository(database);
+  const imported = imports.getImport(importId);
+  if (
+    !["waiting_for_downloads", "library_status", "playlist_generated"].includes(
+      imported.workflowState,
+    )
+  )
+    throw new Error("apply a Lidarr plan before refreshing downloads");
+  if (
+    !imports
+      .entries(importId)
+      .some(
+        (entry) =>
+          !["pending", "unresolved", "skipped"].includes(entry.resolutionState),
+      )
+  )
+    throw new Error("there are no resolved tracks to check");
   redirect(
     `/jobs/${new JobRepository(database).create("library_status", importId).id}`,
   );
