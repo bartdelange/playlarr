@@ -1,8 +1,9 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto"; import { mkdir, readFile, rename, writeFile } from "node:fs/promises"; import path from "node:path";
 
 const scope = "playlist-read-private playlist-read-collaborative";
 export interface SpotifyTokens { accessToken: string; refreshToken?: string; expiresAt: number }
 export interface SpotifyTokenStore { load(): Promise<SpotifyTokens | undefined>; save(tokens: SpotifyTokens): Promise<void> }
+export class FileSpotifyTokenStore implements SpotifyTokenStore { constructor(private readonly tokenPath: string) {} async load() { try { return JSON.parse(await readFile(this.tokenPath, "utf8")) as SpotifyTokens; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; } } async save(tokens: SpotifyTokens) { await mkdir(path.dirname(this.tokenPath), { recursive: true }); const temporary = `${this.tokenPath}.tmp`; await writeFile(temporary, JSON.stringify(tokens), { mode: 0o600 }); await rename(temporary, this.tokenPath); } }
 type FetchLike = typeof fetch;
 
 export class SpotifyAuthenticator {

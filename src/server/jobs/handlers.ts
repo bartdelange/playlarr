@@ -2,15 +2,17 @@ import type Database from "better-sqlite3";
 import { executeApprovedPlan } from "../application/lidarr-execution";
 import type { AppConfig } from "../config/environment";
 import { LidarrClient } from "../integrations/lidarr/client";
+import { spotifyProvider, tidalProvider } from "../integrations/sources";
 import { MusicBrainzClient } from "../integrations/musicbrainz/client";
 import { MusicBrainzResolver } from "../integrations/musicbrainz/orchestrator";
 import { ImportRepository } from "../persistence/import-repository";
+import { JobRepository } from "../persistence/job-repository";
 import { LidarrPlanRepository } from "../persistence/lidarr-plan-repository";
 import { ResolutionRepository } from "../persistence/resolution-repository";
-import type { SecuritySettings } from "../security/web-security";
+import type { SettingsRepository } from "../persistence/settings-repository";
 import type { JobHandler } from "./worker";
 
-export function productionJobHandlers(database: Database.Database, config: AppConfig, settings: SecuritySettings): Record<string, JobHandler> {
+export function productionJobHandlers(database: Database.Database, config: AppConfig, settings: SettingsRepository): Record<string, JobHandler> {
   const value = <T>(key: string, fallback: T) => settings.get(key, fallback);
   const resolution: JobHandler = async (job, progress, cancelled) => {
     if (!job.importId) throw new Error("resolution job has no import");
@@ -29,5 +31,6 @@ export function productionJobHandlers(database: Database.Database, config: AppCo
     const client = new LidarrClient({ url: value("lidarr_url", config.lidarr.url ?? ""), apiKey: value("lidarr_api_key", config.lidarr.apiKey ?? ""), rootFolder: value("lidarr_root_folder", config.lidarr.rootFolder), qualityProfileId: value("lidarr_quality_profile_id", config.lidarr.qualityProfileId), metadataProfileId: value("lidarr_metadata_profile_id", config.lidarr.metadataProfileId) });
     await executeApprovedPlan(new LidarrPlanRepository(database), client, planId);
   };
-  return { resolution, resolution_retry: resolution, lidarr_execution: lidarrExecution };
+  const acquisition: JobHandler = async (job, progress, cancelled) => { const sourceName = String(job.payload?.source ?? ""); const reference = String(job.payload?.reference ?? ""); const source = sourceName === "spotify" ? spotifyProvider(config, settings).source : sourceName === "tidal" ? tidalProvider(config, settings).source : undefined; if (!source) throw new Error(`unsupported playlist source: ${sourceName}`); const playlist = await source.getPlaylist(reference); if (cancelled()) return; progress(1, 2, `Loading ${playlist.name}`); const imports = new ImportRepository(database); const imported = imports.createImport(playlist); new JobRepository(database).assignImport(job.id, imported.id); const entries = await source.getEntries(playlist); if (cancelled()) return; imports.replaceAcquiredTracks(imported.id, entries); progress(2, 2, `Imported ${playlist.name}`); };
+  return { playlist_acquisition: acquisition, resolution, resolution_retry: resolution, lidarr_execution: lidarrExecution };
 }
