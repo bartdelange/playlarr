@@ -32,18 +32,15 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   ).toBeVisible();
   await expect(page.getByText("Fixture Song")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Check source updates" }),
+    page.getByRole("button", { name: "Refresh playlist" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Generate M3U8" }),
+    page.getByRole("button", { name: "Delete import" }),
   ).toBeVisible();
   await expect(
     page
       .getByRole("navigation", { name: "Import navigation" })
       .getByRole("link", { name: "Local additions" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Refresh library files" }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Reuse mappings" }),
@@ -58,6 +55,13 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await expect(workflow.getByText("1 Music match")).toBeVisible();
   await expect(workflow.getByText("2 Lidarr")).toBeVisible();
   await expect(workflow.getByText("3 Final")).toBeVisible();
+  await expect(page.getByRole("button", { name: /All \(/ })).toBeVisible();
+  await expect(page.getByText("Choose visible columns")).toBeVisible();
+  await workflow.getByRole("link", { name: "3 Final" }).click();
+  await expect(
+    page.getByRole("button", { name: "Refresh monitored & downloaded" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export M3U" })).toBeVisible();
   await importNavigation.getByRole("link", { name: "History" }).click();
   await expect(
     page.getByRole("heading", { name: "Playlist revisions" }),

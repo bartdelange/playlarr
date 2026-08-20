@@ -23,7 +23,7 @@ export default async function SettingsPage({
     ["/music", "/music"],
   ]);
   return (
-    <main>
+    <main className="settings-page">
       <p className="eyebrow">Configuration</p>
       <h1>Settings</h1>
       {(query.message || query.error) && (

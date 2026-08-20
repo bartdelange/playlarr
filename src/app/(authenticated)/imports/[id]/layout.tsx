@@ -1,7 +1,3 @@
-import { queueLibraryStatus } from "../../../actions/exports";
-import { requestCsrfToken } from "../../../../server/security/request";
-import { ImportRepository } from "../../../../server/persistence/import-repository";
-import { database } from "../../../../server/runtime";
 import { ActiveNav } from "../../../../components/navigation/active-nav";
 
 export default async function ImportWorkflowLayout({
@@ -12,8 +8,6 @@ export default async function ImportWorkflowLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const csrf = await requestCsrfToken();
-  const state = new ImportRepository(database).getImport(id).workflowState;
   return (
     <>
       <div className="import-nav-shell">
@@ -33,17 +27,6 @@ export default async function ImportWorkflowLayout({
             },
           ]}
         />
-        {[
-          "waiting_for_downloads",
-          "library_status",
-          "playlist_generated",
-        ].includes(state) && (
-          <form action={queueLibraryStatus}>
-            <input type="hidden" name="csrf_token" value={csrf} />
-            <input type="hidden" name="import_id" value={id} />
-            <button className="secondary">Refresh library files</button>
-          </form>
-        )}
       </div>
       {children}
     </>

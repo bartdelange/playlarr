@@ -26,7 +26,6 @@ export default async function AuthenticatedLayout({
           label="Primary navigation"
           className="primary-nav"
           items={[
-            { href: "/", label: "Playlists", exact: true },
             { href: "/imports/new", label: "New import", exact: true },
             { href: "/jobs", label: "Background jobs" },
             { href: "/settings", label: "Settings" },
