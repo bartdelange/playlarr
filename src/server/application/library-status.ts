@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { MusicBrainzResult } from "../domain/musicbrainz";
 import type { LibraryStatus } from "../persistence/library-repository";
+import { titleFallbackMatches } from "./lidarr-planning";
 
 interface LidarrLibraryClient {
   artists(): Promise<Record<string, unknown>[]>;
@@ -9,12 +10,6 @@ interface LidarrLibraryClient {
   tracksByAlbumId(id: number): Promise<Record<string, unknown>[]>;
   trackFilesByArtistId(id: number): Promise<Record<string, unknown>[]>;
 }
-const normalizedTitle = (value: unknown) =>
-  String(value ?? "")
-    .toLocaleLowerCase()
-    .replace(/\([^)]*(edit|version|mix)\)/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
 const trackPath = (
   track: Record<string, unknown>,
   files: Map<number, Record<string, unknown>>,
@@ -33,7 +28,7 @@ const matches = (track: Record<string, unknown>, result: MusicBrainzResult) =>
   ) ||
   Boolean(
     result.recordingTitle &&
-    normalizedTitle(track.title) === normalizedTitle(result.recordingTitle),
+    titleFallbackMatches(result.recordingTitle, String(track.title ?? "")),
   );
 
 export async function refreshLibraryStatus(

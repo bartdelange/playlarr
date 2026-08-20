@@ -141,33 +141,10 @@ export function productionJobHandlers(
         config.lidarr.metadataProfileId,
       ),
     });
-    progress(0, 3, "Comparing downloaded Lidarr files");
+    progress(0, results.length || 1, "Comparing downloaded Lidarr files");
     const library = new LibraryRepository(database);
     const statuses = await refreshLibraryStatus(results, client);
     library.saveStatus(job.importId, statuses);
-    const representedLocally = new Set(
-      statuses
-        .filter(
-          (status) =>
-            status.path || status.classification === "represented_locally",
-        )
-        .map((status) => status.position),
-    );
-    progress(1, 3, "Loading Lidarr artists");
-    const artists = new Set(
-      (await client.artists()).map((artist) => String(artist.foreignArtistId)),
-    );
-    const groups = new Set<string>();
-    for (const group of new Set(
-      results.flatMap((result) => result.releaseGroupIds ?? []),
-    ))
-      if (
-        (await client.albumsByForeignId(group)).some(
-          (album) => album.foreignAlbumId === group,
-        )
-      )
-        groups.add(group);
-    progress(2, 3, "Building read-only plan");
     const allowed = new Set(
       resolutionInputs.flatMap((row, index) =>
         row.evidence.allow_various_artists_release
@@ -175,11 +152,8 @@ export function productionJobHandlers(
           : [],
       ),
     );
-    plans.save(
-      job.importId,
-      planLidarr(results, artists, groups, allowed, representedLocally),
-    );
-    progress(3, 3, "Plan ready for approval");
+    const plan = await planLidarr(results, client, allowed, progress);
+    plans.save(job.importId, plan);
   };
   const acquisition: JobHandler = async (job, progress, cancelled) => {
     const sourceName = String(job.payload?.source ?? "");

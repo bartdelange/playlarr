@@ -53,6 +53,12 @@ export class LidarrClient {
       `album?foreignAlbumId=${encodeURIComponent(id)}`,
     );
   }
+  albumsByArtistId(id: number) {
+    return this.request<Record<string, unknown>[]>(
+      "GET",
+      `album?artistId=${id}`,
+    );
+  }
   tracksByAlbumId(id: number) {
     return this.request<Record<string, unknown>[]>(
       "GET",

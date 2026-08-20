@@ -530,6 +530,31 @@ a.card:hover,
   background: #142723;
   color: var(--accent);
 }
+.action-guide {
+  margin: 16px 0 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #10171b;
+}
+.action-guide summary {
+  cursor: pointer;
+  font-weight: 750;
+}
+.action-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin-top: 16px;
+}
+.action-guide-grid > div {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.action-guide-grid p {
+  margin: 7px 0;
+  color: var(--muted);
+}
 .mapping-filters {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) minmax(220px, 0.55fr) auto;
@@ -911,6 +936,9 @@ pre {
     flex-wrap: wrap;
   }
   .mapping-filters {
+    grid-template-columns: 1fr;
+  }
+  .action-guide-grid {
     grid-template-columns: 1fr;
   }
 }

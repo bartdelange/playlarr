@@ -54,6 +54,8 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await expect(workflow.getByText("3 Final")).toBeVisible();
   await expect(page.getByRole("button", { name: /All \(/ })).toBeVisible();
   await expect(page.getByText("Choose visible columns")).toBeVisible();
+  await workflow.getByRole("link", { name: "2 Lidarr" }).click();
+  await expect(page.getByText("What do the plan actions do?")).toBeVisible();
   await workflow.getByRole("link", { name: "3 Final" }).click();
   await expect(
     page.getByRole("button", { name: "Refresh monitored & downloaded" }),

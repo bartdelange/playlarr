@@ -62,7 +62,7 @@ it("records execution only after approval and marks failures visibly", () => {
   ).toBe("execution_failed");
   database.close();
 });
-it("projects schema-v8 resolution MBIDs into Lidarr planning without making skipped rows eligible", () => {
+it("projects schema-v8 resolution MBIDs into Lidarr planning without making skipped rows eligible", async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-plan-"));
   directories.push(directory);
   const database = openDatabase(path.join(directory, "music-importer.db"));
@@ -149,10 +149,16 @@ it("projects schema-v8 resolution MBIDs into Lidarr planning without making skip
     }),
   ]);
 
-  const plan = planLidarr(
+  const plan = await planLidarr(
     resolutions.map((resolution) => resolution.result),
-    new Set(),
-    new Set(),
+    {
+      artists: async () => [],
+      albumsByArtistId: async () => [],
+      albumsByForeignId: async () => [],
+      tracksByArtistId: async () => [],
+      tracksByAlbumId: async () => [],
+      lookup: async () => undefined,
+    },
   );
   expect(
     plan.actions.filter((action) => action.action === "create_artist"),

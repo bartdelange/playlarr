@@ -34,6 +34,54 @@ const reasons: Record<string, string> = {
     "Monitor this artist only for explicitly selected releases; automatic new-release monitoring remains disabled.",
 };
 
+const actionGuide = [
+  [
+    "unchanged",
+    "No change",
+    "The selected release is already represented and configured in Lidarr.",
+  ],
+  [
+    "reuse_downloaded_release",
+    "Reuse downloaded release",
+    "Bind the song to the release whose downloaded file already contains this recording; no Lidarr mutation by itself.",
+  ],
+  [
+    "reuse_existing_release",
+    "Reuse existing release",
+    "Use an album already present in Lidarr; no duplicate album is created.",
+  ],
+  [
+    "create_artist",
+    "Create artist",
+    "Add the MusicBrainz artist to Lidarr, initially without monitoring unrelated releases.",
+  ],
+  [
+    "create_release",
+    "Create release",
+    "Add this specific MusicBrainz album, EP, or single to Lidarr.",
+  ],
+  [
+    "monitor_artist",
+    "Monitor artist",
+    "Monitor the artist while keeping new-item monitoring disabled.",
+  ],
+  [
+    "monitor_release",
+    "Monitor release",
+    "Turn monitoring on only when a requested recording is missing and must be acquired.",
+  ],
+  [
+    "queue_search",
+    "Queue search",
+    "Ask Lidarr to search its indexers for the selected release.",
+  ],
+  [
+    "skip",
+    "Skip",
+    "Make no Lidarr change because the binding is unresolved or excluded by a safety rule.",
+  ],
+] as const;
+
 export function LidarrPlanTable({
   rows,
   planId,
@@ -82,6 +130,17 @@ export function LidarrPlanTable({
 
   return (
     <>
+      <details className="action-guide">
+        <summary>What do the plan actions do?</summary>
+        <div className="action-guide-grid">
+          {actionGuide.map(([action, label, effect]) => (
+            <div key={action}>
+              <span className={`badge plan-${action}`}>{label}</span>
+              <p>{effect}</p>
+            </div>
+          ))}
+        </div>
+      </details>
       <div className="mapping-filters">
         <input
           aria-label="Filter Lidarr mappings"
