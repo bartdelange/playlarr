@@ -9,7 +9,8 @@
     "worker": "tsx src/server/jobs/main.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.3",
+    "@playwright/test": "^1.55.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",

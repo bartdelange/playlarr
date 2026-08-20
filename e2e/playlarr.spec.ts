@@ -1,0 +1,52 @@
+import { expect, test } from "@playwright/test";
+
+test.describe.configure({ mode: "serial" });
+
+const password = "long-test-password";
+const fixtureImportId = "00000000-0000-4000-8000-000000000001";
+
+async function login(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page).toHaveURL("/");
+}
+
+test("first-run setup protects the dashboard", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/setup$/);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByLabel("Confirm password").fill(password);
+  await page.getByRole("button", { name: "Create password" }).click();
+  await expect(page.getByRole("heading", { name: "Playlists" })).toBeVisible();
+});
+
+test("login, dashboard, playlist detail, review, revisions, jobs, and settings use the real app", async ({
+  page,
+}) => {
+  await login(page);
+  await expect(page.getByText("Fixture Playlist")).toBeVisible();
+  await page.getByText("Fixture Playlist").click();
+  await expect(page.getByRole("heading", { name: "Fixture Playlist" })).toBeVisible();
+  await expect(page.getByText("Fixture Song")).toBeVisible();
+  await page.getByRole("link", { name: "Review" }).click();
+  await expect(page.getByRole("heading", { name: "Fixture Song" })).toBeVisible();
+  await page.goto(`/imports/${fixtureImportId}/revisions`);
+  await expect(page.getByText(/0 added/)).toBeVisible();
+  await page.goto("/jobs");
+  await expect(page.getByText("Fixture Song")).toBeVisible();
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page.locator('input[name="lidarr_api_key"]')).toHaveValue("");
+});
+
+test("job progress and logout enforce session state", async ({ page }) => {
+  await login(page);
+  await page.goto("/jobs");
+  await page.getByRole("link", { name: /resolution/i }).first().click();
+  await expect(page.getByText("completed")).toBeVisible();
+  await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/login$/);
+});
