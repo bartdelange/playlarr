@@ -1,2 +1,38 @@
-import Link from "next/link"; import { cookies } from "next/headers"; import { redirect } from "next/navigation"; import { logout } from "../actions/security"; import { security } from "../../server/runtime"; import { sessionCookie } from "../../server/security/web-security";
-export default async function AuthenticatedLayout({ children }: { children: React.ReactNode }) { const session = (await cookies()).get(sessionCookie)?.value; if (!security.configured) redirect("/setup"); if (!security.authorizationEnabled && !security.validSession(session)) redirect("/api/auth/session"); if (!security.validSession(session)) redirect("/login"); const csrf = security.csrfToken(session!); return <><header><Link href="/">Playlarr</Link><nav><Link href="/imports">Imports</Link><Link href="/playlists">Playlists</Link><Link href="/jobs">Jobs</Link><Link href="/settings">Settings</Link></nav>{security.authorizationEnabled && <form action={logout}><input type="hidden" name="csrf_token" value={csrf} /><button>Log out</button></form>}</header>{children}</>; }
+import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { logout } from "../actions/security";
+import { security } from "../../server/runtime";
+import { sessionCookie } from "../../server/security/web-security";
+export default async function AuthenticatedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = (await cookies()).get(sessionCookie)?.value;
+  if (!security.configured) redirect("/setup");
+  if (!security.authorizationEnabled && !security.validSession(session))
+    redirect("/api/auth/session");
+  if (!security.validSession(session)) redirect("/login");
+  const csrf = security.csrfToken(session!);
+  return (
+    <>
+      <header>
+        <Link href="/">Playlarr</Link>
+        <nav>
+          <Link href="/imports">Imports</Link>
+          <Link href="/playlists">Playlists</Link>
+          <Link href="/jobs">Jobs</Link>
+          <Link href="/settings">Settings</Link>
+        </nav>
+        {security.authorizationEnabled && (
+          <form action={logout}>
+            <input type="hidden" name="csrf_token" value={csrf} />
+            <button>Log out</button>
+          </form>
+        )}
+      </header>
+      {children}
+    </>
+  );
+}

@@ -1,8 +1,99 @@
-import type { MusicBrainzResult } from "../domain/musicbrainz"; import type { SourceTrack } from "../domain/playlist";
-export interface PlaylistFileEntry { position: number; artist: string; title: string; path: string }
-export interface MissingPlaylistEntry { position: number; track: SourceTrack; reason: string }
-export interface PlaylistExportResult { entries: PlaylistFileEntry[]; missing: MissingPlaylistEntry[] }
-export interface LocalAddition { provider: string; providerTrackId: string; title: string; artists: string[]; album: string }
-export function translatePath(value: string, mappings: [string, string][]): string { for (const [source, target] of mappings) if (value === source || value.startsWith(`${source}/`) || value.startsWith(`${source}\\`)) return target + value.slice(source.length); return value; }
-export function buildPlaylistExport(tracks: SourceTrack[], results: MusicBrainzResult[], downloadedPaths: Map<number, string>, mappings: [string, string][]): PlaylistExportResult { if (tracks.length !== results.length) throw new Error("playlist tracks and MusicBrainz results must have equal length"); const entries: PlaylistFileEntry[] = []; const missing: MissingPlaylistEntry[] = []; tracks.forEach((track, position) => { const path = downloadedPaths.get(position); if (path) entries.push({ position, artist: track.artists.join("; "), title: track.title, path: translatePath(path, mappings) }); else missing.push({ position, track, reason: results[position].resolvedVia ? "not_downloaded_or_unmatched" : "musicbrainz_unresolved" }); }); return { entries, missing }; }
-export function appendLocalAdditions(exported: PlaylistExportResult, additions: LocalAddition[], paths: Map<number, string>, mappings: [string, string][], sourceTrackCount: number): PlaylistExportResult { const entries = [...exported.entries]; const missing = [...exported.missing]; additions.forEach((addition, index) => { const position = sourceTrackCount + index; const path = paths.get(index); const track = { source: addition.provider, sourceTrackId: addition.providerTrackId, title: addition.title, artists: addition.artists, album: addition.album }; if (path) entries.push({ position, artist: addition.artists.join("; "), title: addition.title, path: translatePath(path, mappings) }); else missing.push({ position, track, reason: "local_track_unavailable" }); }); return { entries, missing }; }
+import type { MusicBrainzResult } from "../domain/musicbrainz";
+import type { SourceTrack } from "../domain/playlist";
+export interface PlaylistFileEntry {
+  position: number;
+  artist: string;
+  title: string;
+  path: string;
+}
+export interface MissingPlaylistEntry {
+  position: number;
+  track: SourceTrack;
+  reason: string;
+}
+export interface PlaylistExportResult {
+  entries: PlaylistFileEntry[];
+  missing: MissingPlaylistEntry[];
+}
+export interface LocalAddition {
+  provider: string;
+  providerTrackId: string;
+  title: string;
+  artists: string[];
+  album: string;
+}
+export function translatePath(
+  value: string,
+  mappings: [string, string][],
+): string {
+  for (const [source, target] of mappings)
+    if (
+      value === source ||
+      value.startsWith(`${source}/`) ||
+      value.startsWith(`${source}\\`)
+    )
+      return target + value.slice(source.length);
+  return value;
+}
+export function buildPlaylistExport(
+  tracks: SourceTrack[],
+  results: MusicBrainzResult[],
+  downloadedPaths: Map<number, string>,
+  mappings: [string, string][],
+): PlaylistExportResult {
+  if (tracks.length !== results.length)
+    throw new Error(
+      "playlist tracks and MusicBrainz results must have equal length",
+    );
+  const entries: PlaylistFileEntry[] = [];
+  const missing: MissingPlaylistEntry[] = [];
+  tracks.forEach((track, position) => {
+    const path = downloadedPaths.get(position);
+    if (path)
+      entries.push({
+        position,
+        artist: track.artists.join("; "),
+        title: track.title,
+        path: translatePath(path, mappings),
+      });
+    else
+      missing.push({
+        position,
+        track,
+        reason: results[position].resolvedVia
+          ? "not_downloaded_or_unmatched"
+          : "musicbrainz_unresolved",
+      });
+  });
+  return { entries, missing };
+}
+export function appendLocalAdditions(
+  exported: PlaylistExportResult,
+  additions: LocalAddition[],
+  paths: Map<number, string>,
+  mappings: [string, string][],
+  sourceTrackCount: number,
+): PlaylistExportResult {
+  const entries = [...exported.entries];
+  const missing = [...exported.missing];
+  additions.forEach((addition, index) => {
+    const position = sourceTrackCount + index;
+    const path = paths.get(index);
+    const track = {
+      source: addition.provider,
+      sourceTrackId: addition.providerTrackId,
+      title: addition.title,
+      artists: addition.artists,
+      album: addition.album,
+    };
+    if (path)
+      entries.push({
+        position,
+        artist: addition.artists.join("; "),
+        title: addition.title,
+        path: translatePath(path, mappings),
+      });
+    else missing.push({ position, track, reason: "local_track_unavailable" });
+  });
+  return { entries, missing };
+}

@@ -1,2 +1,33 @@
-import Link from "next/link"; import { connection } from "next/server"; import { PlaylistRevisionRepository } from "../../../../../server/persistence/playlist-revision-repository"; import { database } from "../../../../../server/runtime";
-export default async function RevisionsPage({ params }: { params: Promise<{ id: string }> }) { await connection(); const { id } = await params; const revisions = new PlaylistRevisionRepository(database).list(id); return <main><h1>Playlist revisions</h1>{revisions.map((revision) => <Link className="card" href={`/imports/${id}/revisions/${revision.id}`} key={revision.id}><strong>{revision.added} added · {revision.removed} removed · {revision.updated} updated</strong><small>{revision.moved} moved · {revision.unchanged} unchanged</small></Link>)}</main>; }
+import Link from "next/link";
+import { connection } from "next/server";
+import { PlaylistRevisionRepository } from "../../../../../server/persistence/playlist-revision-repository";
+import { database } from "../../../../../server/runtime";
+export default async function RevisionsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  await connection();
+  const { id } = await params;
+  const revisions = new PlaylistRevisionRepository(database).list(id);
+  return (
+    <main>
+      <h1>Playlist revisions</h1>
+      {revisions.map((revision) => (
+        <Link
+          className="card"
+          href={`/imports/${id}/revisions/${revision.id}`}
+          key={revision.id}
+        >
+          <strong>
+            {revision.added} added · {revision.removed} removed ·{" "}
+            {revision.updated} updated
+          </strong>
+          <small>
+            {revision.moved} moved · {revision.unchanged} unchanged
+          </small>
+        </Link>
+      ))}
+    </main>
+  );
+}

@@ -21,7 +21,11 @@ export default async function ImportWorkflowLayout({
         <Link href={`/imports/${id}/revisions`}>History</Link>
         <Link href={`/imports/${id}/mapping-overrides`}>Reuse mappings</Link>
         <Link href={`/imports/${id}/local-additions`}>Local additions</Link>
-        {["waiting_for_downloads", "library_status", "playlist_generated"].includes(state) && (
+        {[
+          "waiting_for_downloads",
+          "library_status",
+          "playlist_generated",
+        ].includes(state) && (
           <form action={queueLibraryStatus}>
             <input type="hidden" name="csrf_token" value={csrf} />
             <input type="hidden" name="import_id" value={id} />

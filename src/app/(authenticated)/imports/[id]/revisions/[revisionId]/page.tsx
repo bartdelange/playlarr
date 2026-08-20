@@ -1,2 +1,25 @@
-import { connection } from "next/server"; import { PlaylistRevisionRepository } from "../../../../../../server/persistence/playlist-revision-repository"; import { database } from "../../../../../../server/runtime";
-export default async function RevisionPage({ params }: { params: Promise<{ id: string; revisionId: string }> }) { await connection(); const { id, revisionId } = await params; const revision = new PlaylistRevisionRepository(database).get(id, revisionId); return <main><h1>Playlist revision</h1><section className="card"><h2>Before</h2><pre>{JSON.stringify(revision.before, null, 2)}</pre></section><section className="card"><h2>After</h2><pre>{JSON.stringify(revision.after, null, 2)}</pre></section></main>; }
+import { connection } from "next/server";
+import { PlaylistRevisionRepository } from "../../../../../../server/persistence/playlist-revision-repository";
+import { database } from "../../../../../../server/runtime";
+export default async function RevisionPage({
+  params,
+}: {
+  params: Promise<{ id: string; revisionId: string }>;
+}) {
+  await connection();
+  const { id, revisionId } = await params;
+  const revision = new PlaylistRevisionRepository(database).get(id, revisionId);
+  return (
+    <main>
+      <h1>Playlist revision</h1>
+      <section className="card">
+        <h2>Before</h2>
+        <pre>{JSON.stringify(revision.before, null, 2)}</pre>
+      </section>
+      <section className="card">
+        <h2>After</h2>
+        <pre>{JSON.stringify(revision.after, null, 2)}</pre>
+      </section>
+    </main>
+  );
+}

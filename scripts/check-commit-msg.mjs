@@ -1,3 +1,56 @@
 import { readFileSync } from "node:fs";
-const types = new Set(["chore", "docs", "feat", "fix", "refactor", "release", "revert", "test"]); const scopes = new Set(["config", "deployment", "lidarr", "musicbrainz", "persistence", "playlist", "repo", "sources", "web"]); const header = readFileSync(process.argv[2], "utf8").split("\n").map((line) => line.trim()).find((line) => line && !line.startsWith("#")) ?? ""; const fail = (message) => { console.error(`${message}\nExample: 🐛 fix(lidarr): preserve downloaded release selection`); process.exit(1); };
-if (/^(Merge |Revert )/.test(header)) process.exit(0); if (!header) fail("Commit message must not be empty."); if ([...header].length > 100) fail(`Commit header is ${[...header].length} characters; maximum is 100.`); const match = /^(\S+) ([a-z]+)\(([a-z0-9._/-]+)\): (.+)$/.exec(header); if (!match) fail("Invalid commit message. Use: <emoji> <type>(<scope>): <description>"); const [, emoji, type, scope, subject] = match; const codepoint = emoji.codePointAt(0); if (!codepoint || !((codepoint >= 0x2300 && codepoint <= 0x2bff) || (codepoint >= 0x1f000 && codepoint <= 0x1faff))) fail("Commit message must start with an emoji."); if (!types.has(type)) fail(`Invalid commit type ${type}.`); if (!scopes.has(scope)) fail(`Invalid commit scope ${scope}.`); if (/^[A-Z]/.test(subject)) fail("Commit description must start with a lowercase character."); if (subject.endsWith(".")) fail("Commit description must not end with a period.");
+const types = new Set([
+  "chore",
+  "docs",
+  "feat",
+  "fix",
+  "refactor",
+  "release",
+  "revert",
+  "test",
+]);
+const scopes = new Set([
+  "config",
+  "deployment",
+  "lidarr",
+  "musicbrainz",
+  "persistence",
+  "playlist",
+  "repo",
+  "sources",
+  "web",
+]);
+const header =
+  readFileSync(process.argv[2], "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith("#")) ?? "";
+const fail = (message) => {
+  console.error(
+    `${message}\nExample: 🐛 fix(lidarr): preserve downloaded release selection`,
+  );
+  process.exit(1);
+};
+if (/^(Merge |Revert )/.test(header)) process.exit(0);
+if (!header) fail("Commit message must not be empty.");
+if ([...header].length > 100)
+  fail(`Commit header is ${[...header].length} characters; maximum is 100.`);
+const match = /^(\S+) ([a-z]+)\(([a-z0-9._/-]+)\): (.+)$/.exec(header);
+if (!match)
+  fail("Invalid commit message. Use: <emoji> <type>(<scope>): <description>");
+const [, emoji, type, scope, subject] = match;
+const codepoint = emoji.codePointAt(0);
+if (
+  !codepoint ||
+  !(
+    (codepoint >= 0x2300 && codepoint <= 0x2bff) ||
+    (codepoint >= 0x1f000 && codepoint <= 0x1faff)
+  )
+)
+  fail("Commit message must start with an emoji.");
+if (!types.has(type)) fail(`Invalid commit type ${type}.`);
+if (!scopes.has(scope)) fail(`Invalid commit scope ${scope}.`);
+if (/^[A-Z]/.test(subject))
+  fail("Commit description must start with a lowercase character.");
+if (subject.endsWith("."))
+  fail("Commit description must not end with a period.");

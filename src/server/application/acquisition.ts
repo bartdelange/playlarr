@@ -1,4 +1,61 @@
-import type { AcquiredTrack, PlaylistInfo, SourceTrack, StoredImport } from "../domain/playlist";
-export interface PlaylistSource { getTracks(playlist: PlaylistInfo): Promise<SourceTrack[]>; getEntries?(playlist: PlaylistInfo): Promise<AcquiredTrack[]> }
-export interface AcquisitionRepository { createImport(playlist: PlaylistInfo, metadata?: object): StoredImport; updatePlaylist(importId: string, playlist: PlaylistInfo, metadata?: object): void; replaceAcquiredTracks(importId: string, entries: AcquiredTrack[]): void; setWorkflowState(importId: string, state: string, error?: string): void; getImport(importId: string): StoredImport }
-export class PersistentAcquisitionService { constructor(private readonly repository: AcquisitionRepository) {} async acquire(source: PlaylistSource, playlist: PlaylistInfo): Promise<StoredImport> { const imported = this.repository.createImport(playlist, { owner: playlist.owner, track_count: playlist.trackCount }); await this.acquireInto(imported.id, source, playlist); return this.repository.getImport(imported.id); } async acquireInto(importId: string, source: PlaylistSource, playlist: PlaylistInfo): Promise<void> { this.repository.updatePlaylist(importId, playlist, { owner: playlist.owner, track_count: playlist.trackCount }); try { const entries = source.getEntries ? await source.getEntries(playlist) : (await source.getTracks(playlist)).map((track, position) => ({ position, track })); this.repository.replaceAcquiredTracks(importId, entries); } catch (error) { this.repository.setWorkflowState(importId, "acquisition_failed", error instanceof Error ? error.message : String(error)); throw error; } } }
+import type {
+  AcquiredTrack,
+  PlaylistInfo,
+  SourceTrack,
+  StoredImport,
+} from "../domain/playlist";
+export interface PlaylistSource {
+  getTracks(playlist: PlaylistInfo): Promise<SourceTrack[]>;
+  getEntries?(playlist: PlaylistInfo): Promise<AcquiredTrack[]>;
+}
+export interface AcquisitionRepository {
+  createImport(playlist: PlaylistInfo, metadata?: object): StoredImport;
+  updatePlaylist(
+    importId: string,
+    playlist: PlaylistInfo,
+    metadata?: object,
+  ): void;
+  replaceAcquiredTracks(importId: string, entries: AcquiredTrack[]): void;
+  setWorkflowState(importId: string, state: string, error?: string): void;
+  getImport(importId: string): StoredImport;
+}
+export class PersistentAcquisitionService {
+  constructor(private readonly repository: AcquisitionRepository) {}
+  async acquire(
+    source: PlaylistSource,
+    playlist: PlaylistInfo,
+  ): Promise<StoredImport> {
+    const imported = this.repository.createImport(playlist, {
+      owner: playlist.owner,
+      track_count: playlist.trackCount,
+    });
+    await this.acquireInto(imported.id, source, playlist);
+    return this.repository.getImport(imported.id);
+  }
+  async acquireInto(
+    importId: string,
+    source: PlaylistSource,
+    playlist: PlaylistInfo,
+  ): Promise<void> {
+    this.repository.updatePlaylist(importId, playlist, {
+      owner: playlist.owner,
+      track_count: playlist.trackCount,
+    });
+    try {
+      const entries = source.getEntries
+        ? await source.getEntries(playlist)
+        : (await source.getTracks(playlist)).map((track, position) => ({
+            position,
+            track,
+          }));
+      this.repository.replaceAcquiredTracks(importId, entries);
+    } catch (error) {
+      this.repository.setWorkflowState(
+        importId,
+        "acquisition_failed",
+        error instanceof Error ? error.message : String(error),
+      );
+      throw error;
+    }
+  }
+}

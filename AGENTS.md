@@ -29,12 +29,20 @@ non-secret, non-mutation-sensitive data; job progress and Lidarr execution state
 
 ## Style and tests
 
-Use explicit strict TypeScript and responsibility-specific modules. Avoid `utils`, barrels, broad
-Client Components, untyped owned data, circular imports, and one-use frameworks. Tests live in
-`tests-ts`; browser tests live in `e2e` and run against the real application with deterministic
-fixtures. Add regressions for persistence, matching, execution safety, security, and workflow bugs.
+Use explicit, idiomatic strict TypeScript and responsibility-specific modules. Prefer readability
+over statement compression: use blank lines between logical phases, name intermediate values, and
+split modules or functions by cohesion rather than arbitrary line counts. Avoid catch-all `utils`,
+oversized `helpers`, implementation-bearing barrels, broad Client Components, untyped owned data,
+circular imports, and one-use frameworks. Prettier owns formatting; ESLint enforces correctness and
+maintainability rather than competing stylistic rules.
+
+Tests live in `tests-ts`; browser tests live in `e2e` and run against the real application with
+deterministic fixtures. Make tests visibly show setup, action, and assertion. Prefer semantic
+Playwright locators (`getByRole`, `getByLabel`) over CSS selectors. Add regressions for persistence,
+matching, execution safety, security, and workflow bugs.
 
 ```bash
+npm run format:check
 npm run lint
 npm run typecheck
 npm test
@@ -47,6 +55,8 @@ Use a dedicated branch and Conventional Commit header:
 `<emoji> <type>(<scope>): <lowercase description>`. Allowed scopes are `config`, `deployment`,
 `lidarr`, `musicbrainz`, `persistence`, `playlist`, `repo`, `sources`, and `web`. Stage exact paths,
 preserve unrelated user changes and `spike/`, never bypass hooks, and never commit secrets or data.
+Run `npm run validate` before committing; run end-to-end and Docker checks when application,
+workflow, dependency, or container changes make them relevant.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

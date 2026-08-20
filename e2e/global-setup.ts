@@ -12,7 +12,9 @@ const fixtureImportId = "00000000-0000-4000-8000-000000000001";
 
 export default function setup() {
   rmSync("/private/tmp/playlarr-e2e", { recursive: true, force: true });
-  const database = openDatabase("/private/tmp/playlarr-e2e/data/music-importer.db");
+  const database = openDatabase(
+    "/private/tmp/playlarr-e2e/data/music-importer.db",
+  );
   const imports = new ImportRepository(database);
   const imported = imports.createImport(
     { source: "spotify", id: "fixture-list", name: "Fixture Playlist" },
@@ -52,21 +54,29 @@ export default function setup() {
     ],
   });
   imports.setWorkflowState(imported.id, "library_status");
-  new PlaylistRevisionRepository(database).record(imported.id, imports.entries(imported.id), [
-    {
-      position: 0,
-      track: {
-        source: "spotify",
-        sourceTrackId: "track-1",
-        title: "Fixture Song",
-        artists: ["Fixture Artist"],
-        album: "Fixture Album",
+  new PlaylistRevisionRepository(database).record(
+    imported.id,
+    imports.entries(imported.id),
+    [
+      {
+        position: 0,
+        track: {
+          source: "spotify",
+          sourceTrackId: "track-1",
+          title: "Fixture Song",
+          artists: ["Fixture Artist"],
+          album: "Fixture Album",
+        },
       },
-    },
-  ]);
+    ],
+  );
   const jobs = new JobRepository(database);
   const job = jobs.create("resolution", imported.id, 1);
-  jobs.update(job.id, { status: "completed", current: 1, currentItem: "Fixture Song" });
+  jobs.update(job.id, {
+    status: "completed",
+    current: 1,
+    currentItem: "Fixture Song",
+  });
   const previewEntries = [
     {
       position: 0,
@@ -81,10 +91,18 @@ export default function setup() {
   ];
   const preview = jobs.create("playlist_update_preview", imported.id, 2);
   jobs.setPayload(preview.id, {
-    playlist: { source: "spotify", id: "fixture-list", name: "Fixture Playlist" },
+    playlist: {
+      source: "spotify",
+      id: "fixture-list",
+      name: "Fixture Playlist",
+    },
     entries: previewEntries,
     snapshotToken: playlistSnapshotToken(previewEntries),
   });
-  jobs.update(preview.id, { status: "completed", current: 2, currentItem: "Playlist update preview ready" });
+  jobs.update(preview.id, {
+    status: "completed",
+    current: 2,
+    currentItem: "Playlist update preview ready",
+  });
   database.close();
 }

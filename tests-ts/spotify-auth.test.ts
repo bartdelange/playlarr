@@ -1,5 +1,55 @@
 import { expect, it, vi } from "vitest";
-import { SpotifyAuthenticator, type SpotifyTokens } from "../src/server/integrations/spotify/auth";
-const memoryStore = (initial?: SpotifyTokens) => { let value = initial; return { load: async () => value, save: async (tokens: SpotifyTokens) => { value = tokens; } }; };
-it("uses PKCE and rejects a callback with the wrong state", async () => { const fetcher = vi.fn(); const auth = new SpotifyAuthenticator("client", "http://localhost/callback", memoryStore(), fetcher); const url = new URL(auth.authorizationUrl()); expect(url.searchParams.get("code_challenge_method")).toBe("S256"); await expect(auth.complete("code", "wrong")).rejects.toThrow("state"); expect(fetcher).not.toHaveBeenCalled(); });
-it("exchanges a matching callback and refreshes an expired persisted session", async () => { const store = memoryStore(); const fetcher = vi.fn().mockResolvedValueOnce(Response.json({ access_token: "first", refresh_token: "refresh", expires_in: 0 })).mockResolvedValueOnce(Response.json({ access_token: "second", expires_in: 3600 })); const auth = new SpotifyAuthenticator("client", "http://localhost/callback", store, fetcher, () => 1000); const state = new URL(auth.authorizationUrl()).searchParams.get("state")!; await auth.complete("code", state); await expect(auth.accessToken()).resolves.toBe("second"); const refreshBody = fetcher.mock.calls[1][1].body as URLSearchParams; expect(refreshBody.get("grant_type")).toBe("refresh_token"); expect(refreshBody.get("refresh_token")).toBe("refresh"); });
+import {
+  SpotifyAuthenticator,
+  type SpotifyTokens,
+} from "../src/server/integrations/spotify/auth";
+const memoryStore = (initial?: SpotifyTokens) => {
+  let value = initial;
+  return {
+    load: async () => value,
+    save: async (tokens: SpotifyTokens) => {
+      value = tokens;
+    },
+  };
+};
+it("uses PKCE and rejects a callback with the wrong state", async () => {
+  const fetcher = vi.fn();
+  const auth = new SpotifyAuthenticator(
+    "client",
+    "http://localhost/callback",
+    memoryStore(),
+    fetcher,
+  );
+  const url = new URL(auth.authorizationUrl());
+  expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+  await expect(auth.complete("code", "wrong")).rejects.toThrow("state");
+  expect(fetcher).not.toHaveBeenCalled();
+});
+it("exchanges a matching callback and refreshes an expired persisted session", async () => {
+  const store = memoryStore();
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(
+      Response.json({
+        access_token: "first",
+        refresh_token: "refresh",
+        expires_in: 0,
+      }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ access_token: "second", expires_in: 3600 }),
+    );
+  const auth = new SpotifyAuthenticator(
+    "client",
+    "http://localhost/callback",
+    store,
+    fetcher,
+    () => 1000,
+  );
+  const state = new URL(auth.authorizationUrl()).searchParams.get("state")!;
+  await auth.complete("code", state);
+  await expect(auth.accessToken()).resolves.toBe("second");
+  const refreshBody = fetcher.mock.calls[1][1].body as URLSearchParams;
+  expect(refreshBody.get("grant_type")).toBe("refresh_token");
+  expect(refreshBody.get("refresh_token")).toBe("refresh");
+});

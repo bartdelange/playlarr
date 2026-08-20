@@ -1,0 +1,9 @@
+node_modules
+.venv
+.next
+coverage
+test-results
+playwright-report
+package-lock.json
+spike
+AGENTS.md

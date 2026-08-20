@@ -66,7 +66,9 @@ export default async function ImportPage({
         <Link className="button" href={`/imports/${id}/local-additions`}>
           Local additions
         </Link>
-        {["library_status", "playlist_generated"].includes(imported.workflowState) && (
+        {["library_status", "playlist_generated"].includes(
+          imported.workflowState,
+        ) && (
           <form action={queuePlaylistGeneration}>
             <input type="hidden" name="csrf_token" value={csrf} />
             <input type="hidden" name="import_id" value={id} />

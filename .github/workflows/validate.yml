@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Validate version tag
         if: inputs.release_tag != ''
@@ -51,7 +51,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Validate GitHub Actions
-        uses: docker://rhysd/actionlint:1.7.7
+        run: npm run actionlint
+      - name: Check formatting
+        run: npm run format:check
       - name: Lint
         run: npm run lint
       - name: Strict typecheck

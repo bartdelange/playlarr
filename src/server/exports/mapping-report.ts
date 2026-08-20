@@ -1,6 +1,85 @@
-import { mkdir, writeFile } from "node:fs/promises"; import path from "node:path"; import type { MusicBrainzResult } from "../domain/musicbrainz"; import type { PlaylistInfo, SourceTrack } from "../domain/playlist"; import { safeFilename } from "./m3u";
-export const mappingFields = ["source", "source_playlist_id", "source_track_id", "track_title", "artists", "album", "isrc", "resolved_via", "mb_recording_title", "mb_artist_names", "mb_recording_ids", "mb_release_ids", "mb_release_group_ids", "mb_artist_ids", "mb_primary_artist_id", "failure_reason", "duration_ms"] as const;
-export function mappingRow(playlist: PlaylistInfo, track: SourceTrack, result: MusicBrainzResult): Record<string, string> { return { source: track.source, source_playlist_id: playlist.id, source_track_id: track.sourceTrackId, track_title: track.title, artists: track.artists.join("; "), album: track.album, isrc: (track.isrc ?? "").replace(/-/g, "").trim().toUpperCase(), resolved_via: result.resolvedVia ?? "none", mb_recording_title: result.recordingTitle ?? "", mb_artist_names: (result.artistNames ?? []).join("; "), mb_recording_ids: (result.recordingIds ?? []).join(";"), mb_release_ids: (result.releaseIds ?? []).join(";"), mb_release_group_ids: (result.releaseGroupIds ?? []).join(";"), mb_artist_ids: (result.artistIds ?? []).join(";"), mb_primary_artist_id: result.primaryArtistId ?? "", failure_reason: result.failureReason ?? "", duration_ms: track.durationMs === undefined ? "" : String(track.durationMs) }; }
-export function serializeCsv(rows: Record<string, string>[], fields: readonly string[] = mappingFields): string { const cell = (value: string) => /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value; return [fields.join(","), ...rows.map((row) => fields.map((field) => cell(row[field] ?? "")).join(",")), ""].join("\r\n"); }
-export function mappingReportStem(playlist: PlaylistInfo): string { return safeFilename(`${playlist.source}_${playlist.name}_${playlist.id}`); }
-export async function writeMappingReports(outputDirectory: string, playlist: PlaylistInfo, rows: Record<string, string>[]): Promise<{ mapping: string; unresolved: string }> { await mkdir(outputDirectory, { recursive: true }); const stem = mappingReportStem(playlist); const mapping = path.join(outputDirectory, `${stem}_musicbrainz.csv`); const unresolved = path.join(outputDirectory, `${stem}_unresolved.csv`); await Promise.all([writeFile(mapping, serializeCsv(rows), "utf8"), writeFile(unresolved, serializeCsv(rows.filter((row) => row.resolved_via === "none")), "utf8")]); return { mapping, unresolved }; }
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { MusicBrainzResult } from "../domain/musicbrainz";
+import type { PlaylistInfo, SourceTrack } from "../domain/playlist";
+import { safeFilename } from "./m3u";
+export const mappingFields = [
+  "source",
+  "source_playlist_id",
+  "source_track_id",
+  "track_title",
+  "artists",
+  "album",
+  "isrc",
+  "resolved_via",
+  "mb_recording_title",
+  "mb_artist_names",
+  "mb_recording_ids",
+  "mb_release_ids",
+  "mb_release_group_ids",
+  "mb_artist_ids",
+  "mb_primary_artist_id",
+  "failure_reason",
+  "duration_ms",
+] as const;
+export function mappingRow(
+  playlist: PlaylistInfo,
+  track: SourceTrack,
+  result: MusicBrainzResult,
+): Record<string, string> {
+  return {
+    source: track.source,
+    source_playlist_id: playlist.id,
+    source_track_id: track.sourceTrackId,
+    track_title: track.title,
+    artists: track.artists.join("; "),
+    album: track.album,
+    isrc: (track.isrc ?? "").replace(/-/g, "").trim().toUpperCase(),
+    resolved_via: result.resolvedVia ?? "none",
+    mb_recording_title: result.recordingTitle ?? "",
+    mb_artist_names: (result.artistNames ?? []).join("; "),
+    mb_recording_ids: (result.recordingIds ?? []).join(";"),
+    mb_release_ids: (result.releaseIds ?? []).join(";"),
+    mb_release_group_ids: (result.releaseGroupIds ?? []).join(";"),
+    mb_artist_ids: (result.artistIds ?? []).join(";"),
+    mb_primary_artist_id: result.primaryArtistId ?? "",
+    failure_reason: result.failureReason ?? "",
+    duration_ms: track.durationMs === undefined ? "" : String(track.durationMs),
+  };
+}
+export function serializeCsv(
+  rows: Record<string, string>[],
+  fields: readonly string[] = mappingFields,
+): string {
+  const cell = (value: string) =>
+    /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  return [
+    fields.join(","),
+    ...rows.map((row) =>
+      fields.map((field) => cell(row[field] ?? "")).join(","),
+    ),
+    "",
+  ].join("\r\n");
+}
+export function mappingReportStem(playlist: PlaylistInfo): string {
+  return safeFilename(`${playlist.source}_${playlist.name}_${playlist.id}`);
+}
+export async function writeMappingReports(
+  outputDirectory: string,
+  playlist: PlaylistInfo,
+  rows: Record<string, string>[],
+): Promise<{ mapping: string; unresolved: string }> {
+  await mkdir(outputDirectory, { recursive: true });
+  const stem = mappingReportStem(playlist);
+  const mapping = path.join(outputDirectory, `${stem}_musicbrainz.csv`);
+  const unresolved = path.join(outputDirectory, `${stem}_unresolved.csv`);
+  await Promise.all([
+    writeFile(mapping, serializeCsv(rows), "utf8"),
+    writeFile(
+      unresolved,
+      serializeCsv(rows.filter((row) => row.resolved_via === "none")),
+      "utf8",
+    ),
+  ]);
+  return { mapping, unresolved };
+}

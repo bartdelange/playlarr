@@ -1,2 +1,23 @@
-import { connection } from "next/server"; import { notFound } from "next/navigation"; import { database } from "../../../../server/runtime"; import { JobRepository } from "../../../../server/persistence/job-repository"; import { JobProgress } from "../../../../components/jobs/job-progress";
-export default async function JobPage({ params }: { params: Promise<{ id: string }> }) { await connection(); let job; try { job = new JobRepository(database).get((await params).id); } catch { notFound(); } return <main><JobProgress initial={job} /></main>; }
+import { connection } from "next/server";
+import { notFound } from "next/navigation";
+import { database } from "../../../../server/runtime";
+import { JobRepository } from "../../../../server/persistence/job-repository";
+import { JobProgress } from "../../../../components/jobs/job-progress";
+export default async function JobPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  await connection();
+  let job;
+  try {
+    job = new JobRepository(database).get((await params).id);
+  } catch {
+    notFound();
+  }
+  return (
+    <main>
+      <JobProgress initial={job} />
+    </main>
+  );
+}

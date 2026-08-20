@@ -1,2 +1,95 @@
-import { connection } from "next/server"; import { addLocalTrack, removeLocalTrack } from "../../../../actions/exports"; import { NavidromeClient, type NavidromeSong } from "../../../../../server/integrations/navidrome/client"; import { LocalAdditionsRepository } from "../../../../../server/persistence/local-additions-repository"; import { config, database, settings } from "../../../../../server/runtime"; import { requestCsrfToken } from "../../../../../server/security/request";
-export default async function LocalAdditionsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ query?: string }> }) { await connection(); const { id } = await params; const { query } = await searchParams; const csrf = await requestCsrfToken(); const repository = new LocalAdditionsRepository(database); const additions = repository.list(id); let songs: NavidromeSong[] = []; let error: string | undefined; if (query) { try { songs = await new NavidromeClient({ url: settings.get("navidrome_url", config.navidrome.url ?? ""), username: settings.get("navidrome_username", config.navidrome.username ?? ""), password: settings.get("navidrome_password", config.navidrome.password ?? "") }).searchSongs(query); } catch (reason) { error = reason instanceof Error ? reason.message : String(reason); } } return <main><p className="eyebrow">Local library</p><h1>Playlist additions</h1><p>Add Navidrome tracks after the source playlist while keeping durable ordering.</p><form method="get"><label>Search Navidrome<input name="query" defaultValue={query} /></label><button>Search</button></form>{error && <p role="alert">{error}</p>}<div className="card-list">{songs.map((song) => <article className="card" key={song.id}><strong>{song.title}</strong><small>{song.artist} · {song.album}</small><form action={addLocalTrack}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="import_id" value={id} /><input type="hidden" name="provider_track_id" value={song.id} /><input type="hidden" name="title" value={song.title} /><input type="hidden" name="artist" value={song.artist} /><input type="hidden" name="album" value={song.album} /><input type="hidden" name="path" value={song.path} /><button>Add track</button></form></article>)}</div><h2>Included additions</h2>{additions.map((addition) => <article className="job-row" key={addition.id}><div><strong>{addition.title}</strong><small>{addition.artists.join(", ")}</small></div><form action={removeLocalTrack}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="import_id" value={id} /><input type="hidden" name="addition_id" value={addition.id} /><button>Remove</button></form></article>)}</main>; }
+import { connection } from "next/server";
+import { addLocalTrack, removeLocalTrack } from "../../../../actions/exports";
+import {
+  NavidromeClient,
+  type NavidromeSong,
+} from "../../../../../server/integrations/navidrome/client";
+import { LocalAdditionsRepository } from "../../../../../server/persistence/local-additions-repository";
+import { config, database, settings } from "../../../../../server/runtime";
+import { requestCsrfToken } from "../../../../../server/security/request";
+export default async function LocalAdditionsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ query?: string }>;
+}) {
+  await connection();
+  const { id } = await params;
+  const { query } = await searchParams;
+  const csrf = await requestCsrfToken();
+  const repository = new LocalAdditionsRepository(database);
+  const additions = repository.list(id);
+  let songs: NavidromeSong[] = [];
+  let error: string | undefined;
+  if (query) {
+    try {
+      songs = await new NavidromeClient({
+        url: settings.get("navidrome_url", config.navidrome.url ?? ""),
+        username: settings.get(
+          "navidrome_username",
+          config.navidrome.username ?? "",
+        ),
+        password: settings.get(
+          "navidrome_password",
+          config.navidrome.password ?? "",
+        ),
+      }).searchSongs(query);
+    } catch (reason) {
+      error = reason instanceof Error ? reason.message : String(reason);
+    }
+  }
+  return (
+    <main>
+      <p className="eyebrow">Local library</p>
+      <h1>Playlist additions</h1>
+      <p>
+        Add Navidrome tracks after the source playlist while keeping durable
+        ordering.
+      </p>
+      <form method="get">
+        <label>
+          Search Navidrome
+          <input name="query" defaultValue={query} />
+        </label>
+        <button>Search</button>
+      </form>
+      {error && <p role="alert">{error}</p>}
+      <div className="card-list">
+        {songs.map((song) => (
+          <article className="card" key={song.id}>
+            <strong>{song.title}</strong>
+            <small>
+              {song.artist} · {song.album}
+            </small>
+            <form action={addLocalTrack}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input type="hidden" name="import_id" value={id} />
+              <input type="hidden" name="provider_track_id" value={song.id} />
+              <input type="hidden" name="title" value={song.title} />
+              <input type="hidden" name="artist" value={song.artist} />
+              <input type="hidden" name="album" value={song.album} />
+              <input type="hidden" name="path" value={song.path} />
+              <button>Add track</button>
+            </form>
+          </article>
+        ))}
+      </div>
+      <h2>Included additions</h2>
+      {additions.map((addition) => (
+        <article className="job-row" key={addition.id}>
+          <div>
+            <strong>{addition.title}</strong>
+            <small>{addition.artists.join(", ")}</small>
+          </div>
+          <form action={removeLocalTrack}>
+            <input type="hidden" name="csrf_token" value={csrf} />
+            <input type="hidden" name="import_id" value={id} />
+            <input type="hidden" name="addition_id" value={addition.id} />
+            <button>Remove</button>
+          </form>
+        </article>
+      ))}
+    </main>
+  );
+}
