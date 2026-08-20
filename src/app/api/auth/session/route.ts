@@ -4,6 +4,7 @@ import {
   sessionCookie,
   sessionLifetimeSeconds,
 } from "../../../../server/security/web-security";
+import { secureSessionCookie } from "../../../../server/security/cookie-security";
 export function GET(request: Request) {
   if (!security.configured || security.authorizationEnabled)
     return NextResponse.redirect(
@@ -13,7 +14,7 @@ export function GET(request: Request) {
   response.cookies.set(sessionCookie, security.createSession(), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: secureSessionCookie(request.headers, request.url),
     maxAge: sessionLifetimeSeconds,
     path: "/",
   });

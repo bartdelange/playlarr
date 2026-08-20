@@ -7,8 +7,10 @@ import {
   authenticateTidal,
   savePathMappings,
   saveServiceSettings,
+  testServiceConnection,
 } from "../../actions/workflows";
 import { requestCsrfToken } from "../../../server/security/request";
+import { LidarrClient } from "../../../server/integrations/lidarr/client";
 const secretPlaceholder = (value: unknown) =>
   value ? "Configured — enter to replace" : "Required";
 export default async function SettingsPage({
@@ -23,6 +25,41 @@ export default async function SettingsPage({
   const mappings = settings.get<[string, string][]>("path_mappings", [
     ["/music", "/music"],
   ]);
+  const lidarrUrl = String(saved.lidarr_url ?? config.lidarr.url ?? "");
+  const lidarrApiKey = String(
+    saved.lidarr_api_key ?? config.lidarr.apiKey ?? "",
+  );
+  const lidarrConfigured = Boolean(lidarrUrl && lidarrApiKey);
+  let rootFolders: { value: string; label: string }[] = [];
+  let qualityProfiles: { value: number; label: string }[] = [];
+  let metadataProfiles: { value: number; label: string }[] = [];
+  let lidarrOptionsError: string | undefined;
+  if (lidarrConfigured) {
+    try {
+      const lidarr = new LidarrClient({ url: lidarrUrl, apiKey: lidarrApiKey });
+      [rootFolders, qualityProfiles, metadataProfiles] = await Promise.all([
+        lidarr.rootFolders(),
+        lidarr.qualityProfiles(),
+        lidarr.metadataProfiles(),
+      ]);
+    } catch (error) {
+      lidarrOptionsError = `Could not load Lidarr options: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+  const selectedRoot = String(
+    saved.lidarr_root_folder ?? config.lidarr.rootFolder,
+  );
+  const selectedQuality = Number(
+    saved.lidarr_quality_profile_id ?? config.lidarr.qualityProfileId,
+  );
+  const selectedMetadata = Number(
+    saved.lidarr_metadata_profile_id ?? config.lidarr.metadataProfileId,
+  );
+  const navidromeConfigured = Boolean(
+    (saved.navidrome_url ?? config.navidrome.url) &&
+    (saved.navidrome_username ?? config.navidrome.username) &&
+    (saved.navidrome_password ?? config.navidrome.password),
+  );
   return (
     <main className="settings-page">
       <p className="eyebrow">Configuration</p>
@@ -62,7 +99,17 @@ export default async function SettingsPage({
               />
             </label>
           </ServiceForm>
-          <ServiceForm title="Spotify" service="spotify" csrf={csrf}>
+          <ServiceForm
+            title="Spotify"
+            service="spotify"
+            csrf={csrf}
+            status={
+              existsSync(config.spotify.tokenCache)
+                ? "Authenticated"
+                : "Not authenticated"
+            }
+            statusOk={existsSync(config.spotify.tokenCache)}
+          >
             <label>
               Client ID
               <input
@@ -97,15 +144,17 @@ export default async function SettingsPage({
               </span>
             </p>
           </ServiceForm>
-          <ServiceForm title="Lidarr" service="lidarr" csrf={csrf}>
+          <ServiceForm
+            title="Lidarr"
+            service="lidarr"
+            csrf={csrf}
+            test
+            status={lidarrConfigured ? "Configured" : "Not configured"}
+            statusOk={lidarrConfigured}
+          >
             <label>
               URL
-              <input
-                name="lidarr_url"
-                defaultValue={String(
-                  saved.lidarr_url ?? config.lidarr.url ?? "",
-                )}
-              />
+              <input name="lidarr_url" defaultValue={lidarrUrl} />
             </label>
             <label>
               API key
@@ -119,39 +168,95 @@ export default async function SettingsPage({
             </label>
             <label>
               Root folder
-              <input
+              <select
                 name="lidarr_root_folder"
-                defaultValue={String(
-                  saved.lidarr_root_folder ?? config.lidarr.rootFolder,
-                )}
-              />
+                defaultValue={selectedRoot}
+                disabled={!lidarrConfigured}
+              >
+                {!rootFolders.some(
+                  (option) => option.value === selectedRoot,
+                ) && <option value={selectedRoot}>{selectedRoot}</option>}
+                {rootFolders.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
-              Quality profile ID
-              <input
+              Quality profile
+              <select
                 name="lidarr_quality_profile_id"
-                type="number"
-                min="1"
-                defaultValue={String(
-                  saved.lidarr_quality_profile_id ??
-                    config.lidarr.qualityProfileId,
+                defaultValue={String(selectedQuality)}
+                disabled={!lidarrConfigured}
+              >
+                {!qualityProfiles.some(
+                  (option) => option.value === selectedQuality,
+                ) && (
+                  <option value={selectedQuality}>
+                    Profile {selectedQuality}
+                  </option>
                 )}
-              />
+                {qualityProfiles.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
-              Metadata profile ID
-              <input
+              Metadata profile
+              <select
                 name="lidarr_metadata_profile_id"
-                type="number"
-                min="1"
-                defaultValue={String(
-                  saved.lidarr_metadata_profile_id ??
-                    config.lidarr.metadataProfileId,
+                defaultValue={String(selectedMetadata)}
+                disabled={!lidarrConfigured}
+              >
+                {!metadataProfiles.some(
+                  (option) => option.value === selectedMetadata,
+                ) && (
+                  <option value={selectedMetadata}>
+                    Profile {selectedMetadata}
+                  </option>
                 )}
-              />
+                {metadataProfiles.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
+            {!lidarrConfigured && (
+              <>
+                <input
+                  type="hidden"
+                  name="lidarr_root_folder"
+                  value={selectedRoot}
+                />
+                <input
+                  type="hidden"
+                  name="lidarr_quality_profile_id"
+                  value={selectedQuality}
+                />
+                <input
+                  type="hidden"
+                  name="lidarr_metadata_profile_id"
+                  value={selectedMetadata}
+                />
+                <small>
+                  Save a Lidarr URL and API key to load these options.
+                </small>
+              </>
+            )}
+            {lidarrOptionsError && <small>{lidarrOptionsError}</small>}
           </ServiceForm>
-          <ServiceForm title="Navidrome" service="navidrome" csrf={csrf}>
+          <ServiceForm
+            title="Navidrome"
+            service="navidrome"
+            csrf={csrf}
+            test
+            status={navidromeConfigured ? "Configured" : "Not configured"}
+            statusOk={navidromeConfigured}
+          >
             <label>
               URL
               <input
@@ -266,12 +371,18 @@ function ServiceForm({
   csrf,
   children,
   save = true,
+  test = false,
+  status,
+  statusOk = false,
 }: {
   title: string;
   service: string;
   csrf: string;
   children: React.ReactNode;
   save?: boolean;
+  test?: boolean;
+  status?: string;
+  statusOk?: boolean;
 }) {
   const authenticate =
     service === "spotify"
@@ -294,6 +405,20 @@ function ServiceForm({
           <button className="secondary">Authenticate {title}</button>
         </form>
       )}
+      <div className="settings-block-footer">
+        {status ? (
+          <span className={`status ${statusOk ? "ok" : ""}`}>{status}</span>
+        ) : (
+          <span />
+        )}
+        {test && (
+          <form action={testServiceConnection}>
+            <input type="hidden" name="csrf_token" value={csrf} />
+            <input type="hidden" name="service" value={service} />
+            <button className="secondary">Test {title}</button>
+          </form>
+        )}
+      </div>
     </section>
   );
 }

@@ -6,6 +6,7 @@ import {
   sessionCookie,
   sessionLifetimeSeconds,
 } from "../../server/security/web-security";
+import { secureSessionCookie } from "../../server/security/cookie-security";
 const passwordError = (password: string, confirmation: string) =>
   password.length < 12
     ? "Password must be at least 12 characters"
@@ -13,10 +14,11 @@ const passwordError = (password: string, confirmation: string) =>
       ? "Passwords do not match"
       : undefined;
 async function setSession(token: string) {
+  const requestHeaders = await headers();
   (await cookies()).set(sessionCookie, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: secureSessionCookie(requestHeaders),
     maxAge: sessionLifetimeSeconds,
     path: "/",
   });

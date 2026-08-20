@@ -18,6 +18,33 @@ it("uses the Lidarr v1 API with an API-key header", async () => {
   expect(fetcher.mock.calls[0][1].headers["X-Api-Key"]).toBe("secret");
 });
 
+it("loads authoritative Lidarr setting options from their production endpoints", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json([{ path: "/music" }]))
+    .mockResolvedValueOnce(Response.json([{ id: 2, name: "Lossless" }]))
+    .mockResolvedValueOnce(Response.json([{ id: 3, name: "Standard" }]));
+  const client = new LidarrClient(
+    { url: "http://lidarr", apiKey: "secret" },
+    fetcher,
+  );
+
+  await expect(client.rootFolders()).resolves.toEqual([
+    { value: "/music", label: "/music" },
+  ]);
+  await expect(client.qualityProfiles()).resolves.toEqual([
+    { value: 2, label: "Lossless" },
+  ]);
+  await expect(client.metadataProfiles()).resolves.toEqual([
+    { value: 3, label: "Standard" },
+  ]);
+  expect(fetcher.mock.calls.map((call) => call[0])).toEqual([
+    "http://lidarr/api/v1/rootfolder",
+    "http://lidarr/api/v1/qualityprofile",
+    "http://lidarr/api/v1/metadataprofile",
+  ]);
+});
+
 it("persists exact downloaded recording, release, and file identity as an unchanged match", async () => {
   const client = planningClient({
     artists: [artist()],

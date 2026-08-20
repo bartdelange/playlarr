@@ -13,7 +13,13 @@ import { MappingOverridesRepository } from "../../server/persistence/mapping-ove
 import { resetSpotify, spotify, tidal } from "../../server/providers";
 import { importMappingCsv } from "../../server/application/mapping-csv-import";
 import { ResolutionRepository } from "../../server/persistence/resolution-repository";
-import { database, settings } from "../../server/runtime";
+import { config, database, settings } from "../../server/runtime";
+import { LidarrClient } from "../../server/integrations/lidarr/client";
+import { NavidromeClient } from "../../server/integrations/navidrome/client";
+import {
+  saveServiceConfiguration,
+  serviceFields,
+} from "../../server/application/service-settings";
 import { requireCsrf } from "./security";
 const jobs = () => new JobRepository(database);
 const imports = () => new ImportRepository(database);
@@ -39,33 +45,53 @@ export async function savePathMappings(form: FormData) {
 export async function saveServiceSettings(form: FormData) {
   await requireCsrf(form);
   const service = String(form.get("service"));
-  const allowed: Record<string, string[]> = {
-    musicbrainz: ["mb_user_agent"],
-    spotify: ["spotify_client_id", "spotify_redirect_uri"],
-    lidarr: [
-      "lidarr_url",
-      "lidarr_api_key",
-      "lidarr_root_folder",
-      "lidarr_quality_profile_id",
-      "lidarr_metadata_profile_id",
-    ],
-    navidrome: ["navidrome_url", "navidrome_username", "navidrome_password"],
-  };
-  for (const key of allowed[service] ?? []) {
-    const value = String(form.get(key) ?? "").trim();
-    if (value)
-      settings.set(
+  saveServiceConfiguration(
+    settings,
+    service,
+    Object.fromEntries(
+      (serviceFields[service] ?? []).map((key) => [
         key,
-        /^lidarr_(quality|metadata)_profile_id$/.test(key)
-          ? Number(value)
-          : value,
-      );
-  }
+        String(form.get(key) ?? ""),
+      ]),
+    ),
+  );
   if (service === "spotify") resetSpotify();
   revalidatePath("/settings");
   redirect(
     `/settings?message=${encodeURIComponent(`${service} settings saved`)}`,
   );
+}
+export async function testServiceConnection(form: FormData) {
+  await requireCsrf(form);
+  const service = String(form.get("service"));
+  try {
+    if (service === "lidarr")
+      await new LidarrClient({
+        url: settings.get("lidarr_url", config.lidarr.url ?? ""),
+        apiKey: settings.get("lidarr_api_key", config.lidarr.apiKey ?? ""),
+      }).systemStatus();
+    else if (service === "navidrome")
+      await new NavidromeClient({
+        url: settings.get("navidrome_url", config.navidrome.url ?? ""),
+        username: settings.get(
+          "navidrome_username",
+          config.navidrome.username ?? "",
+        ),
+        password: settings.get(
+          "navidrome_password",
+          config.navidrome.password ?? "",
+        ),
+      }).searchSongs("", 1);
+    else throw new Error(`unknown service: ${service}`);
+    redirect(
+      `/settings?message=${encodeURIComponent(`${service[0].toUpperCase()}${service.slice(1)} connection successful`)}`,
+    );
+  } catch (error) {
+    if (error && typeof error === "object" && "digest" in error) throw error;
+    redirect(
+      `/settings?message=${encodeURIComponent(`${service[0]?.toUpperCase() ?? ""}${service.slice(1)} connection failed: ${error instanceof Error ? error.message : String(error)}`)}`,
+    );
+  }
 }
 export async function authenticateSpotify(form: FormData) {
   await requireCsrf(form);

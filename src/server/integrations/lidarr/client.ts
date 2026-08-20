@@ -77,6 +77,37 @@ export class LidarrClient {
       `trackFile?artistId=${id}`,
     );
   }
+  systemStatus() {
+    return this.request<Record<string, unknown>>("GET", "system/status");
+  }
+  async rootFolders(): Promise<{ value: string; label: string }[]> {
+    return (await this.request<Record<string, unknown>[]>("GET", "rootfolder"))
+      .map((item) => ({
+        value: String(item.path ?? ""),
+        label: String(item.path ?? ""),
+      }))
+      .filter((item) => item.value);
+  }
+  async qualityProfiles(): Promise<{ value: number; label: string }[]> {
+    return (
+      await this.request<Record<string, unknown>[]>("GET", "qualityprofile")
+    )
+      .filter((item) => item.id !== undefined)
+      .map((item) => ({
+        value: Number(item.id),
+        label: String(item.name ?? `Profile ${item.id}`),
+      }));
+  }
+  async metadataProfiles(): Promise<{ value: number; label: string }[]> {
+    return (
+      await this.request<Record<string, unknown>[]>("GET", "metadataprofile")
+    )
+      .filter((item) => item.id !== undefined)
+      .map((item) => ({
+        value: Number(item.id),
+        label: String(item.name ?? `Profile ${item.id}`),
+      }));
+  }
 
   async lookup(
     path: "artist" | "album",
