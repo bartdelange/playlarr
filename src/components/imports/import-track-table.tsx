@@ -77,9 +77,20 @@ export function ImportTrackTable({
           ["automatic", "Automatic"],
           ["manual", "Manual"],
         ];
+  const reviewCount = rows.filter((row) => reviewStates.has(row.state)).length;
 
   return (
     <>
+      {stage === "match" && reviewCount > 0 && (
+        <div className="actions">
+          <Link
+            className="button secondary"
+            href={`/entries/${rows.find((row) => reviewStates.has(row.state))!.id}/review?session=true`}
+          >
+            Review {reviewCount} tracks
+          </Link>
+        </div>
+      )}
       <div className="filters" aria-label="Track filters">
         {filters.map(([value, label]) => (
           <button

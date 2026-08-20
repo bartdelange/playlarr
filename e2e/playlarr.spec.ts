@@ -4,6 +4,7 @@ test.describe.configure({ mode: "serial" });
 
 const password = "long-test-password";
 const fixtureImportId = "00000000-0000-4000-8000-000000000001";
+const reviewImportId = "00000000-0000-4000-8000-000000000002";
 
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/login");
@@ -156,4 +157,26 @@ test("job progress and logout enforce session state", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test("manual review session exposes navigation and advances after a decision", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto(`/imports/${reviewImportId}?stage=match`);
+  await page.getByRole("link", { name: "Review 2 tracks" }).click();
+  await expect(page).toHaveURL(/\/entries\/\d+\/review\?session=true$/);
+  await expect(page.getByText("Track 1 of 2")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Next" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Exit session" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Validate MBID" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Search" })).toBeVisible();
+  await page.getByRole("button", { name: "Skip track and continue" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Review Second" }),
+  ).toBeVisible();
+  await expect(page.getByText("Track 1 of 1")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Previous" })).toHaveCount(0);
 });

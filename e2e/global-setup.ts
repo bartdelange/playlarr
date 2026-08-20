@@ -9,6 +9,7 @@ import { ResolutionRepository } from "../src/server/persistence/resolution-repos
 import { playlistSnapshotToken } from "../src/server/domain/playlist-snapshot";
 
 const fixtureImportId = "00000000-0000-4000-8000-000000000001";
+const reviewImportId = "00000000-0000-4000-8000-000000000002";
 
 export default function setup() {
   mkdirSync("docs/images/migration-output", { recursive: true });
@@ -105,5 +106,32 @@ export default function setup() {
     current: 2,
     currentItem: "Playlist update preview ready",
   });
+  const reviewImport = imports.createImport(
+    { source: "spotify", id: "review-list", name: "Review Session" },
+    {},
+    reviewImportId,
+  );
+  imports.replaceTracks(reviewImport.id, [
+    {
+      source: "spotify",
+      sourceTrackId: "review-one",
+      title: "Review First",
+      artists: ["Review Artist"],
+      album: "Review Album",
+    },
+    {
+      source: "spotify",
+      sourceTrackId: "review-two",
+      title: "Review Second",
+      artists: ["Review Artist"],
+      album: "Review Album",
+    },
+  ]);
+  const reviewResolutions = new ResolutionRepository(database);
+  for (const reviewEntry of imports.entries(reviewImport.id))
+    reviewResolutions.saveAutomatic(reviewEntry.id, {
+      failureReason: "no_recording_match",
+    });
+  imports.setWorkflowState(reviewImport.id, "review_required");
   database.close();
 }

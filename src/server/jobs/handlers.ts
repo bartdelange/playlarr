@@ -36,7 +36,16 @@ export function productionJobHandlers(
   const resolution: JobHandler = async (job, progress, cancelled) => {
     if (!job.importId) throw new Error("resolution job has no import");
     const imports = new ImportRepository(database);
-    const entries = imports.entries(job.importId);
+    const allEntries = imports.entries(job.importId);
+    const retryEntryId =
+      job.kind === "resolution_retry"
+        ? Number(job.payload?.entryId)
+        : undefined;
+    const entries = retryEntryId
+      ? allEntries.filter((entry) => entry.id === retryEntryId)
+      : allEntries;
+    if (retryEntryId && entries.length !== 1)
+      throw new Error("retry entry does not belong to this import");
     let unresolved = false;
     const resolver = new MusicBrainzResolver(
       new MusicBrainzClient({
@@ -60,9 +69,23 @@ export function productionJobHandlers(
       resolutions.saveAutomatic(entry.id, result);
       progress(index + 1, entries.length, entry.track.title);
     }
+    const requiresReview =
+      job.kind === "resolution_retry"
+        ? imports
+            .entries(job.importId)
+            .some((entry) =>
+              [
+                "pending",
+                "resolving",
+                "unresolved",
+                "ambiguous",
+                "validation_failed",
+              ].includes(entry.resolutionState),
+            )
+        : unresolved;
     imports.setWorkflowState(
       job.importId,
-      unresolved ? "review_required" : "ready_to_plan",
+      requiresReview ? "review_required" : "ready_to_plan",
     );
     const imported = imports.getImport(job.importId);
     const playlist = {
@@ -71,9 +94,11 @@ export function productionJobHandlers(
       name: imported.playlistName,
       path: imported.playlistPath,
     };
-    const rows = entries.map((entry) =>
-      mappingRow(playlist, entry.track, resolutions.get(entry.id).result),
-    );
+    const rows = imports
+      .entries(job.importId)
+      .map((entry) =>
+        mappingRow(playlist, entry.track, resolutions.get(entry.id).result),
+      );
     await writeMappingReports(config.outputDir, playlist, rows);
   };
   const lidarrExecution: JobHandler = async (job) => {
