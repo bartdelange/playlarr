@@ -1,326 +1,103 @@
 # Playlarr
 
-## Playlists to Lidarr
+Playlarr turns ordered Spotify and TIDAL playlists into safely planned Lidarr additions and local
+M3U8 playlists. It is a full-stack Next.js 16 and TypeScript application with SQLite-backed
+workflows and a durable single-concurrency worker.
 
-**Playlarr brings your playlists home.**
+Playlist order and duplicate occurrences are preserved. MusicBrainz mappings, manual decisions,
+source identifiers, revisions, local Navidrome additions, jobs, plans, and exports remain durable
+in the schema-v8 database. Lidarr planning is read-only; mutations require approval of a persisted
+plan and are revalidated at execution time. Interrupted mutation jobs are never replayed
+automatically.
 
-Import playlists from music subscription services such as Spotify and TIDAL, match their tracks
-against MusicBrainz, send the corresponding releases to Lidarr, and generate ordered M3U8 playlists
-for your local music server.
+## Run locally
 
-Already have tracks in Navidrome that were not part of the original playlist? Playlarr can add
-those too.
-
-> Point Playlarr at a streaming playlist, let Lidarr build the local library, and recreate the
-> playlist using your own music files.
-
-![Playlarr dashboard showing imports at review, plan, download, and export stages.](docs/images/dashboard.png)
-
-Playlarr coordinates metadata and your existing services; it does not download music itself. Use it
-only with media you are legally entitled to acquire and access. See [Responsible use](#responsible-use)
-for the complete disclaimer.
-
-## What can Playlarr do?
-
-- Import playlists from Spotify and TIDAL.
-- Resolve tracks to MusicBrainz recordings and releases.
-- Pause for manual review when a match is uncertain and let you fix it.
-- Preview every proposed Lidarr change before applying anything.
-- Ask Lidarr to add, monitor, and search for the required releases.
-- Preserve source order, moved tracks, and duplicate occurrences.
-- Add optional Navidrome-only tracks to the finished playlist.
-- Generate ordered M3U8 playlists using downloaded local files.
-- Refresh an import later and show what was added, removed, moved, or changed.
-- Retain imports, mappings, manual decisions, progress, and history across restarts.
-
-## How it works
-
-```text
-Spotify / TIDAL
-       │
-       ▼
-    Playlarr
-       │
-       ├── MusicBrainz ── identify tracks and releases
-       │
-       ▼
-     Lidarr ───────────── acquire missing music
-       │
-       ▼
- Local music library
-       │
-       ├── Navidrome ──── optional local additions
-       │
-       ▼
-   M3U8 playlist
-```
-
-Playlarr handles playlist metadata, matching, Lidarr planning, progress tracking, and playlist
-generation. Lidarr remains responsible for acquiring and organizing music. Planning is read-only:
-Playlarr changes Lidarr only after you inspect a plan and select **Apply to Lidarr**.
-
-## Installing Playlarr
-
-The web UI listens on port `8787`. On first launch, Playlarr asks you to create a password or
-explicitly delegate authorization to a trusted SSO gateway such as Authelia. It does not terminate
-TLS, so keep it on a trusted LAN or place it behind an HTTPS reverse proxy.
-
-### Unraid
-
-Unraid is the primary supported installation path. The repository includes
-[`playlarr.xml`](playlarr.xml), a native Unraid Docker template using:
-
-```text
-ghcr.io/bartdelange/playlarr:latest
-```
-
-1. Copy `playlarr.xml` to:
-
-   ```text
-   /boot/config/plugins/dockerMan/templates-user/my-playlarr.xml
-   ```
-
-2. Refresh the Unraid Docker page.
-3. Select **Add Container**.
-4. Choose `playlarr` under **User templates**.
-5. Fill in the service settings and create the container.
-6. Open `http://UNRAID-IP:8787` and choose the initial authorization mode.
-
-The template uses two mounts:
-
-- `/config` stores the SQLite workflow database and Spotify/TIDAL authentication state.
-- `/playlists` stores generated M3U8 playlists and diagnostic reports.
-
-The template uses `/mnt/user/appdata/playlarr` as its default `/config` host path. When upgrading an
-installation that uses an older appdata directory, keep the existing mount override or migrate its
-contents while the container is stopped.
-
-The image runs as UID/GID `1000:1000` and prepares both mount roots on startup. If you prefer to
-prepare the host directories yourself:
+Node.js 22 or newer is required.
 
 ```bash
-mkdir -p /mnt/user/appdata/playlarr /mnt/user/music/playlists
-chown -R 1000:1000 /mnt/user/appdata/playlarr
+npm ci
+cp .env.example .env
+npm run dev
 ```
 
-The template follows `latest`. For controlled upgrades, pin the Repository field to a published
-version such as `ghcr.io/bartdelange/playlarr:2.0.0`.
+Open `http://127.0.0.1:8787`. On first use, create a password or explicitly choose gateway-managed
+authentication. The health endpoint is `GET /health` and returns `{"status":"ok"}`.
 
-### Docker Compose
-
-The included [`compose.yaml`](compose.yaml) builds Playlarr locally using the repository's verified
-environment and mounts:
+The web process does not execute long-running work. Start the durable worker in a second terminal:
 
 ```bash
-git clone https://github.com/bartdelange/playlarr.git
-cd playlarr
+npm run worker
+```
+
+## Configuration
+
+Configuration can come from environment variables and, for service values, the Settings page.
+Values saved in SQLite take precedence where applicable. Secrets are replacement-only in the UI
+and are never sent to Client Components.
+
+- `DATA_DIR` — database directory; defaults to `.data`.
+- `OUTPUT_DIR` — M3U8 and CSV report directory; defaults to `output`.
+- `MUSICBRAINZ_USER_AGENT` — identifying contact string required by MusicBrainz.
+- `SPOTIFY_CLIENT_ID`, `SPOTIFY_REDIRECT_URI`, `SPOTIFY_TOKEN_CACHE` — Spotify PKCE.
+- `TIDAL_CLIENT_ID`, `TIDAL_REDIRECT_URI`, `TIDAL_SESSION_FILE` — TIDAL OAuth PKCE.
+- `LIDARR_URL`, `LIDARR_API_KEY`, `LIDARR_ROOT_FOLDER`, `LIDARR_QUALITY_PROFILE_ID`,
+  `LIDARR_METADATA_PROFILE_ID` — Lidarr.
+- `NAVIDROME_URL`, `NAVIDROME_USERNAME`, `NAVIDROME_PASSWORD` — optional read-only lookup.
+- `PLAYLARR_AUTH_ENABLED` — defaults to true; disable only behind a trusted gateway that protects
+  every route.
+
+Spotify redirects to `/callback`; TIDAL redirects to `/api/tidal/callback`. Register the public
+URLs that actually reach Playlarr.
+
+## Docker and Unraid
+
+The production image contains one Next.js standalone server and one durable Node worker. It exposes
+port `8787`, runs application processes as UID/GID `1000:1000`, and stores state in:
+
+- `/config/data/music-importer.db` — existing schema-v8 database;
+- `/config/secrets` — OAuth sessions;
+- `/playlists` — M3U8 and CSV output.
+
+```bash
 cp .env.example .env
 mkdir -p container-config container-playlists
 docker compose up -d --build
+docker compose ps
 ```
 
-Set a real `MUSICBRAINZ_USER_AGENT` in `.env` before starting. Then open
-`http://127.0.0.1:8787`, or replace the host with your Docker server's LAN address.
+The entrypoint prepares mounted directories, forwards termination signals, and shuts down both
+processes when either exits. The included `playlarr.xml` preserves the same port, mounts, environment
+variables, and UID/GID expectations for Unraid.
 
-Check the container with:
+When upgrading from the Python release, keep the existing `/config` and `/playlists` mounts. The
+Node application opens the schema-v8 database in place; no reset or import is required.
+
+## Workflow
+
+1. Authenticate Spotify or TIDAL and acquire a playlist through the durable worker.
+2. Resolve tracks with MusicBrainz; review ambiguous results or reuse exact-ISRC mappings.
+3. Build a read-only Lidarr plan. Downloaded recordings and Various Artists safeguards are applied
+   before any mutation is shown.
+4. Approve the exact persisted plan. Execution re-reads Lidarr state and records every outcome.
+5. Refresh downloaded library files, add optional read-only Navidrome tracks, and generate M3U8.
+6. Review source-playlist changes through an immutable preview before applying a revision.
+
+Mapping and unresolved CSV reports are written after resolution. Playlist generation preserves
+positions and duplicate file occurrences.
+
+## Validation
 
 ```bash
-docker compose ps
-docker compose logs -f playlarr
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+docker build -t playlarr .
 ```
 
-The health endpoint is available at `/health`.
+Automated provider tests use deterministic transports and do not require credentials. Live OAuth
+and service smoke checks are deployment verification, not build prerequisites.
 
-For an Unraid Compose stack, use persistent shares:
-
-```yaml
-volumes:
-  - /mnt/user/appdata/playlarr:/config
-  - /mnt/user/music:/playlists
-```
-
-## First-time setup
-
-Open **Settings** in the Playlarr web UI and configure the services you use:
-
-- **MusicBrainz** identifies source tracks and maps them to releases Lidarr understands. Supply an
-  identifying User-Agent containing a real contact email address or URL.
-- **Spotify** needs a client ID and browser authentication. No client secret is required.
-- **TIDAL** uses its device-login flow and saves the resulting session.
-- **Lidarr** needs its URL, API key, root folder, quality profile, and metadata profile. Use
-  **Test Lidarr** after saving.
-- **Navidrome** is optional and is used only to search for local tracks to append during export. Use
-  **Test Navidrome** after saving.
-
-Use **Authenticate Spotify** or **Authenticate TIDAL** from Settings when that source is needed.
-Secrets are replacement-only: Playlarr never renders saved passwords, API keys, or tokens back into
-the page.
-
-![Playlarr Settings with vertically arranged service and application configuration cards.](docs/images/settings.png)
-
-## Import your first playlist
-
-1. Select **New Import** and choose Spotify or TIDAL.
-2. Browse or filter your playlists and select the one you want to import.
-3. Let Playlarr analyze and resolve its tracks through MusicBrainz.
-4. Select **Review** for unresolved or uncertain tracks and correct them where needed.
-5. Open the Lidarr plan and inspect the track-to-release mapping and every proposed action.
-6. Select **Apply to Lidarr** when the plan is correct.
-7. Give Lidarr time to acquire the requested music.
-8. Select **Refresh monitored & downloaded** to update Playlarr's local-library status.
-9. Optionally open **Local additions** and append Navidrome-only tracks.
-10. Select **Export M3U** to generate the ordered playlist.
-
-![Spotify playlist browser with filtering, import, and impact-analysis actions.](docs/images/playlist-browser.png)
-
-![Manual MusicBrainz review for an unresolved source track.](docs/images/musicbrainz-review.png)
-
-![Lidarr plan showing source tracks, mapped releases, and proposed actions before approval.](docs/images/lidarr-plan.png)
-
-![Final export view with generated M3U8 path and downloaded local tracks.](docs/images/completed-export.png)
-
-Long-running catalogue reads, resolution, planning, update previews, and library work run as
-persisted background jobs. Their progress remains visible, and an interrupted job is recorded after
-a restart rather than silently disappearing.
-
-## Refreshing an imported playlist
-
-Streaming playlists change. Select **Refresh playlist** from an existing import to fetch its current
-contents. Playlarr presents a filterable preview containing:
-
-- added tracks;
-- removed tracks;
-- moved tracks;
-- metadata changes;
-- unchanged tracks.
-
-Nothing changes until you apply the preview. Stable source track IDs and exact ISRCs retain safe
-automatic mappings and confirmed manual decisions where possible, including duplicate occurrences.
-New tracks return to MusicBrainz resolution. Every applied refresh stores before-and-after snapshots
-in the import's update history.
-
-Playlarr can also **Reuse mappings** from another import when both tracks have the same non-empty
-ISRC. You choose which proposed overrides to accept; stale Lidarr plans are superseded when accepted
-mappings change the import.
-
-## Documentation
-
-### Advanced configuration
-
-The complete supported environment-variable list and defaults live in [`.env.example`](.env.example).
-The important service variables are:
-
-- `MUSICBRAINZ_USER_AGENT` — required identifying contact information;
-- `SPOTIFY_CLIENT_ID` — required for Spotify imports;
-- `LIDARR_URL` and `LIDARR_API_KEY` — required for Lidarr operations;
-- `NAVIDROME_URL`, `NAVIDROME_USERNAME`, and `NAVIDROME_PASSWORD` — optional local additions.
-
-Local source checkouts default to `.data`, `output`, and `.secrets`. `DATA_DIR`, `OUTPUT_DIR`,
-`TIDAL_SESSION_FILE`, and `SPOTIFY_TOKEN_CACHE` override those paths. Container images set them to
-locations beneath `/config` and `/playlists`.
-
-Service values saved through Settings take precedence over `.env`. Storage paths, including the
-playlist output directory, remain deployment-owned so a saved UI value cannot break container
-mounts.
-
-### Spotify authentication
-
-Create a Spotify application and register the exact configured callback URI. It defaults to
-`http://127.0.0.1:8787/callback`; a headless Unraid deployment should use the externally reachable
-Playlarr URL ending in `/callback`.
-
-Spotify uses Authorization Code with PKCE, so no client secret is needed. The callback must be
-reachable from the browser performing authentication. Tokens default to
-`.secrets/spotify-token.json` locally and `/config/secrets/spotify-token.json` in the container.
-Background jobs use only a cached token and fail with an actionable authentication message instead
-of starting an interactive flow.
-
-### TIDAL authentication
-
-TIDAL uses device login and reuses the saved session file. Playlist folders are traversed
-recursively. The session defaults to `.secrets/tidal-session.json` locally and
-`/config/secrets/tidal-session.json` in the container.
-
-### Matching and Lidarr safety
-
-Automatic MusicBrainz resolution uses:
-
-- normalized ISRC lookup first;
-- title and primary-artist search only as a fallback;
-- guarded title-overlap and similarity thresholds;
-- remix, edit, and version-marker protection;
-- source-album-aware canonical release selection;
-- rate limiting and temporary-failure retries.
-
-Manual recording MBIDs are checked against artist, title, duration, ISRC, and release-group evidence
-before acceptance. Confirmed manual mappings are durable and are not replaced by later automation
-unless you explicitly clear them.
-
-Lidarr synchronization is additive. It does not monitor unrelated albums, sets new-item monitoring
-to `none`, never implicitly adds or changes Various Artists, reuses downloaded canonical releases,
-recognizes recording IDs and guarded alternate-version title matches, and avoids repeating searches
-when an approved plan is replayed. Execution always corresponds to an inspectable, approved plan.
-
-### Playlist generation
-
-M3U8 generation queries downloaded Lidarr files while retaining source order and duplicate
-occurrences. It then resolves saved local additions against Navidrome and appends them in their
-saved order. Missing Lidarr paths and unavailable Navidrome additions are skipped and counted as
-missing.
-
-Persisted path mappings translate library paths such as `/music` to a path visible to the playlist
-consumer, such as `/mnt/media/music`. Relative paths returned by Navidrome remain relative. The
-Final page displays the generated file path, exported-track count, and missing count.
-
-### CSV compatibility and reporting
-
-SQLite is Playlarr's primary state. CSV remains an interchange and diagnostic format. From the web
-UI you can:
-
-- import an existing `*_musicbrainz.csv` mapping;
-- export mapping and unresolved reports;
-- export matched and missing Lidarr reports;
-- export artist-impact and Lidarr-action reports.
-
-Existing report headers remain compatible; new metadata fields are appended where applicable.
-
-### Migrating existing installations
-
-Current containers use a single `/config` appdata mount:
-
-- `/config/data` contains `music-importer.db` and resumable workflow state;
-- `/config/secrets` contains Spotify and TIDAL authentication state.
-
-If an older installation still has separate `/data` and `/secrets` mounts, stop the container, move
-the old `/data` contents into `<config-host-path>/data`, move the old `/secrets` contents into
-`<config-host-path>/secrets`, replace both mounts with the single `/config` mount, and then start
-the updated container.
-
-For a previous local installation, copy `.data/music-importer.db` to
-`<config-host-path>/data/music-importer.db`. If its appdata uses an older directory name, keep that
-host-path override or migrate the directory to `/mnt/user/appdata/playlarr` while the container is
-stopped.
-
-### Security and maintenance
-
-Read [the security guide](docs/security.md) before exposing Playlarr beyond a trusted local network.
-Playlarr is distributed under the [MIT License](LICENSE).
-
-### For contributors and maintainers
-
-Development setup, architecture, tests, and
-contribution guidance are in [CONTRIBUTING.md](CONTRIBUTING.md). Release preparation and publishing
-are in [docs/releasing.md](docs/releasing.md).
-
-## Responsible use
-
-**Use Playlarr responsibly.** Playlarr connects playlist metadata from services such as Spotify and
-TIDAL to a user-controlled Lidarr installation. It does not supply music, rip audio, bypass DRM, or
-grant permission to download copyrighted material.
-
-The project does not condone piracy or any illegal ripping, copying, or downloading. Only acquire
-and use media you are legally entitled to access, and comply with applicable laws, copyright
-licenses, and each service's terms. You are solely responsible for how you configure and use
-Playlarr and the external services connected to it.
-
-Playlarr is not affiliated with Spotify, TIDAL, MusicBrainz, Lidarr, or Navidrome.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [security guidance](docs/security.md), and the
+[release guide](docs/releasing.md).

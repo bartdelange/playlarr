@@ -1,35 +1,20 @@
 # Releasing Playlarr
 
-This guide is for repository maintainers. Playlarr uses annotated semantic-version tags as releases.
-
-## Prepare a release
-
-Start from an up-to-date default branch and a clean worktree. Prepare a patch, minor, or major
-release PR with the guarded helper:
+Start from clean, current `master`. Prepare a semantic-version release PR with:
 
 ```bash
-uv run python scripts/release.py prepare patch
+npm run release -- prepare patch
 ```
 
-The helper updates `pyproject.toml` and `uv.lock`, runs project validation, opens the release PR,
-and refuses to move or reuse an existing tag. Review and merge that PR normally.
+Use `minor` or `major` when appropriate. The helper updates `package.json` and `package-lock.json`,
+runs Node validation, commits, pushes, and opens the release PR.
 
-## Publish the tag
-
-After the release PR is merged:
+After merge, update `master` and publish the annotated tag:
 
 ```bash
-git switch master
-git pull --ff-only
-uv run python scripts/release.py publish
+npm run release -- publish
 ```
 
-The release workflow verifies the tag, publishes versioned and `latest` `linux/amd64` images to
-GHCR with provenance, and creates the GitHub release.
-
-## Publication safety
-
-Before making a pre-existing repository public, inspect the complete Git history for credentials,
-not just the current worktree. Verify that `.env`, `.secrets/`, `.data/`, OAuth sessions, API keys,
-generated reports, and container data are excluded. Enable Dependabot alerts, secret scanning with
-push protection, and CodeQL after public visibility is enabled.
+GitHub Actions validates the tag, publishes the `linux/amd64` Node image to GHCR, and creates the
+GitHub release. Before public release, audit full git history for credentials and enable repository
+secret scanning and push protection.

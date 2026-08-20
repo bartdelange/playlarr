@@ -10,10 +10,11 @@
 
 ## Validation
 
-- [ ] Formatting (`uv run ruff format --check src tests scripts`)
-- [ ] Linting (`uv run ruff check src tests scripts`)
-- [ ] Unit tests (`uv run python -m unittest discover -s tests -v`)
-- [ ] Package build (`uv build`)
+- [ ] Linting (`npm run lint`)
+- [ ] Strict typecheck (`npm run typecheck`)
+- [ ] Unit tests (`npm test`)
+- [ ] Production build (`npm run build`)
+- [ ] Browser workflows (`npm run test:e2e`)
 - [ ] Manual testing, when applicable
 
 ## Persistence and configuration
