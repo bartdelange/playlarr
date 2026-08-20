@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { JobRepository } from "../../server/persistence/job-repository";
 import { LocalAdditionsRepository } from "../../server/persistence/local-additions-repository";
-import { database } from "../../server/runtime";
+import { NavidromeClient } from "../../server/integrations/navidrome/client";
+import { addAuthoritativeLocalTrack } from "../../server/application/local-additions";
+import { config, database, settings } from "../../server/runtime";
 import { requireCsrf } from "./security";
 export async function queueLibraryStatus(form: FormData) {
   await requireCsrf(form);
@@ -45,19 +47,21 @@ export async function queuePlaylistGeneration(form: FormData) {
 export async function addLocalTrack(form: FormData) {
   await requireCsrf(form);
   const importId = String(form.get("import_id"));
-  new LocalAdditionsRepository(database).add(
+  await addAuthoritativeLocalTrack(
+    new LocalAdditionsRepository(database),
+    new NavidromeClient({
+      url: settings.get("navidrome_url", config.navidrome.url ?? ""),
+      username: settings.get(
+        "navidrome_username",
+        config.navidrome.username ?? "",
+      ),
+      password: settings.get(
+        "navidrome_password",
+        config.navidrome.password ?? "",
+      ),
+    }),
     importId,
-    {
-      provider: "navidrome",
-      providerTrackId: String(form.get("provider_track_id")),
-      title: String(form.get("title")),
-      artists: String(form.get("artist") ?? "")
-        .split(";")
-        .map((value) => value.trim())
-        .filter(Boolean),
-      album: String(form.get("album") ?? ""),
-    },
-    String(form.get("path") ?? ""),
+    String(form.get("song_id")),
   );
   revalidatePath(`/imports/${importId}/local-additions`);
 }

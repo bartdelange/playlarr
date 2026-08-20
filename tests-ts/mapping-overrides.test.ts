@@ -83,3 +83,78 @@ it("reuses only selected exact-ISRC mappings and marks them manual", () => {
     rmSync(directory, { recursive: true });
   }
 });
+
+it("normalizes legacy schema-v8 mappings before comparison and persistence", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "playlarr-overrides-"));
+  try {
+    const database = openDatabase(path.join(directory, "state.db"));
+    const imports = new ImportRepository(database);
+    const source = imports.createImport({
+      source: "spotify",
+      id: "source",
+      name: "Source",
+    });
+    const target = imports.createImport({
+      source: "tidal",
+      id: "target",
+      name: "Target",
+    });
+    for (const imported of [source, target])
+      imports.replaceTracks(imported.id, [
+        {
+          source: imported.source,
+          sourceTrackId: imported.id,
+          title: imported.playlistName,
+          artists: ["Artist"],
+          album: "Album",
+          isrc: "EXACT",
+        },
+      ]);
+    const [sourceEntry] = imports.entries(source.id);
+    const [targetEntry] = imports.entries(target.id);
+    database
+      .prepare(
+        "UPDATE resolutions SET state = 'manually_resolved', method = 'manual_mbid', result_json = ?, is_manual = 1 WHERE entry_id = ?",
+      )
+      .run(
+        JSON.stringify({
+          resolved_via: "manual_mbid",
+          recording_title: "Legacy title",
+          artist_names: ["Legacy artist"],
+          recording_ids: ["recording"],
+          release_group_ids: ["group"],
+          primary_artist_id: "artist",
+        }),
+        sourceEntry.id,
+      );
+    const overrides = new MappingOverridesRepository(database);
+
+    const [candidate] = overrides.candidates(target.id, source.id);
+    expect(candidate).toMatchObject({
+      status: "will_map",
+      sourceResult: {
+        recordingTitle: "Legacy title",
+        recordingIds: ["recording"],
+      },
+      targetResult: { recordingIds: [] },
+    });
+    overrides.apply(target.id, source.id, new Set([targetEntry.id]));
+    const persisted = JSON.parse(
+      String(
+        database
+          .prepare("SELECT result_json FROM resolutions WHERE entry_id = ?")
+          .pluck()
+          .get(targetEntry.id),
+      ),
+    );
+    expect(persisted).toMatchObject({
+      resolvedVia: "manual_mbid",
+      recordingTitle: "Legacy title",
+      recordingIds: ["recording"],
+    });
+    expect(persisted).not.toHaveProperty("recording_ids");
+    database.close();
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});

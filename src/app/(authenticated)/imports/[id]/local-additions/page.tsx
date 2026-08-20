@@ -1,95 +1,154 @@
+import Link from "next/link";
 import { connection } from "next/server";
+import { notFound } from "next/navigation";
 import { addLocalTrack, removeLocalTrack } from "../../../../actions/exports";
 import {
   NavidromeClient,
   type NavidromeSong,
 } from "../../../../../server/integrations/navidrome/client";
+import { ImportRepository } from "../../../../../server/persistence/import-repository";
 import { LocalAdditionsRepository } from "../../../../../server/persistence/local-additions-repository";
 import { config, database, settings } from "../../../../../server/runtime";
 import { requestCsrfToken } from "../../../../../server/security/request";
+
 export default async function LocalAdditionsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ query?: string }>;
+  searchParams: Promise<{ q?: string; error?: string }>;
 }) {
   await connection();
   const { id } = await params;
-  const { query } = await searchParams;
+  const { q = "", error: requestedError } = await searchParams;
+  let imported;
+  try {
+    imported = new ImportRepository(database).getImport(id);
+  } catch {
+    notFound();
+  }
   const csrf = await requestCsrfToken();
-  const repository = new LocalAdditionsRepository(database);
-  const additions = repository.list(id);
+  const additions = new LocalAdditionsRepository(database).list(id);
+  const navidrome = {
+    url: settings.get("navidrome_url", config.navidrome.url ?? ""),
+    username: settings.get(
+      "navidrome_username",
+      config.navidrome.username ?? "",
+    ),
+    password: settings.get(
+      "navidrome_password",
+      config.navidrome.password ?? "",
+    ),
+  };
+  const configured = Boolean(
+    navidrome.url && navidrome.username && navidrome.password,
+  );
   let songs: NavidromeSong[] = [];
-  let error: string | undefined;
-  if (query) {
+  let error = requestedError;
+  if (configured && q.trim()) {
     try {
-      songs = await new NavidromeClient({
-        url: settings.get("navidrome_url", config.navidrome.url ?? ""),
-        username: settings.get(
-          "navidrome_username",
-          config.navidrome.username ?? "",
-        ),
-        password: settings.get(
-          "navidrome_password",
-          config.navidrome.password ?? "",
-        ),
-      }).searchSongs(query);
+      songs = await new NavidromeClient(navidrome).searchSongs(q.trim());
     } catch (reason) {
       error = reason instanceof Error ? reason.message : String(reason);
     }
   }
+
   return (
     <main>
-      <p className="eyebrow">Local library</p>
-      <h1>Playlist additions</h1>
-      <p>
-        Add Navidrome tracks after the source playlist while keeping durable
-        ordering.
-      </p>
-      <form method="get">
-        <label>
-          Search Navidrome
-          <input name="query" defaultValue={query} />
-        </label>
-        <button>Search</button>
-      </form>
-      {error && <p role="alert">{error}</p>}
-      <div className="card-list">
-        {songs.map((song) => (
-          <article className="card" key={song.id}>
-            <strong>{song.title}</strong>
-            <small>
-              {song.artist} · {song.album}
-            </small>
-            <form action={addLocalTrack}>
-              <input type="hidden" name="csrf_token" value={csrf} />
-              <input type="hidden" name="import_id" value={id} />
-              <input type="hidden" name="provider_track_id" value={song.id} />
-              <input type="hidden" name="title" value={song.title} />
-              <input type="hidden" name="artist" value={song.artist} />
-              <input type="hidden" name="album" value={song.album} />
-              <input type="hidden" name="path" value={song.path} />
-              <button>Add track</button>
-            </form>
-          </article>
-        ))}
+      <section className="playlist-context">
+        <div>
+          <span className="badge">{imported.source}</span>
+          <h1>{imported.playlistName}</h1>
+        </div>
+      </section>
+      <div className="step-actions">
+        <div>
+          <p className="eyebrow">Export enrichment</p>
+          <h2>Local additions</h2>
+          <p>Add Navidrome-only songs after the imported playlist tracks.</p>
+        </div>
+        <Link className="button secondary" href={`/imports/${id}?stage=final`}>
+          Back to final
+        </Link>
       </div>
-      <h2>Included additions</h2>
-      {additions.map((addition) => (
-        <article className="job-row" key={addition.id}>
+      {error && <div role="alert">{error}</div>}
+      {!configured ? (
+        <div className="next-step">
+          <strong>Navidrome is not configured.</strong>
+          <span>Add its URL and credentials in Settings.</span>
+        </div>
+      ) : (
+        <form method="get" className="card">
+          <label>
+            Search Navidrome
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="Song, artist, or album"
+            />
+          </label>
+          <button>Search</button>
+        </form>
+      )}
+      {songs.length > 0 && (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Song</th>
+                <th>Album</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {songs.map((song) => (
+                <tr key={song.id}>
+                  <td>
+                    <strong>{song.title}</strong>
+                    <small>{song.artist}</small>
+                  </td>
+                  <td>{song.album}</td>
+                  <td>
+                    <form action={addLocalTrack}>
+                      <input type="hidden" name="csrf_token" value={csrf} />
+                      <input type="hidden" name="import_id" value={id} />
+                      <input type="hidden" name="song_id" value={song.id} />
+                      <button>Add</button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <section className="card">
+        <div className="section-heading">
           <div>
-            <strong>{addition.title}</strong>
-            <small>{addition.artists.join(", ")}</small>
+            <p className="eyebrow">Appended on export</p>
+            <h2>{additions.length} local songs</h2>
           </div>
-          <form action={removeLocalTrack}>
-            <input type="hidden" name="csrf_token" value={csrf} />
-            <input type="hidden" name="import_id" value={id} />
-            <input type="hidden" name="addition_id" value={addition.id} />
-            <button>Remove</button>
-          </form>
-        </article>
-      ))}
+        </div>
+        {additions.length ? (
+          <ol>
+            {additions.map((addition) => (
+              <li key={addition.id}>
+                <strong>{addition.title}</strong> —{" "}
+                {addition.artists.join(", ")}
+                {addition.album && ` · ${addition.album}`}
+                <form action={removeLocalTrack} className="inline">
+                  <input type="hidden" name="csrf_token" value={csrf} />
+                  <input type="hidden" name="import_id" value={id} />
+                  <input type="hidden" name="addition_id" value={addition.id} />
+                  <button className="secondary">Remove</button>
+                </form>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="muted">No local songs have been added.</p>
+        )}
+      </section>
     </main>
   );
 }

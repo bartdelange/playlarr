@@ -1,17 +1,12 @@
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import { MappingOverridesTable } from "../../../../../components/imports/mapping-overrides-table";
 import { ImportRepository } from "../../../../../server/persistence/import-repository";
 import { MappingOverridesRepository } from "../../../../../server/persistence/mapping-overrides-repository";
 import { database } from "../../../../../server/runtime";
 import { requestCsrfToken } from "../../../../../server/security/request";
 import { applyMappingOverrides } from "../../../../actions/workflows";
 
-const labels = {
-  conflict: "Conflicting source mappings",
-  already_same: "Accepted and ignored",
-  will_override: "Overrides existing",
-  will_map: "Ready to reuse",
-};
 export default async function MappingOverridesPage({
   params,
   searchParams,
@@ -30,70 +25,49 @@ export default async function MappingOverridesPage({
     notFound();
   }
   const sources = imports.listImports().filter((item) => item.id !== id);
-  const candidates = sourceId
-    ? new MappingOverridesRepository(database).candidates(id, sourceId)
+  const selectedSource = sourceId
+    ? sources.find((source) => source.id === sourceId)
+    : undefined;
+  const candidates = selectedSource
+    ? new MappingOverridesRepository(database).candidates(id, selectedSource.id)
     : [];
   const csrf = await requestCsrfToken();
+
   return (
     <main>
-      <p className="eyebrow">Reuse confirmed matches</p>
-      <h1>{imported.playlistName}</h1>
-      <p>
-        Only exact ISRC matches can be copied. Conflicting source mappings are
-        never selectable.
-      </p>
-      <form method="get">
-        <label>
-          Source playlist
+      <p className="eyebrow">Bulk mapping reuse</p>
+      <h1>Reuse mappings in {imported.playlistName}</h1>
+      <section className="card">
+        <h2>Choose a source import</h2>
+        <p>
+          Only exact, non-empty ISRC matches are considered. Nothing changes
+          until you review and apply the selected rows.
+        </p>
+        <form method="get">
           <select
             name="source_import_id"
             defaultValue={sourceId ?? ""}
             required
           >
-            <option value="">Choose a playlist</option>
+            <option value="">Select an import…</option>
             {sources.map((source) => (
               <option key={source.id} value={source.id}>
-                {source.playlistName}
+                {source.playlistName} · {source.source}
               </option>
             ))}
           </select>
-        </label>
-        <button>Preview matches</button>
-      </form>
-      {sourceId && (
-        <form action={applyMappingOverrides}>
-          <input type="hidden" name="csrf_token" value={csrf} />
-          <input type="hidden" name="import_id" value={id} />
-          <input type="hidden" name="source_import_id" value={sourceId} />
-          <div className="card-list">
-            {candidates.map((candidate) => (
-              <label className="card" key={candidate.target.id}>
-                <span>
-                  <input
-                    type="checkbox"
-                    name="target_entry_ids"
-                    value={candidate.target.id}
-                    disabled={
-                      !["will_map", "will_override"].includes(candidate.status)
-                    }
-                  />{" "}
-                  {labels[candidate.status]}
-                </span>
-                <strong>{candidate.target.track.title}</strong>
-                <small>
-                  {String(
-                    candidate.sourceResult.recordingTitle ??
-                      candidate.source.track.title,
-                  )}{" "}
-                  · ISRC {candidate.target.track.isrc}
-                </small>
-              </label>
-            ))}
-          </div>
-          {candidates.some((item) =>
-            ["will_map", "will_override"].includes(item.status),
-          ) && <button>Apply selected mappings</button>}
+          <button>Compare mappings</button>
         </form>
+      </section>
+      {selectedSource && (
+        <MappingOverridesTable
+          candidates={candidates}
+          importId={id}
+          sourceImportId={selectedSource.id}
+          sourceName={selectedSource.playlistName}
+          csrf={csrf}
+          action={applyMappingOverrides}
+        />
       )}
     </main>
   );

@@ -14,6 +14,7 @@ export interface MappingOverrideCandidate {
   source: StoredEntry;
   status: "conflict" | "already_same" | "will_override" | "will_map";
   sourceResult: MusicBrainzResult;
+  targetResult: MusicBrainzResult;
 }
 const now = () => new Date().toISOString();
 const identity = (result: ReturnType<typeof normalizeMusicBrainzResult>) =>
@@ -98,6 +99,7 @@ export class MappingOverridesRepository {
           source: stored(sourceRow),
           status,
           sourceResult,
+          targetResult,
         },
       ];
     });
@@ -131,7 +133,9 @@ export class MappingOverridesRepository {
             "UPDATE resolutions SET state = 'manually_resolved', method = 'reused_manual', result_json = ?, evidence_json = ?, is_manual = 1, validation_status = ?, selected_release_group_id = ?, confirmed_at = ?, updated_at = ? WHERE entry_id = ?",
           )
           .run(
-            source.result_json,
+            JSON.stringify(
+              normalizeMusicBrainzResult(JSON.parse(source.result_json)),
+            ),
             JSON.stringify(evidence),
             source.validation_status ?? "valid",
             source.selected_release_group_id,
