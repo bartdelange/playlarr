@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { database } from "../../server/runtime";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { JobRepository } from "../../server/persistence/job-repository";
+import { dashboardImportRows } from "../../server/application/dashboard-view";
 export default function DashboardPage() {
   return (
     <main>
@@ -29,10 +30,11 @@ export default function DashboardPage() {
 async function DashboardData() {
   await connection();
   const imports = new ImportRepository(database).listImports();
-  const jobs = new JobRepository(database).list(8);
+  const jobs = new JobRepository(database).list(4);
+  const rows = dashboardImportRows(database, imports, jobs);
   const counts = database
     .prepare(
-      "SELECT COUNT(*) total, SUM(CASE WHEN workflow_state = 'review_required' THEN 1 ELSE 0 END) review, SUM(CASE WHEN workflow_state = 'waiting_for_downloads' THEN 1 ELSE 0 END) waiting, SUM(CASE WHEN workflow_state = 'playlist_generated' THEN 1 ELSE 0 END) complete FROM imports",
+      "SELECT COUNT(*) total, SUM(CASE WHEN workflow_state = 'review_required' THEN 1 ELSE 0 END) review, SUM(CASE WHEN workflow_state IN ('waiting_for_downloads', 'library_status') THEN 1 ELSE 0 END) waiting, SUM(CASE WHEN workflow_state = 'playlist_generated' THEN 1 ELSE 0 END) complete FROM imports",
     )
     .get() as Record<string, number>;
   return (
@@ -59,28 +61,48 @@ async function DashboardData() {
               <h2>Playlist workflows</h2>
             </div>
           </div>
-          {imports.length ? (
+          {rows.length ? (
             <div className="playlist-home-list">
-              {imports.map((item) => (
-                <Link
-                  className="playlist-home-row"
-                  href={`/imports/${item.id}`}
-                  key={item.id}
-                >
-                  <div>
-                    <span className="badge">{item.source}</span>
-                    <h2>{item.playlistName}</h2>
-                    <small>
-                      Updated {item.updatedAt.slice(0, 16).replace("T", " ")}
-                    </small>
-                  </div>
-                  <div className="playlist-home-state">
-                    <span className="badge">
-                      {item.workflowState.replaceAll("_", " ")}
-                    </span>
-                    <strong>Continue workflow →</strong>
-                  </div>
-                </Link>
+              {rows.map((row) => (
+                <article className="playlist-home-row" key={row.imported.id}>
+                  <Link
+                    className="playlist-home-main"
+                    href={`/imports/${row.imported.id}`}
+                  >
+                    <div>
+                      <span className="badge">{row.imported.source}</span>
+                      <h2>{row.imported.playlistName}</h2>
+                      <small>
+                        Updated{" "}
+                        {row.imported.updatedAt.slice(0, 16).replace("T", " ")}
+                      </small>
+                    </div>
+                    <div className="playlist-progress">
+                      <strong>
+                        {row.resolved} / {row.tracks}
+                      </strong>
+                      <span>tracks matched</span>
+                      {!!row.review && <small>{row.review} need review</small>}
+                    </div>
+                    <div className="playlist-next">
+                      <span className="badge">
+                        {row.imported.workflowState.replaceAll("_", " ")}
+                      </span>
+                      <strong>{row.nextAction}</strong>
+                    </div>
+                  </Link>
+                  {row.job && (
+                    <Link className="playlist-job" href={`/jobs/${row.job.id}`}>
+                      <span className={`badge job-${row.job.status}`}>
+                        {row.job.status}
+                      </span>
+                      <small>
+                        {row.job.kind.replaceAll("_", " ")} · {row.job.current}{" "}
+                        / {row.job.total}
+                      </small>
+                    </Link>
+                  )}
+                </article>
               ))}
             </div>
           ) : (

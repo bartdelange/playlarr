@@ -446,15 +446,36 @@ a.card:hover,
   margin-top: 14px;
 }
 .playlist-home-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 20px;
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-elevated);
   color: var(--foreground);
+}
+.playlist-home-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 20px;
+  color: var(--foreground);
+}
+.playlist-progress,
+.playlist-next {
+  display: grid;
+  gap: 4px;
+  min-width: 130px;
+}
+.playlist-progress span,
+.playlist-progress small,
+.playlist-next {
+  color: var(--muted-foreground);
+}
+.playlist-job {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }
 .playlist-home-row:hover {
   border-color: #3e5b59;

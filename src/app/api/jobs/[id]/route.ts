@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { database, security } from "../../../../server/runtime";
 import { JobRepository } from "../../../../server/persistence/job-repository";
+import { jobCompletionUrl } from "../../../../server/application/job-presentation";
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -11,8 +12,9 @@ export async function GET(
   if (!security.validSession(token))
     return new NextResponse("Unauthorized", { status: 401 });
   try {
+    const job = new JobRepository(database).get((await params).id);
     return NextResponse.json(
-      new JobRepository(database).get((await params).id),
+      { ...job, completionUrl: jobCompletionUrl(job) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
