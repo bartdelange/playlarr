@@ -7,7 +7,7 @@
 - Lidarr planning is read-only. Mutations require an approved persisted plan, execution-time
   revalidation, per-action audit records, and no automatic replay after interruption.
 - Various Artists mutation protection is opt-in per confirmed recording and must not be bypassed.
-- Navidrome is read-only. CSV files are reports/interchange, never primary workflow state.
+- Navidrome is read-only.
 - Never expose API keys, passwords, OAuth sessions, or SQLite-backed secrets to Client Components,
   rendered errors, or logs.
 
@@ -21,7 +21,7 @@
 - `src/server/persistence` owns forward-only schema-v8 migrations and repositories.
 - `src/server/jobs` owns durable SQLite jobs and production handlers. Concurrency remains one unless
   mutation replay safety is redesigned explicitly.
-- `src/server/exports` owns M3U8 and CSV serialization.
+- `src/server/exports` owns M3U8 serialization.
 
 Keep request handlers thin. Domain/application code must not depend on React or Next.js. Do not add
 Redis, queues, or another database without a demonstrated need. Use Cache Components only for safe,

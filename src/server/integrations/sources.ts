@@ -9,10 +9,12 @@ import { SpotifySource } from "./spotify/source";
 import { TidalAuthenticator } from "./tidal/auth";
 import { FileTidalSessionStore } from "./tidal/session";
 import { TidalSource } from "./tidal/source";
+
 export function spotifyProvider(
   config: AppConfig,
   settings: SettingsRepository,
 ) {
+  console.log(settings.get("spotify_client_id", config.spotify.clientId ?? ""));
   const auth = new SpotifyAuthenticator(
     settings.get("spotify_client_id", config.spotify.clientId ?? ""),
     settings.get("spotify_redirect_uri", config.spotify.redirectUri),
@@ -23,6 +25,7 @@ export function spotifyProvider(
   );
   return { auth, source: new SpotifySource(auth) };
 }
+
 export function tidalProvider(config: AppConfig) {
   const auth = new TidalAuthenticator(
     new FileTidalSessionStore(config.tidal.sessionFile),

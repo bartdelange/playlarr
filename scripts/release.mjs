@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+
 const command = process.argv[2];
 const part = process.argv[3];
 const run = (executable, args, capture = false) => {

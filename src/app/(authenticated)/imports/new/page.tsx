@@ -8,9 +8,8 @@ import { requestCsrfToken } from "../../../../server/security/request";
 import { database } from "../../../../server/runtime";
 import {
   queuePlaylistAcquisition,
-  queuePlaylistCatalogue,
   queuePlaylistAnalysis,
-  importMappingCsvAction,
+  queuePlaylistCatalogue,
 } from "../../../actions/workflows";
 
 export default async function NewImportPage({
@@ -81,20 +80,6 @@ export default async function NewImportPage({
               csrf={csrf}
             />
           </div>
-          <section className="card">
-            <h2>Import mapping CSV</h2>
-            <p>Restore a mapping report previously exported by Playlarr.</p>
-            <form action={importMappingCsvAction}>
-              <input type="hidden" name="csrf_token" value={csrf} />
-              <input
-                type="file"
-                name="mapping"
-                accept=".csv,text/csv"
-                required
-              />
-              <button>Import CSV</button>
-            </form>
-          </section>
         </>
       )}
       {source && playlists && (

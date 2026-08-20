@@ -36,7 +36,7 @@ Values saved in SQLite take precedence where applicable. Secrets are replacement
 and are never sent to Client Components.
 
 - `DATA_DIR` — database directory; defaults to `.data`.
-- `OUTPUT_DIR` — M3U8 and CSV report directory; defaults to `output`.
+- `OUTPUT_DIR` — M3U8 directory; defaults to `output`.
 - `MUSICBRAINZ_USER_AGENT` — identifying contact string required by MusicBrainz.
 - `SPOTIFY_CLIENT_ID`, `SPOTIFY_REDIRECT_URI`, `SPOTIFY_TOKEN_CACHE` — Spotify PKCE.
 - `TIDAL_SESSION_FILE` — persisted TIDAL device-authentication session.
@@ -57,7 +57,7 @@ port `8787`, runs application processes as UID/GID `1000:1000`, and stores state
 
 - `/config/data/music-importer.db` — existing schema-v8 database;
 - `/config/secrets` — OAuth sessions;
-- `/playlists` — M3U8 and CSV output.
+- `/playlists` — M3U8 output.
 
 ```bash
 cp .env.example .env
@@ -83,8 +83,7 @@ Node application opens the schema-v8 database in place; no reset or import is re
 5. Refresh downloaded library files, add optional read-only Navidrome tracks, and generate M3U8.
 6. Review source-playlist changes through an immutable preview before applying a revision.
 
-Mapping and unresolved CSV reports are written after resolution. Playlist generation preserves
-positions and duplicate file occurrences.
+Playlist generation preserves positions and duplicate file occurrences.
 
 ## Validation
 

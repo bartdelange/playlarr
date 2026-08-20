@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+
 const types = new Set([
   "chore",
   "docs",

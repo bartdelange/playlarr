@@ -1,18 +1,239 @@
-.env
-.secrets/
-output/
-.data/
+# =============================================================================
+# Dependencies
+# =============================================================================
+
+node_modules/
+.pnp/
+.pnp.js
+.pnp.cjs
+.yarn/install-state.gz
+
+
+# =============================================================================
+# Next.js
+# =============================================================================
+
+.next/
+out/
+.next-cache/
+
+
+# =============================================================================
+# Build output
+# =============================================================================
+
 build/
 dist/
-.next/
-node_modules/
+output/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+
+# =============================================================================
+# Testing
+# =============================================================================
+
+# Vitest / coverage
+coverage/
+.nyc_output/
+
+# Playwright
 test-results/
 playwright-report/
-coverage/
-tsconfig.tsbuildinfo
-.DS_Store
+blob-report/
+playwright/.cache/
+
+# Test artifacts
+*.lcov
+junit.xml
+test-results.xml
+
+
+# =============================================================================
+# Environment / secrets
+# =============================================================================
+
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+.secrets/
+secrets/
+*.secret
+
+# Local authentication/session data
 tidal-session*.json
 spotify-token*.json
+
+
+# =============================================================================
+# Playlarr runtime data
+# =============================================================================
+
+.data/
 container-data/
 container-output/
 container-secrets/
+
+# SQLite runtime files
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-shm
+*.sqlite3-wal
+
+# NOTE:
+# Do not globally ignore *.db / *.sqlite / *.sqlite3.
+# Fixture databases may legitimately belong in the repository.
+
+
+# =============================================================================
+# Logs
+# =============================================================================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# =============================================================================
+# Package manager caches
+# =============================================================================
+
+.npm/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+
+# Turborepo
+.turbo/
+
+
+# =============================================================================
+# TypeScript / tooling caches
+# =============================================================================
+
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.cache/
+.parcel-cache/
+.swc/
+
+
+# =============================================================================
+# IDEs / editors
+# =============================================================================
+
+# JetBrains
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Visual Studio Code
+.vscode/
+
+# Visual Studio
+.vs/
+
+# Vim
+*.swp
+*.swo
+*.swn
+*~
+
+# Emacs
+\#*\#
+.#*
+
+# Zed
+.zed/
+
+
+# =============================================================================
+# Operating system files
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+
+# =============================================================================
+# Docker / local container runtime
+# =============================================================================
+
+container-data/
+container-output/
+container-secrets/
+
+docker-data/
+.docker/
+
+
+# =============================================================================
+# Temporary files
+# =============================================================================
+
+tmp/
+temp/
+.tmp/
+.temp/
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+
+
+# =============================================================================
+# Local development
+# =============================================================================
+
+.local/
+.localhost/
+
+# Next.js development/runtime files
+next-env.d.ts
+
+
+# =============================================================================
+# Miscellaneous generated artifacts
+# =============================================================================
+
+*.pid
+*.pid.lock
+*.seed
+*.tgz
+
+
+# =============================================================================
+# Keep repository templates/examples
+# =============================================================================
+
+!.env.example
+!.env.sample
+!.env.template
