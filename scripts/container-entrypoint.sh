@@ -12,14 +12,21 @@ shutdown() {
   wait "${web_pid:-}" "${worker_pid:-}" 2>/dev/null || true
 }
 
-trap shutdown TERM INT
+terminate() {
+  shutdown
+  exit 0
+}
+
+trap terminate TERM INT
 
 gosu node ./node_modules/.bin/tsx src/server/jobs/main.ts &
 worker_pid=$!
 gosu node node server.js &
 web_pid=$!
 
+set +e
 wait -n "$web_pid" "$worker_pid"
 status=$?
+set -e
 shutdown
 exit "$status"

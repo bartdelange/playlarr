@@ -4,13 +4,10 @@ output/
 .data/
 build/
 dist/
-*.egg-info/
-*.py[cod]
-__pycache__/
-.venv/
-.ruff_cache/
 .next/
 node_modules/
+test-results/
+playwright-report/
 coverage/
 tsconfig.tsbuildinfo
 .DS_Store

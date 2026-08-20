@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "validate": "npm run lint && npm run typecheck && npm test && npm run build",
+    "release": "node scripts/release.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -18,13 +20,13 @@
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
     "better-sqlite3": "^12.4.6",
-    "next": "16.1.6",
+    "next": "16.3.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.3",
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "1.62.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",
@@ -33,6 +35,6 @@
     "eslint-config-next": "16.1.6",
     "tsx": "^4.20.6",
     "typescript": "5.9.3",
-    "vitest": "4.0.16"
+    "vitest": "4.1.11"
   }
 }

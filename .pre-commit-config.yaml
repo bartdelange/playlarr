@@ -3,34 +3,24 @@ repos:
     hooks:
       - id: commit-message
         name: commit message
-        entry: uv run python scripts/check_commit_msg.py
+        entry: node scripts/check-commit-msg.mjs
         language: system
         stages: [commit-msg]
-
-      - id: ruff-format
-        name: ruff format
-        entry: uv run ruff format --check src tests scripts
+      - id: lint
+        name: eslint
+        entry: npm run lint
         language: system
         pass_filenames: false
         stages: [pre-commit]
-
-      - id: ruff-check
-        name: ruff check
-        entry: uv run ruff check src tests scripts
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
-
       - id: unit-tests
         name: unit tests
-        entry: uv run python -m unittest discover -s tests -v
+        entry: npm test
         language: system
         pass_filenames: false
         stages: [pre-push]
-
-      - id: package-build
-        name: package build
-        entry: uv build
+      - id: production-build
+        name: production build
+        entry: npm run build
         language: system
         pass_filenames: false
         stages: [pre-push]
