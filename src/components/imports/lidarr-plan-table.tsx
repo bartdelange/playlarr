@@ -101,6 +101,15 @@ export function LidarrPlanTable({
 }) {
   const [query, setQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
+  const columnLabels = [
+    "#",
+    "Status",
+    "Source track",
+    "Lidarr album / release",
+    "Plan",
+    "Actions",
+  ];
+  const [columns, setColumns] = useState(() => columnLabels.map(() => true));
   const editable = ["draft", "superseded"].includes(planStatus);
   const visible = useMemo(
     () =>
@@ -170,183 +179,213 @@ export function LidarrPlanTable({
         </select>
         <span className="muted">{visible.length} songs</span>
       </div>
+      <details className="column-picker">
+        <summary>Choose visible columns</summary>
+        <div className="column-options">
+          {columnLabels.map((label, index) => (
+            <label key={label}>
+              <input
+                type="checkbox"
+                checked={columns[index]}
+                onChange={(event) =>
+                  setColumns((current) =>
+                    current.map((value, currentIndex) =>
+                      currentIndex === index ? event.target.checked : value,
+                    ),
+                  )
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </details>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Status</th>
-              <th>Source track</th>
-              <th>Lidarr album / release</th>
-              <th>Plan</th>
-              <th aria-label="Actions" />
+              {columnLabels.map((label, index) =>
+                columns[index] ? <th key={label}>{label}</th> : null,
+              )}
             </tr>
           </thead>
           <tbody>
             {visible.map((row) => (
               <tr key={row.entry.id}>
-                <td>{row.entry.position + 1}</td>
-                <td>
-                  <span className="badge">
-                    {row.entry.resolutionState.replaceAll("_", " ")}
-                  </span>
-                </td>
-                <td>
-                  <strong>{row.entry.track.title}</strong>
-                  <small>
-                    {row.entry.track.artists.join(", ")}
-                    {row.entry.track.album && ` · ${row.entry.track.album}`}
-                  </small>
-                </td>
-                <td>
-                  {row.releases.length ? (
-                    row.releases.map((release) => (
-                      <div className="release-link" key={release.sourceGroup}>
-                        <strong>
-                          {text(release.matchedTrack?.title) ||
-                            row.entry.result.recordingTitle ||
-                            row.entry.track.title}
-                        </strong>
-                        <small>
-                          {release.artistName ||
-                            row.entry.track.artists.join(", ") ||
-                            "Unknown artist"}{" "}
-                          ·{" "}
-                          {release.title ||
-                            row.entry.track.album ||
-                            "Lidarr release"}
-                        </small>
-                        {release.matchedTrack && (
-                          <div className="matched-lidarr-track">
-                            <span className="eyebrow">
-                              Matched Lidarr track
-                            </span>
-                            <small>
-                              {text(release.matchedTrack.track_number) &&
-                                `Track ${text(release.matchedTrack.track_number)} · `}
-                              {release.matchedTrack.has_file
-                                ? "File downloaded"
-                                : "No file"}
-                              {release.matchedTrack.track_file_id
-                                ? ` · Lidarr file ${text(release.matchedTrack.track_file_id)}`
-                                : ""}
-                            </small>
-                          </div>
-                        )}
-                        {release.sourceGroup !== release.lidarrGroup && (
-                          <small>
-                            Rebound because this Lidarr release contains the
-                            selected track.
-                          </small>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <span className="status attention">No Lidarr release</span>
-                  )}
-                </td>
-                <td>
-                  {row.actions.length ? (
-                    row.actions.map((action, index) => (
-                      <div
-                        className="plan-decision"
-                        key={`${action.action}-${index}`}
-                      >
-                        <span className={`badge plan-${action.action}`}>
-                          {action.action.replaceAll("_", " ")}
-                        </span>
-                        {row.artistActions.includes(action) && (
-                          <small className="action-scope">
-                            Artist-level action · shared by this artist&apos;s
-                            requested songs
-                          </small>
-                        )}
-                        <small>
-                          {reasons[action.reason ?? ""] ??
-                            action.reason?.replaceAll("_", " ")}
-                        </small>
-                      </div>
-                    ))
-                  ) : row.entry.result.resolvedVia && row.releases.length ? (
-                    <>
-                      <span className="badge plan-unchanged">
-                        No explicit action
-                      </span>
-                      <small>
-                        Rebuild this older plan for an explicit unchanged
-                        outcome.
-                      </small>
-                    </>
-                  ) : (
-                    <>
-                      <span className="badge plan-skip">Skipped</span>
-                      <small>
-                        {!row.entry.result.resolvedVia
-                          ? reasons.musicbrainz_unresolved
-                          : "No release is selected for this recording."}
-                      </small>
-                    </>
-                  )}
-                </td>
-                <td className="binding-actions">
-                  {editable && (
-                    <Link
-                      href={`/entries/${row.entry.id}/review?plan_id=${planId}`}
-                    >
-                      {row.entry.result.resolvedVia
-                        ? "Change track"
-                        : "Resolve track"}
-                    </Link>
-                  )}
-                  {row.variousArtistsOverride ? (
-                    <span className="badge plan-monitor_release">
-                      VA safety override queued
+                {columns[0] && <td>{row.entry.position + 1}</td>}
+                {columns[1] && (
+                  <td>
+                    <span className="badge">
+                      {row.entry.resolutionState.replaceAll("_", " ")}
                     </span>
-                  ) : (
-                    row.variousArtistsSkip && (
+                  </td>
+                )}
+                {columns[2] && (
+                  <td>
+                    <strong>{row.entry.track.title}</strong>
+                    <small>
+                      {row.entry.track.artists.join(", ")}
+                      {row.entry.track.album && ` · ${row.entry.track.album}`}
+                    </small>
+                  </td>
+                )}
+                {columns[3] && (
+                  <td>
+                    {row.releases.length ? (
+                      row.releases.map((release) => (
+                        <div className="release-link" key={release.sourceGroup}>
+                          <strong>
+                            {text(release.matchedTrack?.title) ||
+                              row.entry.result.recordingTitle ||
+                              row.entry.track.title}
+                          </strong>
+                          <small>
+                            {release.artistName ||
+                              row.entry.track.artists.join(", ") ||
+                              "Unknown artist"}{" "}
+                            ·{" "}
+                            {release.title ||
+                              row.entry.track.album ||
+                              "Lidarr release"}
+                          </small>
+                          {release.matchedTrack && (
+                            <div className="matched-lidarr-track">
+                              <span className="eyebrow">
+                                Matched Lidarr track
+                              </span>
+                              <small>
+                                {text(release.matchedTrack.track_number) &&
+                                  `Track ${text(release.matchedTrack.track_number)} · `}
+                                {release.matchedTrack.has_file
+                                  ? "File downloaded"
+                                  : "No file"}
+                                {release.matchedTrack.track_file_id
+                                  ? ` · Lidarr file ${text(release.matchedTrack.track_file_id)}`
+                                  : ""}
+                              </small>
+                            </div>
+                          )}
+                          {release.sourceGroup !== release.lidarrGroup && (
+                            <small>
+                              Rebound because this Lidarr release contains the
+                              selected track.
+                            </small>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <span className="status attention">
+                        No Lidarr release
+                      </span>
+                    )}
+                  </td>
+                )}
+                {columns[4] && (
+                  <td>
+                    {row.actions.length ? (
+                      row.actions.map((action, index) => (
+                        <div
+                          className="plan-decision"
+                          key={`${action.action}-${index}`}
+                        >
+                          <span className={`badge plan-${action.action}`}>
+                            {action.action.replaceAll("_", " ")}
+                          </span>
+                          {row.artistActions.includes(action) && (
+                            <small className="action-scope">
+                              Artist-level action · shared by this artist&apos;s
+                              requested songs
+                            </small>
+                          )}
+                          <small>
+                            {reasons[action.reason ?? ""] ??
+                              action.reason?.replaceAll("_", " ")}
+                          </small>
+                        </div>
+                      ))
+                    ) : row.entry.result.resolvedVia && row.releases.length ? (
                       <>
-                        {editable && (
+                        <span className="badge plan-unchanged">
+                          No explicit action
+                        </span>
+                        <small>
+                          Rebuild this older plan for an explicit unchanged
+                          outcome.
+                        </small>
+                      </>
+                    ) : (
+                      <>
+                        <span className="badge plan-skip">Skipped</span>
+                        <small>
+                          {!row.entry.result.resolvedVia
+                            ? reasons.musicbrainz_unresolved
+                            : "No release is selected for this recording."}
+                        </small>
+                      </>
+                    )}
+                  </td>
+                )}
+                {columns[5] && (
+                  <td className="binding-actions">
+                    {editable && (
+                      <Link
+                        href={`/entries/${row.entry.id}/review?plan_id=${planId}`}
+                      >
+                        {row.entry.result.resolvedVia
+                          ? "Change track"
+                          : "Resolve track"}
+                      </Link>
+                    )}
+                    {row.variousArtistsOverride ? (
+                      <span className="badge plan-monitor_release">
+                        VA safety override queued
+                      </span>
+                    ) : (
+                      row.variousArtistsSkip && (
+                        <>
+                          {editable && (
+                            <ActionForm
+                              action={retryAction}
+                              csrf={csrf}
+                              entryId={row.entry.id}
+                              planId={planId}
+                              label="Retry automatic search"
+                            />
+                          )}
                           <ActionForm
-                            action={retryAction}
+                            action={allowVariousArtistsAction}
                             csrf={csrf}
                             entryId={row.entry.id}
                             planId={planId}
-                            label="Retry automatic search"
+                            label="Allow this VA release"
                           />
-                        )}
-                        <ActionForm
-                          action={allowVariousArtistsAction}
-                          csrf={csrf}
-                          entryId={row.entry.id}
-                          planId={planId}
-                          label="Allow this VA release"
-                        />
-                      </>
-                    )
-                  )}
-                  {editable &&
-                    (row.entry.result.releaseGroupIds?.length ?? 0) > 1 && (
-                      <form action={changeReleaseAction}>
-                        <input type="hidden" name="csrf_token" value={csrf} />
-                        <input
-                          type="hidden"
-                          name="entry_id"
-                          value={row.entry.id}
-                        />
-                        <input type="hidden" name="plan_id" value={planId} />
-                        <select
-                          aria-label={`Release group for ${row.entry.track.title}`}
-                          name="release_group_id"
-                          defaultValue={row.entry.selectedReleaseGroupId}
-                        >
-                          {row.entry.result.releaseGroupIds?.map((group) => (
-                            <option key={group}>{group}</option>
-                          ))}
-                        </select>
-                        <button className="secondary">Use release</button>
-                      </form>
+                        </>
+                      )
                     )}
-                </td>
+                    {editable &&
+                      (row.entry.result.releaseGroupIds?.length ?? 0) > 1 && (
+                        <form action={changeReleaseAction}>
+                          <input type="hidden" name="csrf_token" value={csrf} />
+                          <input
+                            type="hidden"
+                            name="entry_id"
+                            value={row.entry.id}
+                          />
+                          <input type="hidden" name="plan_id" value={planId} />
+                          <select
+                            aria-label={`Release group for ${row.entry.track.title}`}
+                            name="release_group_id"
+                            defaultValue={row.entry.selectedReleaseGroupId}
+                          >
+                            {row.entry.result.releaseGroupIds?.map((group) => (
+                              <option key={group}>{group}</option>
+                            ))}
+                          </select>
+                          <button className="secondary">Use release</button>
+                        </form>
+                      )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

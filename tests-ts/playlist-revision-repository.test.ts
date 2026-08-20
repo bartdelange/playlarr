@@ -54,6 +54,14 @@ it("persists update audit snapshots including duplicate source occurrences", () 
     id: recorded.id,
     removed: 1,
   });
-  expect(revisions.get(imported.id, recorded.id).before).toHaveLength(2);
+  expect(revisions.get(imported.id, recorded.id)).toMatchObject({
+    id: recorded.id,
+    removed: 1,
+    before: [
+      { title: "Song", artists: ["Artist"], position: 0 },
+      { title: "Song", artists: ["Artist"], position: 1 },
+    ],
+    after: [{ title: "Song", artists: ["Artist"], position: 0 }],
+  });
   database.close();
 });

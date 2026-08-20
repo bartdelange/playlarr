@@ -4,6 +4,8 @@ export interface PlaylistChange {
   oldPosition?: number;
   newPosition?: number;
   changedFields: string[];
+  oldTrack?: StoredEntry["track"];
+  newTrack?: AcquiredTrack["track"];
 }
 export interface PlaylistUpdate {
   added: number;
@@ -51,7 +53,12 @@ export function previewPlaylistUpdate(
   const changes: PlaylistChange[] = current.map((entry, index) => {
     const old = matched.get(index);
     if (!old)
-      return { state: "added", newPosition: entry.position, changedFields: [] };
+      return {
+        state: "added",
+        newPosition: entry.position,
+        changedFields: [],
+        newTrack: entry.track,
+      };
     const changedFields = changed(old, entry);
     return {
       state: changedFields.length
@@ -62,6 +69,8 @@ export function previewPlaylistUpdate(
       oldPosition: old.position,
       newPosition: entry.position,
       changedFields,
+      oldTrack: old.track,
+      newTrack: entry.track,
     };
   });
   for (const old of unmatched.values())
@@ -69,6 +78,7 @@ export function previewPlaylistUpdate(
       state: "removed",
       oldPosition: old.position,
       changedFields: [],
+      oldTrack: old.track,
     });
   const counts = { added: 0, removed: 0, updated: 0, moved: 0, unchanged: 0 };
   changes.forEach((change) => {

@@ -37,4 +37,6 @@ it("matches duplicate occurrences in stable order without collapsing them", () =
     "moved",
     "removed",
   ]);
+  expect(update.changes[0].newTrack).toMatchObject({ sourceTrackId: "new" });
+  expect(update.changes[2].oldTrack).toMatchObject({ sourceTrackId: "same" });
 });

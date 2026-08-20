@@ -34,7 +34,25 @@ export function ImportTrackTable({
 }) {
   const params = useParams<{ id?: string }>();
   const [filter, setFilter] = useState("all");
-  const [columns, setColumns] = useState({ state: true });
+  const columnLabels =
+    stage === "match"
+      ? [
+          "#",
+          "Status",
+          "Source track",
+          "Matched recording",
+          "Method",
+          "Actions",
+        ]
+      : [
+          "#",
+          "Status",
+          "Source track",
+          "Lidarr matched",
+          "Library state",
+          "Actions",
+        ];
+  const [columns, setColumns] = useState(() => columnLabels.map(() => true));
   const visibleRows = useMemo(
     () =>
       rows.filter((row) => {
@@ -108,19 +126,20 @@ export function ImportTrackTable({
       <details className="column-picker">
         <summary>Choose visible columns</summary>
         <div className="column-options">
-          {Object.entries(columns).map(([column, checked]) => (
-            <label key={column}>
+          {columnLabels.map((label, index) => (
+            <label key={label}>
               <input
-                checked={checked}
+                checked={columns[index]}
                 onChange={(event) =>
-                  setColumns((current) => ({
-                    ...current,
-                    [column]: event.target.checked,
-                  }))
+                  setColumns((current) =>
+                    current.map((value, currentIndex) =>
+                      currentIndex === index ? event.target.checked : value,
+                    ),
+                  )
                 }
                 type="checkbox"
               />
-              {column[0].toUpperCase() + column.slice(1)}
+              {label}
             </label>
           ))}
         </div>
@@ -132,73 +151,85 @@ export function ImportTrackTable({
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              {columns.state && <th>Status</th>}
-              <th>Source track</th>
+              {columns[0] && <th>#</th>}
+              {columns[1] && <th>Status</th>}
+              {columns[2] && <th>Source track</th>}
               {stage === "match" ? (
                 <>
-                  <th>Matched recording</th>
-                  <th>Method</th>
+                  {columns[3] && <th>Matched recording</th>}
+                  {columns[4] && <th>Method</th>}
                 </>
               ) : (
                 <>
-                  <th>Lidarr matched</th>
-                  <th>Library state</th>
+                  {columns[3] && <th>Lidarr matched</th>}
+                  {columns[4] && <th>Library state</th>}
                 </>
               )}
-              <th aria-label="Actions" />
+              {columns[5] && <th aria-label="Actions" />}
             </tr>
           </thead>
           <tbody>
             {visibleRows.map((row) => (
               <tr key={row.id}>
-                <td>{row.position + 1}</td>
-                {columns.state && (
+                {columns[0] && <td>{row.position + 1}</td>}
+                {columns[1] && (
                   <td>
                     <span className="badge">
                       {row.state.replaceAll("_", " ")}
                     </span>
                   </td>
                 )}
-                <td>
-                  <strong>{row.title}</strong>
-                  <small>
-                    {row.artists.join(", ")}
-                    {row.album && ` · ${row.album}`}
-                  </small>
-                </td>
+                {columns[2] && (
+                  <td>
+                    <strong>{row.title}</strong>
+                    <small>
+                      {row.artists.join(", ")}
+                      {row.album && ` · ${row.album}`}
+                    </small>
+                  </td>
+                )}
                 {stage === "match" ? (
                   <>
-                    <td>
-                      <strong>{row.matchedTitle || "Not matched"}</strong>
-                      <small>{row.matchedArtists?.join(", ")}</small>
-                    </td>
-                    <td>{row.method ?? "—"}</td>
+                    {columns[3] && (
+                      <td>
+                        <strong>{row.matchedTitle || "Not matched"}</strong>
+                        <small>{row.matchedArtists?.join(", ")}</small>
+                      </td>
+                    )}
+                    {columns[4] && <td>{row.method ?? "—"}</td>}
                   </>
                 ) : (
                   <>
-                    <td>
-                      {row.libraryPath ? (
-                        <div className="matched-lidarr-track">
-                          <span className="eyebrow">Matched Lidarr track</span>
-                          <strong>{row.matchedTitle || row.title}</strong>
-                          <small>{row.matchedArtists?.join(", ")}</small>
-                        </div>
-                      ) : (
-                        <span className="muted">No matched Lidarr track</span>
-                      )}
-                    </td>
-                    <td>
-                      <LibraryState
-                        classification={row.libraryClassification}
-                        path={row.libraryPath}
-                      />
-                    </td>
+                    {columns[3] && (
+                      <td>
+                        {row.libraryPath ? (
+                          <div className="matched-lidarr-track">
+                            <span className="eyebrow">
+                              Matched Lidarr track
+                            </span>
+                            <strong>{row.matchedTitle || row.title}</strong>
+                            <small>{row.matchedArtists?.join(", ")}</small>
+                          </div>
+                        ) : (
+                          <span className="muted">No matched Lidarr track</span>
+                        )}
+                      </td>
+                    )}
+                    {columns[4] && (
+                      <td>
+                        <LibraryState
+                          classification={row.libraryClassification}
+                          path={row.libraryPath}
+                        />
+                      </td>
+                    )}
                   </>
                 )}
-                <td>
-                  <Link href={`/entries/${row.id}/review`}>Review</Link>
-                </td>
+                {columns[5] && (
+                  <td>
+                    <Link href={`/entries/${row.id}/review`}>Review</Link>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

@@ -65,17 +65,38 @@ export class PlaylistRevisionRepository {
       unchanged: number;
     }[];
   }
-  get(importId: string, id: string): { before: unknown[]; after: unknown[] } {
+  get(
+    importId: string,
+    id: string,
+  ): {
+    id: string;
+    createdAt: string;
+    added: number;
+    removed: number;
+    updated: number;
+    moved: number;
+    unchanged: number;
+    before: ReturnType<typeof snapshot>;
+    after: ReturnType<typeof snapshot>;
+  } {
     const row = this.database
       .prepare(
-        "SELECT before_json, after_json FROM playlist_revisions WHERE id = ? AND import_id = ?",
+        "SELECT * FROM playlist_revisions WHERE id = ? AND import_id = ?",
       )
-      .get(id, importId) as
-      { before_json: string; after_json: string } | undefined;
+      .get(id, importId) as Record<string, unknown> | undefined;
     if (!row) throw new Error(`unknown playlist revision: ${id}`);
     return {
-      before: JSON.parse(row.before_json),
-      after: JSON.parse(row.after_json),
+      id: String(row.id),
+      createdAt: String(row.created_at),
+      added: Number(row.added),
+      removed: Number(row.removed),
+      updated: Number(row.updated),
+      moved: Number(row.moved),
+      unchanged: Number(row.unchanged),
+      before: JSON.parse(String(row.before_json)) as ReturnType<
+        typeof snapshot
+      >,
+      after: JSON.parse(String(row.after_json)) as ReturnType<typeof snapshot>,
     };
   }
 }

@@ -364,6 +364,20 @@ export default async function ImportPage({
           </div>
         </div>
       )}
+      {stage === "final" && planHeader && planHeader.status !== "completed" && (
+        <div className="next-step">
+          <div>
+            <strong>There are unapplied Lidarr changes.</strong>
+            <span>
+              This Final view is provisional. Apply the active Lidarr plan, then
+              refresh monitored and downloaded status.
+            </span>
+          </div>
+          <Link className="button" href={`/imports/${id}?stage=lidarr`}>
+            Open Lidarr plan
+          </Link>
+        </div>
+      )}
       {stage === "final" &&
         planHeader?.status === "completed" &&
         latestExport && (
