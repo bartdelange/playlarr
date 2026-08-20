@@ -6,6 +6,7 @@
     "dev": "next dev --port 8787",
     "build": "next build",
     "start": "next start --port 8787",
+    "worker": "tsx src/server/jobs/main.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -28,6 +29,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.1",
     "eslint-config-next": "16.1.6",
+    "tsx": "^4.20.6",
     "typescript": "5.9.3",
     "vitest": "4.0.16"
   }

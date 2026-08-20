@@ -1,0 +1,2 @@
+import { config, database, settings } from "../runtime"; import { JobRepository } from "../persistence/job-repository"; import { productionJobHandlers } from "./handlers"; import { DurableJobWorker } from "./worker";
+const worker = new DurableJobWorker(new JobRepository(database), productionJobHandlers(database, config, settings)); const shutdown = () => worker.stop(); process.on("SIGTERM", shutdown); process.on("SIGINT", shutdown); await worker.run(); database.close();
