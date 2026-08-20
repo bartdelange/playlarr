@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
   acceptManualMapping,
@@ -59,7 +60,24 @@ function releaseLabel(release: CandidateRelease): string {
   ].join(" · ");
 }
 
-export default async function ReviewPage({
+export default function ReviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<ReviewQuery>;
+}) {
+  return (
+    <main>
+      <p className="eyebrow">Manual resolution</p>
+      <Suspense fallback={<ManualReviewSkeleton />}>
+        <ManualReviewContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function ManualReviewContent({
   params,
   searchParams,
 }: {
@@ -99,7 +117,7 @@ export default async function ReviewPage({
   const context = { entryId, csrf, query };
 
   return (
-    <main>
+    <>
       {query.plan_id && (
         <div className="next-step">
           <strong>Editing the final Lidarr binding.</strong>
@@ -109,7 +127,6 @@ export default async function ReviewPage({
           </span>
         </div>
       )}
-      <p className="eyebrow">Manual resolution</p>
       <nav className="steps" aria-label="Workflow progress">
         <strong aria-current="step">1 Music match</strong>
         <a href={`/imports/${entry.importId}?stage=lidarr`}>2 Lidarr</a>
@@ -363,6 +380,10 @@ export default async function ReviewPage({
           </button>
         </form>
       </div>
-    </main>
+    </>
   );
+}
+
+function ManualReviewSkeleton() {
+  return <section className="card skeleton">Loading match review…</section>;
 }

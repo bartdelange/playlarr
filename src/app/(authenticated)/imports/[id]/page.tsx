@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { MusicBrainzResult } from "../../../../server/domain/musicbrainz";
 import { ImportRepository } from "../../../../server/persistence/import-repository";
@@ -29,7 +30,24 @@ import {
   queueLibraryStatus,
   queuePlaylistGeneration,
 } from "../../../actions/exports";
-export default async function ImportPage({
+export default function ImportPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ stage?: string }>;
+}) {
+  return (
+    <main>
+      <p className="eyebrow">Playlist workflow</p>
+      <Suspense fallback={<ImportWorkflowSkeleton />}>
+        <ImportWorkflowContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function ImportWorkflowContent({
   params,
   searchParams,
 }: {
@@ -198,7 +216,7 @@ export default async function ImportPage({
               ? "lidarr"
               : "match";
   return (
-    <main>
+    <>
       <section className="playlist-context">
         <div>
           <div className="playlist-meta">
@@ -488,6 +506,12 @@ export default async function ImportPage({
           <FinalTrackTable rows={finalRows} />
         </section>
       )}
-    </main>
+    </>
+  );
+}
+
+function ImportWorkflowSkeleton() {
+  return (
+    <section className="card skeleton">Loading playlist workflow…</section>
   );
 }

@@ -1,9 +1,25 @@
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { PlaylistRevisionRepository } from "../../../../../../server/persistence/playlist-revision-repository";
 import { database } from "../../../../../../server/runtime";
 import { ImportRepository } from "../../../../../../server/persistence/import-repository";
 import Link from "next/link";
-export default async function RevisionPage({
+export default function RevisionPage({
+  params,
+}: {
+  params: Promise<{ id: string; revisionId: string }>;
+}) {
+  return (
+    <main>
+      <p className="eyebrow">Playlist update audit</p>
+      <Suspense fallback={<RevisionSkeleton />}>
+        <RevisionDetails params={params} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function RevisionDetails({
   params,
 }: {
   params: Promise<{ id: string; revisionId: string }>;
@@ -13,8 +29,7 @@ export default async function RevisionPage({
   const revision = new PlaylistRevisionRepository(database).get(id, revisionId);
   const imported = new ImportRepository(database).getImport(id);
   return (
-    <main>
-      <p className="eyebrow">Playlist update audit</p>
+    <>
       <h1>{imported.playlistName}</h1>
       <section className="card">
         <p>
@@ -30,8 +45,12 @@ export default async function RevisionPage({
         <RevisionTracks title="Before" tracks={revision.before} />
         <RevisionTracks title="After" tracks={revision.after} />
       </div>
-    </main>
+    </>
   );
+}
+
+function RevisionSkeleton() {
+  return <section className="card skeleton">Loading revision details…</section>;
 }
 
 function RevisionTracks({

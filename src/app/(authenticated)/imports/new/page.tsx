@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { PlaylistCatalogue } from "../../../../components/imports/playlist-catalogue";
 import type { PlaylistInfo } from "../../../../server/domain/playlist";
 import { ImportRepository } from "../../../../server/persistence/import-repository";
@@ -12,7 +13,27 @@ import {
   queuePlaylistCatalogue,
 } from "../../../actions/workflows";
 
-export default async function NewImportPage({
+export default function NewImportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    source?: string;
+    catalog_job?: string;
+    error?: string;
+  }>;
+}) {
+  return (
+    <main>
+      <p className="eyebrow">New import</p>
+      <h1>Choose a source</h1>
+      <Suspense fallback={<NewImportSkeleton />}>
+        <NewImportContent searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function NewImportContent({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -56,9 +77,8 @@ export default async function NewImportPage({
     : {};
 
   return (
-    <main>
-      <p className="eyebrow">New import</p>
-      <h1>{source ? "Choose a playlist" : "Choose a source"}</h1>
+    <>
+      {source && <h2>Choose a playlist</h2>}
       <nav className="steps compact-steps" aria-label="New import progress">
         <span className={!source ? "active" : "complete"}>1 Source</span>
         <span className={source ? "active" : "disabled"}>2 Playlist</span>
@@ -92,8 +112,12 @@ export default async function NewImportPage({
           analysisAction={queuePlaylistAnalysis}
         />
       )}
-    </main>
+    </>
   );
+}
+
+function NewImportSkeleton() {
+  return <section className="card skeleton">Loading import sources…</section>;
 }
 
 function SourceCard({

@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { existsSync } from "node:fs";
 import { config, security, settings } from "../../../server/runtime";
 import { changeAuthorization, changePassword } from "../../actions/security";
@@ -13,7 +14,23 @@ import { requestCsrfToken } from "../../../server/security/request";
 import { LidarrClient } from "../../../server/integrations/lidarr/client";
 const secretPlaceholder = (value: unknown) =>
   value ? "Configured — enter to replace" : "Required";
-export default async function SettingsPage({
+export default function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string; error?: string }>;
+}) {
+  return (
+    <main className="settings-page">
+      <p className="eyebrow">Configuration</p>
+      <h1>Settings</h1>
+      <Suspense fallback={<SettingsSkeleton />}>
+        <SettingsContent searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function SettingsContent({
   searchParams,
 }: {
   searchParams: Promise<{ message?: string; error?: string }>;
@@ -61,9 +78,7 @@ export default async function SettingsPage({
     (saved.navidrome_password ?? config.navidrome.password),
   );
   return (
-    <main className="settings-page">
-      <p className="eyebrow">Configuration</p>
-      <h1>Settings</h1>
+    <>
       {(query.message || query.error) && (
         <p role="alert">{query.message ?? query.error}</p>
       )}
@@ -362,8 +377,12 @@ export default async function SettingsPage({
           </section>
         </div>
       </div>
-    </main>
+    </>
   );
+}
+
+function SettingsSkeleton() {
+  return <section className="card skeleton">Loading service settings…</section>;
 }
 function ServiceForm({
   title,

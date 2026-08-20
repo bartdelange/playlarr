@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { addLocalTrack, removeLocalTrack } from "../../../../actions/exports";
 import {
@@ -11,7 +12,24 @@ import { LocalAdditionsRepository } from "../../../../../server/persistence/loca
 import { config, database, settings } from "../../../../../server/runtime";
 import { requestCsrfToken } from "../../../../../server/security/request";
 
-export default async function LocalAdditionsPage({
+export default function LocalAdditionsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string; error?: string }>;
+}) {
+  return (
+    <main>
+      <p className="eyebrow">Export enrichment</p>
+      <Suspense fallback={<LocalAdditionsSkeleton />}>
+        <LocalAdditionsContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function LocalAdditionsContent({
   params,
   searchParams,
 }: {
@@ -54,7 +72,7 @@ export default async function LocalAdditionsPage({
   }
 
   return (
-    <main>
+    <>
       <section className="playlist-context">
         <div>
           <span className="badge">{imported.source}</span>
@@ -149,6 +167,10 @@ export default async function LocalAdditionsPage({
           <p className="muted">No local songs have been added.</p>
         )}
       </section>
-    </main>
+    </>
   );
+}
+
+function LocalAdditionsSkeleton() {
+  return <section className="card skeleton">Loading local additions…</section>;
 }

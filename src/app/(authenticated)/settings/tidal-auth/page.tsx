@@ -1,6 +1,29 @@
 import { TidalAuthStatus } from "../../../../components/settings/tidal-auth-status";
+import { Suspense } from "react";
 
-export default async function TidalAuthenticationPage({
+export default function TidalAuthenticationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ verification_url?: string; user_code?: string }>;
+}) {
+  return (
+    <main className="settings-page">
+      <p className="eyebrow">TIDAL authentication</p>
+      <h1>Connect TIDAL</h1>
+      <Suspense
+        fallback={
+          <section className="card skeleton">
+            Preparing TIDAL authentication…
+          </section>
+        }
+      >
+        <TidalAuthenticationContent searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function TidalAuthenticationContent({
   searchParams,
 }: {
   searchParams: Promise<{ verification_url?: string; user_code?: string }>;
@@ -10,9 +33,7 @@ export default async function TidalAuthenticationPage({
   const userCode = query.user_code?.trim();
 
   return (
-    <main className="settings-page">
-      <p className="eyebrow">TIDAL authentication</p>
-      <h1>Connect TIDAL</h1>
+    <>
       <div className="card">
         <p>
           Open TIDAL and approve this device. This page will continue
@@ -39,7 +60,7 @@ export default async function TidalAuthenticationPage({
         )}
         <TidalAuthStatus enabled={Boolean(verificationUrl)} />
       </div>
-    </main>
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { database } from "../../../../server/runtime";
 import { JobRepository } from "../../../../server/persistence/job-repository";
@@ -8,11 +9,22 @@ import { jobCompletionUrl } from "../../../../server/application/job-presentatio
 import { requestCsrfToken } from "../../../../server/security/request";
 import { cancelJob } from "../../../actions/workflows";
 import Link from "next/link";
-export default async function JobPage({
+export default function JobPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  return (
+    <main>
+      <p className="eyebrow">Background work</p>
+      <Suspense fallback={<JobSkeleton />}>
+        <JobDetails params={params} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   let job;
   try {
@@ -25,8 +37,7 @@ export default async function JobPage({
     : undefined;
   const csrf = await requestCsrfToken();
   return (
-    <main>
-      <p className="eyebrow">Background work</p>
+    <>
       {imported && (
         <nav className="steps" aria-label="Workflow progress">
           <Link href={`/imports/${imported.id}`}>{imported.playlistName}</Link>
@@ -43,6 +54,10 @@ export default async function JobPage({
         csrfToken={csrf}
         cancelAction={cancelJob}
       />
-    </main>
+    </>
   );
+}
+
+function JobSkeleton() {
+  return <section className="card skeleton">Loading job details…</section>;
 }

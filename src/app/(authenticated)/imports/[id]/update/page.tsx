@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { AcquiredTrack } from "../../../../../server/domain/playlist";
 import { previewPlaylistUpdate } from "../../../../../server/domain/playlist-updates";
@@ -10,7 +11,24 @@ import { applyPlaylistUpdate } from "../../../../actions/workflows";
 import { PlaylistUpdateTable } from "../../../../../components/imports/playlist-update-table";
 import Link from "next/link";
 
-export default async function PlaylistUpdatePage({
+export default function PlaylistUpdatePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ preview_job?: string }>;
+}) {
+  return (
+    <main>
+      <p className="eyebrow">Playlist update</p>
+      <Suspense fallback={<PlaylistUpdateSkeleton />}>
+        <PlaylistUpdateContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function PlaylistUpdateContent({
   params,
   searchParams,
 }: {
@@ -43,7 +61,7 @@ export default async function PlaylistUpdatePage({
   const csrf = await requestCsrfToken();
 
   return (
-    <main>
+    <>
       <p className="eyebrow">{imported.source} playlist update</p>
       <h1>Review changes to {imported.playlistName}</h1>
       <section className="card">
@@ -83,6 +101,10 @@ export default async function PlaylistUpdatePage({
         </div>
       </section>
       <PlaylistUpdateTable update={update} />
-    </main>
+    </>
   );
+}
+
+function PlaylistUpdateSkeleton() {
+  return <section className="card skeleton">Loading update preview…</section>;
 }

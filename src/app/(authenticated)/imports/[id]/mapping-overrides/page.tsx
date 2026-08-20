@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { MappingOverridesTable } from "../../../../../components/imports/mapping-overrides-table";
 import { ImportRepository } from "../../../../../server/persistence/import-repository";
@@ -7,7 +8,24 @@ import { database } from "../../../../../server/runtime";
 import { requestCsrfToken } from "../../../../../server/security/request";
 import { applyMappingOverrides } from "../../../../actions/workflows";
 
-export default async function MappingOverridesPage({
+export default function MappingOverridesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ source_import_id?: string }>;
+}) {
+  return (
+    <main>
+      <p className="eyebrow">Bulk mapping reuse</p>
+      <Suspense fallback={<MappingOverridesSkeleton />}>
+        <MappingOverridesContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function MappingOverridesContent({
   params,
   searchParams,
 }: {
@@ -34,8 +52,7 @@ export default async function MappingOverridesPage({
   const csrf = await requestCsrfToken();
 
   return (
-    <main>
-      <p className="eyebrow">Bulk mapping reuse</p>
+    <>
       <h1>Reuse mappings in {imported.playlistName}</h1>
       <section className="card">
         <h2>Choose a source import</h2>
@@ -69,6 +86,12 @@ export default async function MappingOverridesPage({
           action={applyMappingOverrides}
         />
       )}
-    </main>
+    </>
+  );
+}
+
+function MappingOverridesSkeleton() {
+  return (
+    <section className="card skeleton">Loading mapping candidates…</section>
   );
 }
