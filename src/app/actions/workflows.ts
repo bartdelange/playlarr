@@ -1,49 +1,20 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { SourceTrack } from "../../server/domain/playlist";
-import { MusicBrainzClient } from "../../server/integrations/musicbrainz/client";
-import { ManualMusicBrainzMatcher } from "../../server/integrations/musicbrainz/manual-matching";
-import type { Candidate } from "../../server/integrations/musicbrainz/candidates";
+import {
+  allowVariousArtistsRelease as allowVariousArtistsReleaseForPlan,
+  changePlannedRelease,
+  preparePlanEntryRetry,
+} from "../../server/application/lidarr-plan-actions";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { JobRepository } from "../../server/persistence/job-repository";
 import { LidarrPlanRepository } from "../../server/persistence/lidarr-plan-repository";
 import { MappingOverridesRepository } from "../../server/persistence/mapping-overrides-repository";
-import { ResolutionRepository } from "../../server/persistence/resolution-repository";
-import { spotify, tidal } from "../../server/providers";
-import { config, database, settings } from "../../server/runtime";
+import { resetSpotify, spotify, tidal } from "../../server/providers";
+import { database, settings } from "../../server/runtime";
 import { requireCsrf } from "./security";
 const jobs = () => new JobRepository(database);
 const imports = () => new ImportRepository(database);
-const resolutions = () => new ResolutionRepository(database);
-function entryTrack(entryId: number): SourceTrack {
-  const row = database
-    .prepare(
-      "SELECT i.source, e.* FROM playlist_entries e JOIN imports i ON i.id = e.import_id WHERE e.id = ?",
-    )
-    .get(entryId) as Record<string, unknown> | undefined;
-  if (!row) throw new Error(`unknown playlist entry: ${entryId}`);
-  return {
-    source: String(row.source),
-    sourceTrackId: String(row.source_track_id),
-    title: String(row.title),
-    artists: JSON.parse(String(row.artists_json)) as string[],
-    album: String(row.album),
-    isrc: row.isrc ? String(row.isrc) : undefined,
-    durationMs: row.duration_ms === null ? undefined : Number(row.duration_ms),
-  };
-}
-function manualMatcher() {
-  return new ManualMusicBrainzMatcher(
-    new MusicBrainzClient({
-      baseUrl: config.musicBrainz.baseUrl,
-      userAgent: settings.get("mb_user_agent", config.musicBrainz.userAgent),
-      requestDelayMs: config.musicBrainz.requestDelay * 1000,
-      timeoutMs: config.musicBrainz.timeout * 1000,
-      maxRetries: config.musicBrainz.maxRetries,
-    }),
-  );
-}
 export async function cancelJob(form: FormData) {
   await requireCsrf(form);
   jobs().requestCancel(String(form.get("job_id")));
@@ -88,6 +59,7 @@ export async function saveServiceSettings(form: FormData) {
           : value,
       );
   }
+  if (service === "spotify") resetSpotify();
   revalidatePath("/settings");
   redirect(
     `/settings?message=${encodeURIComponent(`${service} settings saved`)}`,
@@ -99,7 +71,13 @@ export async function authenticateSpotify(form: FormData) {
 }
 export async function authenticateTidal(form: FormData) {
   await requireCsrf(form);
-  redirect(tidal().auth.authorizationUrl());
+  const authorization = await tidal().auth.beginDeviceAuthorization();
+  redirect(
+    `/settings/tidal-auth?${new URLSearchParams({
+      verification_url: authorization.verificationUrl,
+      user_code: authorization.userCode,
+    })}`,
+  );
 }
 export async function queuePlaylistAcquisition(form: FormData) {
   await requireCsrf(form);
@@ -127,61 +105,42 @@ export async function queueResolution(form: FormData) {
     `/jobs/${jobs().create("resolution", importId, imports().entries(importId).length).id}`,
   );
 }
-export async function searchManualCandidates(form: FormData) {
-  await requireCsrf(form);
-  const entryId = Number(form.get("entry_id"));
-  const candidates = await manualMatcher().search(
-    entryTrack(entryId),
-    String(form.get("query") ?? "") || undefined,
-  );
-  resolutions().saveCandidates(entryId, candidates);
-  revalidatePath(`/entries/${entryId}/review`);
-}
-export async function validateManualMbid(form: FormData) {
-  await requireCsrf(form);
-  const entryId = Number(form.get("entry_id"));
-  const validation = await manualMatcher().validateRecordingMbid(
-    String(form.get("mbid") ?? ""),
-    entryTrack(entryId),
-  );
-  if (!validation.candidate)
-    redirect(
-      `/entries/${entryId}/review?error=${encodeURIComponent(validation.errors.join(", "))}`,
-    );
-  resolutions().saveCandidates(entryId, [validation.candidate]);
-  redirect(
-    `/entries/${entryId}/review?message=${encodeURIComponent(validation.warnings.join(", ") || "Recording validated")}`,
-  );
-}
-export async function confirmManualCandidate(form: FormData) {
-  await requireCsrf(form);
-  const entryId = Number(form.get("entry_id"));
-  const candidate = resolutions().candidates(entryId)[
-    Number(form.get("candidate_index") ?? 0)
-  ] as Candidate | undefined;
-  if (!candidate) throw new Error("candidate is unavailable");
-  const group = String(
-    form.get("release_group_id") ?? candidate.result.releaseGroupIds?.[0] ?? "",
-  );
-  resolutions().saveManual(
-    entryId,
-    candidate.result,
-    "manual_search",
-    candidate.evidence.artistMatch && candidate.evidence.titleSimilarity >= 0.55
-      ? "valid"
-      : "warning",
-    candidate.evidence,
-    group || undefined,
-  );
-  const owner = database
-    .prepare("SELECT import_id FROM playlist_entries WHERE id = ?")
-    .get(entryId) as { import_id: string };
-  redirect(`/imports/${owner.import_id}`);
-}
 export async function queueLidarrPlan(form: FormData) {
   await requireCsrf(form);
   const importId = String(form.get("import_id"));
   redirect(`/jobs/${jobs().create("lidarr_planning", importId, 3).id}`);
+}
+export async function retryLidarrPlanEntry(form: FormData) {
+  await requireCsrf(form);
+  const planId = String(form.get("plan_id"));
+  const entryId = Number(form.get("entry_id"));
+  const importId = preparePlanEntryRetry(database, planId, entryId);
+  redirect(
+    `/jobs/${jobs().create("resolution_retry", importId, 1, { entryId }).id}`,
+  );
+}
+export async function allowVariousArtistsRelease(form: FormData) {
+  await requireCsrf(form);
+  const planId = String(form.get("plan_id"));
+  const importId = allowVariousArtistsReleaseForPlan(
+    database,
+    planId,
+    Number(form.get("entry_id")),
+  );
+  revalidatePath(`/imports/${importId}`);
+  redirect(`/imports/${importId}?stage=lidarr`);
+}
+export async function changeLidarrPlanRelease(form: FormData) {
+  await requireCsrf(form);
+  const planId = String(form.get("plan_id"));
+  const importId = changePlannedRelease(
+    database,
+    planId,
+    Number(form.get("entry_id")),
+    String(form.get("release_group_id")),
+  );
+  revalidatePath(`/imports/${importId}`);
+  redirect(`/imports/${importId}?stage=lidarr`);
 }
 export async function queuePlaylistUpdatePreview(form: FormData) {
   await requireCsrf(form);

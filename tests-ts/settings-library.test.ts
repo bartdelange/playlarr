@@ -35,6 +35,7 @@ it("persists settings, library state, and exports without losing import state", 
   settings.set("services", { lidarrUrl: "http://lidarr" });
   expect(settings.get("services", {})).toEqual({ lidarrUrl: "http://lidarr" });
   const library = new LibraryRepository(database);
+  expect(library.latestExport(imported.id)).toBeUndefined();
   library.saveStatus(imported.id, [
     { position: 0, classification: "downloaded", path: "/music/song.flac" },
   ]);
@@ -45,6 +46,23 @@ it("persists settings, library state, and exports without losing import state", 
     0,
   );
   expect(exportId).toBeTruthy();
+  database
+    .prepare("UPDATE playlist_exports SET created_at = ? WHERE id = ?")
+    .run("2020-01-01T00:00:00.000Z", exportId);
+  const latestId = library.recordExport(
+    imported.id,
+    "/playlists/mix-latest.m3u8",
+    3,
+    2,
+  );
+  expect(library.latestExport(imported.id)).toEqual({
+    id: latestId,
+    importId: imported.id,
+    outputPath: "/playlists/mix-latest.m3u8",
+    writtenTracks: 3,
+    missingTracks: 2,
+    createdAt: expect.any(String),
+  });
   expect(imports.getImport(imported.id).workflowState).toBe(
     "playlist_generated",
   );

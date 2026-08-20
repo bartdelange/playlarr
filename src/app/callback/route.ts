@@ -4,6 +4,14 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  const authorizationError = url.searchParams.get("error");
+  if (authorizationError)
+    return NextResponse.redirect(
+      new URL(
+        `/settings?message=${encodeURIComponent(`Spotify authentication failed: ${authorizationError}`)}`,
+        request.url,
+      ),
+    );
   if (!code || !state)
     return new NextResponse("Spotify callback is missing code or state", {
       status: 400,

@@ -1,13 +1,11 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
-import {
-  TidalAuthenticator,
-  TidalAuthenticationError,
-} from "../src/server/integrations/tidal/auth";
+import { TidalAuthenticator } from "../src/server/integrations/tidal/auth";
 import {
   FileTidalSessionStore,
+  type TidalPendingAuthorization,
   type TidalSession,
   type TidalSessionStore,
 } from "../src/server/integrations/tidal/session";
@@ -22,13 +20,25 @@ afterEach(async () => {
 });
 const memoryStore = (
   initial?: TidalSession,
-): TidalSessionStore & { value?: TidalSession } => ({
+): TidalSessionStore & {
+  value?: TidalSession;
+  pending?: TidalPendingAuthorization;
+} => ({
   value: initial,
   async load() {
     return this.value;
   },
   async save(value) {
     this.value = value;
+  },
+  async loadPending() {
+    return this.pending;
+  },
+  async savePending(value) {
+    this.pending = value;
+  },
+  async clearPending() {
+    this.pending = undefined;
   },
 });
 it("atomically persists a private session", async () => {
@@ -41,53 +51,148 @@ it("atomically persists a private session", async () => {
     accessToken: "a",
   });
   expect((await stat(file)).mode & 0o777).toBe(0o600);
+
+  await store.savePending({
+    deviceCode: "device",
+    intervalMs: 2_000,
+    nextPollAt: 1_000,
+    expiresAt: 301_000,
+    status: "pending",
+  });
+  await expect(store.loadPending()).resolves.toMatchObject({
+    deviceCode: "device",
+    status: "pending",
+  });
+  expect((await stat(`${file}.pending`)).mode & 0o777).toBe(0o600);
+  await store.clearPending();
+  await expect(store.loadPending()).resolves.toBeUndefined();
 });
-it("uses PKCE, validates callback state, and refreshes expired sessions", async () => {
+it("restores the session file written by the master tidalapi implementation", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "playlarr-tidal-"));
+  directories.push(directory);
+  const file = path.join(directory, "session.json");
+  await writeFile(
+    file,
+    JSON.stringify({
+      token_type: { data: "Bearer" },
+      access_token: { data: "legacy-access" },
+      refresh_token: { data: "legacy-refresh" },
+      is_pkce: { data: false },
+    }),
+  );
+
+  await expect(new FileTidalSessionStore(file).load()).resolves.toEqual({
+    accessToken: "legacy-access",
+    refreshToken: "legacy-refresh",
+    tokenType: "Bearer",
+    expiresAt: 0,
+  });
+});
+it("runs device authorization, polls at the supplied interval, and persists tokens", async () => {
+  const store = memoryStore();
+  let now = 1_000;
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(
+      Response.json({
+        deviceCode: "device-code",
+        userCode: "USER-CODE",
+        verificationUri: "link.tidal.com",
+        verificationUriComplete: "link.tidal.com/USER-CODE",
+        expiresIn: 300,
+        interval: 2,
+      }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ error: "authorization_pending" }, { status: 400 }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({
+        access_token: "access",
+        refresh_token: "refresh",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ sessionId: "session", userId: 1, countryCode: "NL" }),
+    );
+  const auth = new TidalAuthenticator(
+    store,
+    fetcher,
+    () => now,
+    "https://device.test",
+    "https://token.test",
+  );
+  await expect(auth.beginDeviceAuthorization()).resolves.toEqual({
+    verificationUrl: "https://link.tidal.com/USER-CODE",
+    userCode: "USER-CODE",
+    expiresIn: 300,
+  });
+  const poller = new TidalAuthenticator(
+    store,
+    fetcher,
+    () => now,
+    "https://device.test",
+    "https://token.test",
+  );
+  await expect(poller.authorizationStatus()).resolves.toEqual({
+    status: "pending",
+  });
+  await expect(poller.authorizationStatus()).resolves.toEqual({
+    status: "pending",
+  });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  now += 2_000;
+  await expect(poller.authorizationStatus()).resolves.toEqual({
+    status: "completed",
+  });
+  expect(store.value).toMatchObject({
+    accessToken: "access",
+    refreshToken: "refresh",
+    tokenType: "Bearer",
+  });
+  expect(store.pending).toBeUndefined();
+  const deviceBody = fetcher.mock.calls[0][1].body as URLSearchParams;
+  expect(deviceBody.get("scope")).toBe("r_usr w_usr w_sub");
+  const tokenBody = fetcher.mock.calls[2][1].body as URLSearchParams;
+  expect(tokenBody.get("grant_type")).toBe(
+    "urn:ietf:params:oauth:grant-type:device_code",
+  );
+  expect(tokenBody.get("device_code")).toBe("device-code");
+  expect(fetcher.mock.calls[3][1].headers).toEqual({
+    Authorization: "Bearer access",
+  });
+});
+it("reports denied device authorization without persisting credentials", async () => {
   const store = memoryStore();
   const fetcher = vi
     .fn()
     .mockResolvedValueOnce(
       Response.json({
-        access_token: "first",
-        refresh_token: "refresh",
-        expires_in: 0,
+        deviceCode: "device",
+        userCode: "code",
+        verificationUriComplete: "https://link.tidal.com/code",
+        expiresIn: 300,
+        interval: 1,
       }),
     )
     .mockResolvedValueOnce(
-      Response.json({ access_token: "second", expires_in: 3600 }),
+      Response.json({ error: "access_denied" }, { status: 400 }),
     );
   const auth = new TidalAuthenticator(
-    "client",
-    "http://localhost/callback",
-    ["playlists.read"],
     store,
     fetcher,
-    "https://login.test",
+    () => 1_000,
+    "https://device.test",
     "https://token.test",
-    () => 1000,
   );
-  const url = new URL(auth.authorizationUrl());
-  expect(url.searchParams.get("code_challenge_method")).toBe("S256");
-  await auth.complete("code", url.searchParams.get("state")!);
-  await expect(auth.session()).resolves.toMatchObject({
-    accessToken: "second",
-    refreshToken: "refresh",
+  await auth.beginDeviceAuthorization();
+  await expect(auth.authorizationStatus()).resolves.toEqual({
+    status: "failed",
+    error: "TIDAL device authorization was denied",
   });
-});
-it("rejects a mismatched callback without exchanging credentials", async () => {
-  const fetcher = vi.fn();
-  const auth = new TidalAuthenticator(
-    "client",
-    "callback",
-    [],
-    memoryStore(),
-    fetcher,
-  );
-  auth.authorizationUrl();
-  await expect(auth.complete("code", "wrong")).rejects.toBeInstanceOf(
-    TidalAuthenticationError,
-  );
-  expect(fetcher).not.toHaveBeenCalled();
+  expect(store.value).toBeUndefined();
 });
 it("refreshes once and preserves ordered duplicate playlist tracks", async () => {
   const store = memoryStore({
@@ -100,13 +205,7 @@ it("refreshes once and preserves ordered duplicate playlist tracks", async () =>
     .mockResolvedValue(
       Response.json({ access_token: "new", expires_in: 3600 }),
     );
-  const auth = new TidalAuthenticator(
-    "client",
-    "callback",
-    [],
-    store,
-    tokenFetch,
-  );
+  const auth = new TidalAuthenticator(store, tokenFetch);
   let calls = 0;
   const api = vi.fn(async (input: string | URL | Request) => {
     calls++;
@@ -144,7 +243,7 @@ it("attaches verified folder paths and omits unavailable relationship items", as
     accessToken: "token",
     expiresAt: Date.now() + 60_000,
   });
-  const auth = new TidalAuthenticator("client", "callback", [], store);
+  const auth = new TidalAuthenticator(store);
   const api = vi
     .fn()
     .mockResolvedValueOnce(

@@ -39,15 +39,16 @@ and are never sent to Client Components.
 - `OUTPUT_DIR` — M3U8 and CSV report directory; defaults to `output`.
 - `MUSICBRAINZ_USER_AGENT` — identifying contact string required by MusicBrainz.
 - `SPOTIFY_CLIENT_ID`, `SPOTIFY_REDIRECT_URI`, `SPOTIFY_TOKEN_CACHE` — Spotify PKCE.
-- `TIDAL_CLIENT_ID`, `TIDAL_REDIRECT_URI`, `TIDAL_SESSION_FILE` — TIDAL OAuth PKCE.
+- `TIDAL_SESSION_FILE` — persisted TIDAL device-authentication session.
 - `LIDARR_URL`, `LIDARR_API_KEY`, `LIDARR_ROOT_FOLDER`, `LIDARR_QUALITY_PROFILE_ID`,
   `LIDARR_METADATA_PROFILE_ID` — Lidarr.
 - `NAVIDROME_URL`, `NAVIDROME_USERNAME`, `NAVIDROME_PASSWORD` — optional read-only lookup.
 - `PLAYLARR_AUTH_ENABLED` — defaults to true; disable only behind a trusted gateway that protects
   every route.
 
-Spotify redirects to `/callback`; TIDAL redirects to `/api/tidal/callback`. Register the public
-URLs that actually reach Playlarr.
+Spotify sends the callback to the exact `SPOTIFY_REDIRECT_URI` saved in Settings (or configured in
+the environment when no saved value exists). Register that exact URI in the Spotify developer
+application; Playlarr does not derive or rewrite it from the browser-visible application origin.
 
 ## Docker and Unraid
 

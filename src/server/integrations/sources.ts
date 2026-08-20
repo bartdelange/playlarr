@@ -23,14 +23,8 @@ export function spotifyProvider(
   );
   return { auth, source: new SpotifySource(auth) };
 }
-export function tidalProvider(config: AppConfig, settings: SettingsRepository) {
+export function tidalProvider(config: AppConfig) {
   const auth = new TidalAuthenticator(
-    settings.get("tidal_client_id", ""),
-    settings.get(
-      "tidal_redirect_uri",
-      "http://127.0.0.1:8787/api/tidal/callback",
-    ),
-    ["playlists.read"],
     new FileTidalSessionStore(config.tidal.sessionFile),
   );
   return { auth, source: new TidalSource(auth) };

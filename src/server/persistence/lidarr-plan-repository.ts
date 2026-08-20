@@ -1,7 +1,19 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
-import type { LidarrPlan } from "../domain/lidarr";
+import type { LidarrPlan, LidarrPlanAction } from "../domain/lidarr";
+import {
+  normalizeMusicBrainzResult,
+  type MusicBrainzResult,
+} from "../domain/musicbrainz";
 const now = () => new Date().toISOString();
+
+export interface LidarrPlanningResolution {
+  entryId: number;
+  result: MusicBrainzResult;
+  evidence: Record<string, unknown>;
+  selectedReleaseGroupId?: string;
+}
+
 export class LidarrPlanRepository {
   constructor(private readonly database: Database.Database) {}
   save(importId: string, plan: LidarrPlan): string {
@@ -42,12 +54,42 @@ export class LidarrPlanRepository {
           "SELECT action_json FROM lidarr_plan_actions WHERE plan_id = ? ORDER BY position",
         )
         .all(id) as { action_json: string }[]
-    ).map((row) => JSON.parse(row.action_json));
+    ).map((row) => lidarrPlanAction(JSON.parse(row.action_json) as unknown));
     return {
       importId: header.import_id,
       status: header.status,
       plan: { actions },
     };
+  }
+  planningResolutions(importId: string): LidarrPlanningResolution[] {
+    return (
+      this.database
+        .prepare(
+          `SELECT e.id, r.result_json, r.evidence_json, r.selected_release_group_id
+           FROM resolutions r
+           JOIN playlist_entries e ON e.id = r.entry_id
+           WHERE e.import_id = ?
+           ORDER BY e.position`,
+        )
+        .all(importId) as {
+        id: number;
+        result_json: string;
+        evidence_json: string;
+        selected_release_group_id: string | null;
+      }[]
+    ).map((row) => {
+      const result = normalizeMusicBrainzResult(JSON.parse(row.result_json));
+      const selectedReleaseGroupId = row.selected_release_group_id ?? undefined;
+
+      return {
+        entryId: row.id,
+        result: selectedReleaseGroupId
+          ? { ...result, releaseGroupIds: [selectedReleaseGroupId] }
+          : result,
+        evidence: JSON.parse(row.evidence_json) as Record<string, unknown>,
+        selectedReleaseGroupId,
+      };
+    });
   }
   approve(id: string): void {
     const outcome = this.database
@@ -87,4 +129,32 @@ export class LidarrPlanRepository {
         );
     })();
   }
+}
+
+function lidarrPlanAction(value: unknown): LidarrPlanAction {
+  const action = record(value);
+
+  return {
+    action: String(action.action ?? ""),
+    artistMbid: stringValue(action.artistMbid, action.artist_mbid),
+    artistName: stringValue(action.artistName, action.artist_name),
+    releaseGroupId: stringValue(action.releaseGroupId, action.release_group_id),
+    albumTitle: stringValue(action.albumTitle, action.album_title),
+    reason: stringValue(action.reason),
+    payload: Object.keys(record(action.payload)).length
+      ? record(action.payload)
+      : undefined,
+  };
+}
+
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function stringValue(...values: unknown[]): string | undefined {
+  return values.find(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
 }

@@ -125,23 +125,9 @@ export function productionJobHandlers(
   };
   const lidarrPlanning: JobHandler = async (job, progress) => {
     if (!job.importId) throw new Error("Lidarr planning job has no import");
-    const rows = database
-      .prepare(
-        "SELECT r.result_json, r.evidence_json, r.selected_release_group_id FROM resolutions r JOIN playlist_entries e ON e.id = r.entry_id WHERE e.import_id = ? ORDER BY e.position",
-      )
-      .all(job.importId) as {
-      result_json: string;
-      evidence_json: string;
-      selected_release_group_id: string | null;
-    }[];
-    const results = rows.map((row) => {
-      const result = JSON.parse(
-        row.result_json,
-      ) as import("../domain/musicbrainz").MusicBrainzResult;
-      return row.selected_release_group_id
-        ? { ...result, releaseGroupIds: [row.selected_release_group_id] }
-        : result;
-    });
+    const plans = new LidarrPlanRepository(database);
+    const resolutionInputs = plans.planningResolutions(job.importId);
+    const results = resolutionInputs.map((row) => row.result);
     const client = new LidarrClient({
       url: value("lidarr_url", config.lidarr.url ?? ""),
       apiKey: value("lidarr_api_key", config.lidarr.apiKey ?? ""),
@@ -183,14 +169,13 @@ export function productionJobHandlers(
         groups.add(group);
     progress(2, 3, "Building read-only plan");
     const allowed = new Set(
-      rows.flatMap((row, index) =>
-        (JSON.parse(row.evidence_json) as Record<string, unknown>)
-          .allow_various_artists_release
+      resolutionInputs.flatMap((row, index) =>
+        row.evidence.allow_various_artists_release
           ? (results[index].recordingIds ?? [])
           : [],
       ),
     );
-    new LidarrPlanRepository(database).save(
+    plans.save(
       job.importId,
       planLidarr(results, artists, groups, allowed, representedLocally),
     );
@@ -203,7 +188,7 @@ export function productionJobHandlers(
       sourceName === "spotify"
         ? spotifyProvider(config, settings).source
         : sourceName === "tidal"
-          ? tidalProvider(config, settings).source
+          ? tidalProvider(config).source
           : undefined;
     if (!source) throw new Error(`unsupported playlist source: ${sourceName}`);
     const playlist = await source.getPlaylist(reference);
@@ -223,7 +208,7 @@ export function productionJobHandlers(
       sourceName === "spotify"
         ? spotifyProvider(config, settings).source
         : sourceName === "tidal"
-          ? tidalProvider(config, settings).source
+          ? tidalProvider(config).source
           : undefined;
     if (!source) throw new Error(`unsupported playlist source: ${sourceName}`);
 
@@ -247,7 +232,7 @@ export function productionJobHandlers(
       imported.source === "spotify"
         ? spotifyProvider(config, settings).source
         : imported.source === "tidal"
-          ? tidalProvider(config, settings).source
+          ? tidalProvider(config).source
           : undefined;
     if (!source)
       throw new Error(`unsupported playlist source: ${imported.source}`);

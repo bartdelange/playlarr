@@ -43,19 +43,11 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
     page.getByRole("button", { name: "Delete import" }),
   ).toBeVisible();
   await expect(
-    page
-      .getByRole("navigation", { name: "Import navigation" })
-      .getByRole("link", { name: "Local additions" }),
-  ).toBeVisible();
+    page.getByRole("navigation", { name: "Import navigation" }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "Reuse mappings" }),
   ).toBeVisible();
-  const importNavigation = page.getByRole("navigation", {
-    name: "Import navigation",
-  });
-  await expect(
-    importNavigation.getByRole("link", { name: "Overview" }),
-  ).toHaveAttribute("aria-current", "page");
   const workflow = page.getByRole("navigation", { name: "Workflow progress" });
   await expect(workflow.getByText("1 Music match")).toBeVisible();
   await expect(workflow.getByText("2 Lidarr")).toBeVisible();
@@ -71,23 +63,29 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
     page.getByRole("button", { name: /Downloaded \(/ }),
   ).toBeVisible();
   await expect(page.getByText("No matched Lidarr track")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Local additions" }),
+  ).toBeVisible();
   await page.screenshot({
     path: "docs/images/migration-output/final.png",
     fullPage: true,
   });
-  await importNavigation.getByRole("link", { name: "History" }).click();
+  await page.getByText(/Playlist refresh history/).click();
+  await page.locator("details.history").getByRole("link").first().click();
   await expect(
-    page.getByRole("heading", { name: "Playlist revisions" }),
+    page.getByRole("heading", { name: "Playlist revision" }),
   ).toBeVisible();
-  await importNavigation.getByRole("link", { name: "Reuse mappings" }).click();
+  await page.goto(`/imports/${fixtureImportId}`);
+  await page.getByRole("link", { name: "Reuse mappings" }).click();
   await expect(
     page.getByRole("heading", { name: "Fixture Playlist" }),
   ).toBeVisible();
-  await importNavigation.getByRole("link", { name: "Local additions" }).click();
+  await page.goto(`/imports/${fixtureImportId}?stage=final`);
+  await page.getByRole("link", { name: "Local additions" }).click();
   await expect(
     page.getByRole("heading", { name: "Playlist additions" }),
   ).toBeVisible();
-  await importNavigation.getByRole("link", { name: "Overview" }).click();
+  await page.goto(`/imports/${fixtureImportId}`);
   await page.getByRole("link", { name: "Review" }).click();
   await expect(
     page.getByRole("heading", { name: "Fixture Song" }),

@@ -6,6 +6,14 @@ export interface LibraryStatus {
   classification: string;
   path?: string;
 }
+export interface PlaylistExport {
+  id: string;
+  importId: string;
+  outputPath: string;
+  writtenTracks: number;
+  missingTracks: number;
+  createdAt: string;
+}
 export class LibraryRepository {
   constructor(private readonly database: Database.Database) {}
   saveStatus(importId: string, statuses: LibraryStatus[]): void {
@@ -55,5 +63,35 @@ export class LibraryRepository {
       )
       .run(now(), importId);
     return id;
+  }
+  latestExport(importId: string): PlaylistExport | undefined {
+    const row = this.database
+      .prepare(
+        `SELECT id, import_id, output_path, written_tracks, missing_tracks, created_at
+         FROM playlist_exports
+         WHERE import_id = ?
+         ORDER BY created_at DESC
+         LIMIT 1`,
+      )
+      .get(importId) as
+      | {
+          id: string;
+          import_id: string;
+          output_path: string;
+          written_tracks: number;
+          missing_tracks: number;
+          created_at: string;
+        }
+      | undefined;
+    return row
+      ? {
+          id: row.id,
+          importId: row.import_id,
+          outputPath: row.output_path,
+          writtenTracks: row.written_tracks,
+          missingTracks: row.missing_tracks,
+          createdAt: row.created_at,
+        }
+      : undefined;
   }
 }

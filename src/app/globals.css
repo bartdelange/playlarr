@@ -493,42 +493,6 @@ a.card:hover,
   border-top: 1px solid var(--border);
   color: var(--foreground);
 }
-.import-nav-shell {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-height: 52px;
-  padding: 0 max(24px, calc((100vw - 1180px) / 2));
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-subtle);
-}
-.import-nav {
-  display: flex;
-  flex: 1;
-  gap: 6px;
-  overflow-x: auto;
-}
-.import-nav a {
-  padding: 15px 12px 12px;
-  border-bottom: 3px solid transparent;
-  color: var(--muted-foreground);
-  white-space: nowrap;
-}
-.import-nav a:hover,
-.import-nav a.active {
-  color: var(--foreground);
-}
-.import-nav a.active {
-  border-color: var(--accent);
-}
-.import-nav-shell form {
-  margin: 0;
-}
-.import-nav-shell button {
-  min-height: 34px;
-  padding: 6px 10px;
-  font-size: 13px;
-}
 .steps {
   display: flex;
   gap: 12px;
@@ -565,6 +529,77 @@ a.card:hover,
   border-color: var(--accent);
   background: #142723;
   color: var(--accent);
+}
+.mapping-filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(220px, 0.55fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.mapping-filters input,
+.mapping-filters select,
+.binding-actions select {
+  margin: 0;
+}
+.release-link + .release-link,
+.plan-decision + .plan-decision {
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.release-link small,
+.plan-decision small,
+.binding-actions small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted-foreground);
+}
+.matched-lidarr-track {
+  padding: 7px 9px;
+  margin-top: 8px;
+  border-left: 2px solid var(--accent);
+  background: var(--surface-elevated);
+}
+.matched-lidarr-track .eyebrow {
+  display: block;
+  font-size: 10px;
+}
+.matched-lidarr-track strong {
+  display: block;
+  margin: 2px 0;
+}
+.table-wrap .final-table-wrap {
+  width: min(1500px, calc(100vw - 48px));
+  margin-left: 50% !important;
+  transform: translateX(-50%);
+}
+.final-table-wrap .matched-lidarr-track {
+  padding: 9px 10px;
+  margin-top: 9px;
+  background: #0d1619;
+}
+.final-table-wrap table {
+  min-width: 1450px;
+}
+.execution-note {
+  padding-left: 8px;
+  margin-top: 5px;
+  border-left: 2px solid var(--border);
+}
+.execution-note strong {
+  color: var(--foreground);
+}
+.binding-actions {
+  min-width: 180px;
+}
+.binding-actions form {
+  margin: 8px 0 0;
+}
+.binding-actions button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
 }
 .column-picker {
   margin: 14px 0;
@@ -620,6 +655,60 @@ a.card:hover,
 .step-actions h2,
 .step-actions p {
   margin: 0;
+}
+.plan-actions {
+  display: grid;
+  grid-auto-columns: minmax(max-content, 1fr);
+  grid-auto-flow: column;
+  align-items: stretch;
+}
+.plan-actions > * {
+  display: flex;
+}
+.plan-actions .button,
+.plan-actions button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-bottom: 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+}
+.dashboard-stats div {
+  padding: 18px;
+  border-right: 1px solid var(--border);
+}
+.dashboard-stats div:last-child {
+  border: 0;
+}
+.dashboard-stats strong,
+.dashboard-stats span {
+  display: block;
+}
+.dashboard-stats strong {
+  color: var(--accent);
+  font-size: 22px;
+}
+.dashboard-stats span {
+  color: var(--muted-foreground);
+}
+.playlist-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.playlist-result h2 {
+  overflow-wrap: anywhere;
+  font-size: 16px;
 }
 .table-wrap {
   margin: 22px 0;
@@ -790,6 +879,19 @@ pre {
   .stats span:nth-child(2) {
     border-right: 0;
   }
+  .dashboard-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dashboard-stats div:nth-child(2) {
+    border-right: 0;
+  }
+  .plan-actions {
+    grid-auto-flow: row;
+    grid-auto-rows: 1fr;
+  }
+  .plan-actions > * {
+    width: 100%;
+  }
   .playlist-home-row {
     grid-template-columns: 1fr;
   }
@@ -804,14 +906,11 @@ pre {
     padding-top: 10px;
     border-top: 1px solid var(--border);
   }
-  .import-nav-shell {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0;
-    padding-bottom: 10px;
-  }
   .job-row {
     align-items: flex-start;
     flex-wrap: wrap;
+  }
+  .mapping-filters {
+    grid-template-columns: 1fr;
   }
 }

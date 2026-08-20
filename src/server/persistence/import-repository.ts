@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
+import { normalizeMusicBrainzResult } from "../domain/musicbrainz";
 import type {
   AcquiredTrack,
   PlaylistInfo,
@@ -15,6 +16,12 @@ import {
 const timestamp = () => new Date().toISOString();
 const optional = (value: unknown): string | undefined =>
   typeof value === "string" ? value : undefined;
+
+export interface PersistedMatchedRecording {
+  title?: string;
+  artists: string[];
+  recordingIds: string[];
+}
 
 export class ImportRepository {
   constructor(private readonly database: Database.Database) {}
@@ -72,7 +79,12 @@ export class ImportRepository {
     return (
       this.database
         .prepare(
-          `SELECT entries.*, imports.source AS import_source, resolutions.state, resolutions.is_manual FROM playlist_entries entries JOIN imports ON imports.id = entries.import_id JOIN resolutions ON resolutions.entry_id = entries.id WHERE entries.import_id = ? ORDER BY entries.position`,
+          `SELECT entries.*, imports.source AS import_source,
+            resolutions.state AS resolution_state, resolutions.is_manual
+          FROM playlist_entries entries
+          JOIN imports ON imports.id = entries.import_id
+          JOIN resolutions ON resolutions.entry_id = entries.id
+          WHERE entries.import_id = ? ORDER BY entries.position`,
         )
         .all(importId) as Record<string, unknown>[]
     ).map((row) => ({
@@ -88,9 +100,40 @@ export class ImportRepository {
         isrc: optional(row.isrc),
         durationMs: row.duration_ms as number | undefined,
       },
-      resolutionState: row.state as string,
+      resolutionState: row.resolution_state as string,
       isManual: Boolean(row.is_manual),
     }));
+  }
+
+  musicMatchRecordings(
+    importId: string,
+  ): Map<number, PersistedMatchedRecording> {
+    const rows = this.database
+      .prepare(
+        `SELECT entries.id, resolutions.result_json
+         FROM playlist_entries entries
+         JOIN resolutions ON resolutions.entry_id = entries.id
+         WHERE entries.import_id = ?
+         ORDER BY entries.position`,
+      )
+      .all(importId) as { id: number; result_json: string }[];
+
+    return new Map(
+      rows.map((row) => {
+        const result = normalizeMusicBrainzResult(
+          JSON.parse(row.result_json || "{}"),
+        );
+
+        return [
+          row.id,
+          {
+            title: result.recordingTitle,
+            artists: result.artistNames ?? [],
+            recordingIds: result.recordingIds ?? [],
+          },
+        ];
+      }),
+    );
   }
 
   replaceTracks(importId: string, tracks: SourceTrack[]): void {
