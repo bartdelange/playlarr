@@ -1,3 +1,19 @@
-import type { LidarrPlan, LidarrPlanAction } from "../domain/lidarr"; import type { MusicBrainzResult } from "../domain/musicbrainz";
+import type { LidarrPlan, LidarrPlanAction } from "../domain/lidarr";
+import type { MusicBrainzResult } from "../domain/musicbrainz";
+
 const variousArtistsMbid = "89ad4ac3-39f7-470e-963a-56509c546377";
-export function planLidarr(results: MusicBrainzResult[], existingArtists: Set<string>, existingGroups: Set<string>, allowedVariousArtists = new Set<string>()): LidarrPlan { const actions: LidarrPlanAction[] = []; const seen = new Set<string>(); for (const result of results) { const artist = result.primaryArtistId; const group = result.releaseGroupIds?.[0]; if (!artist || !group) { actions.push({ action: "skip", reason: "musicbrainz_unresolved" }); continue; } if (artist === variousArtistsMbid && !result.recordingIds?.some((id) => allowedVariousArtists.has(id))) { actions.push({ action: "skip", artistMbid: artist, artistName: "Various Artists", reason: "various_artists_skipped" }); continue; } const key = `${artist}:${group}`; if (seen.has(key)) continue; seen.add(key); if (!existingArtists.has(artist)) actions.push({ action: "create_artist", artistMbid: artist, artistName: result.artistNames?.[0], payload: { release_group_ids: [group] } }); if (!existingGroups.has(group)) actions.push({ action: "create_release", artistMbid: artist, releaseGroupId: group, reason: "release_missing" }); else actions.push({ action: "reuse_existing_release", artistMbid: artist, releaseGroupId: group, reason: "release_exists" }); actions.push({ action: "monitor_release", artistMbid: artist, releaseGroupId: group }); actions.push({ action: "queue_search", artistMbid: artist, releaseGroupId: group }); } return { actions }; }
+export function planLidarr(results: MusicBrainzResult[], existingArtists: Set<string>, existingGroups: Set<string>, allowedVariousArtists = new Set<string>(), representedLocally = new Set<number>()): LidarrPlan {
+  const actions: LidarrPlanAction[] = []; const seen = new Set<string>();
+  for (const [position, result] of results.entries()) {
+    if (representedLocally.has(position)) { actions.push({ action: "skip", reason: "represented_locally" }); continue; }
+    const artist = result.primaryArtistId; const group = result.releaseGroupIds?.[0];
+    if (!artist || !group) { actions.push({ action: "skip", reason: "musicbrainz_unresolved" }); continue; }
+    if (artist === variousArtistsMbid && !result.recordingIds?.some((id) => allowedVariousArtists.has(id))) { actions.push({ action: "skip", artistMbid: artist, artistName: "Various Artists", reason: "various_artists_skipped" }); continue; }
+    const key = `${artist}:${group}`; if (seen.has(key)) continue; seen.add(key);
+    if (!existingArtists.has(artist)) actions.push({ action: "create_artist", artistMbid: artist, artistName: result.artistNames?.[0], payload: { release_group_ids: [group] } });
+    const payload = { requested_release_ids: result.releaseIds ?? [], requested_recording_ids: result.recordingIds ?? [] };
+    if (!existingGroups.has(group)) actions.push({ action: "create_release", artistMbid: artist, releaseGroupId: group, reason: "release_missing", payload }); else actions.push({ action: "reuse_existing_release", artistMbid: artist, releaseGroupId: group, reason: "release_exists", payload });
+    actions.push({ action: "monitor_release", artistMbid: artist, releaseGroupId: group, payload }); actions.push({ action: "queue_search", artistMbid: artist, releaseGroupId: group, payload });
+  }
+  return { actions };
+}

@@ -51,6 +51,7 @@ export default function setup() {
       },
     ],
   });
+  imports.setWorkflowState(imported.id, "library_status");
   new PlaylistRevisionRepository(database).record(imported.id, imports.entries(imported.id), [
     {
       position: 0,

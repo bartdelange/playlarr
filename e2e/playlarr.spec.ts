@@ -31,7 +31,8 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await expect(page.getByText("Fixture Song")).toBeVisible();
   await expect(page.getByRole("button", { name: "Check source updates" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate M3U8" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Local additions" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Playlist workflow" }).getByRole("link", { name: "Local additions" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Refresh library files" })).toBeVisible();
   await page.getByRole("link", { name: "Review" }).click();
   await expect(page.getByRole("heading", { name: "Fixture Song" })).toBeVisible();
   await page.goto(`/imports/${fixtureImportId}/revisions`);

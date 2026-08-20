@@ -1,2 +1,161 @@
-import Link from "next/link"; import { connection } from "next/server"; import { notFound } from "next/navigation"; import type { LidarrPlanAction } from "../../../../server/domain/lidarr"; import { ImportRepository } from "../../../../server/persistence/import-repository"; import { database } from "../../../../server/runtime"; import { requestCsrfToken } from "../../../../server/security/request"; import { approveAndExecutePlan, deleteImport, queueLidarrPlan, queuePlaylistUpdatePreview, queueResolution } from "../../../actions/workflows"; import { queuePlaylistGeneration } from "../../../actions/exports";
-export default async function ImportPage({ params }: { params: Promise<{ id: string }> }) { await connection(); const { id } = await params; const repository = new ImportRepository(database); let imported; try { imported = repository.getImport(id); } catch { notFound(); } const entries = repository.entries(id); const csrf = await requestCsrfToken(); const planHeader = database.prepare("SELECT id, status FROM lidarr_plans WHERE import_id = ? ORDER BY created_at DESC LIMIT 1").get(id) as { id: string; status: string } | undefined; const planActions = planHeader ? (database.prepare("SELECT action_json FROM lidarr_plan_actions WHERE plan_id = ? ORDER BY position").all(planHeader.id) as { action_json: string }[]).map((row) => JSON.parse(row.action_json) as LidarrPlanAction) : []; return <main><p className="eyebrow">{imported.source}</p><h1>{imported.playlistName}</h1><p><span className="badge">{imported.workflowState.replaceAll("_", " ")}</span> · {entries.length} tracks</p>{imported.lastError && <p role="alert">{imported.lastError}</p>}<div className="actions"><Link className="button" href={`/imports/${id}/revisions`}>Revision history</Link><form action={queuePlaylistUpdatePreview}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="import_id" value={id} /><button>Check source updates</button></form><Link className="button" href={`/imports/${id}/local-additions`}>Local additions</Link><form action={queuePlaylistGeneration}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="import_id" value={id} /><button>Generate M3U8</button></form>{["ready_to_resolve", "review_required"].includes(imported.workflowState) && <form action={queueResolution}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="import_id" value={id} /><button>Resolve tracks</button></form>}{["ready_to_plan", "plan_ready", "execution_failed"].includes(imported.workflowState) && <form action={queueLidarrPlan}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="import_id" value={id} /><button>Build Lidarr plan</button></form>}</div><div className="table-wrap"><table><thead><tr><th>#</th><th>State</th><th>Track</th><th>Album</th><th>Review</th></tr></thead><tbody>{entries.map((entry) => <tr key={entry.id}><td>{entry.position + 1}</td><td>{entry.resolutionState.replaceAll("_", " ")}</td><td><strong>{entry.track.title}</strong><small>{entry.track.artists.join(", ")}</small></td><td>{entry.track.album}</td><td><Link href={`/entries/${entry.id}/review`}>Review</Link></td></tr>)}</tbody></table></div>{planHeader && <section><h2>Lidarr plan <span className="badge">{planHeader.status}</span></h2><p>Planning is read-only. Approval authorizes exactly these actions; execution revalidates Lidarr immediately before mutation.</p><div className="card-list">{planActions.map((action, index) => <article className="card" key={index}><strong>{action.action.replaceAll("_", " ")}</strong><span>{action.artistName || action.artistMbid}</span><small>{action.albumTitle || action.releaseGroupId} {action.reason && `· ${action.reason.replaceAll("_", " ")}`}</small></article>)}</div>{planHeader.status === "draft" && <form action={approveAndExecutePlan}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="plan_id" value={planHeader.id} /><button>Approve and execute plan</button></form>}</section>}<form action={deleteImport}><input type="hidden" name="csrf_token" value={csrf} /><input type="hidden" name="import_id" value={id} /><button className="danger">Delete import</button></form></main>; }
+import Link from "next/link";
+import { connection } from "next/server";
+import { notFound } from "next/navigation";
+import type { LidarrPlanAction } from "../../../../server/domain/lidarr";
+import { ImportRepository } from "../../../../server/persistence/import-repository";
+import { database } from "../../../../server/runtime";
+import { requestCsrfToken } from "../../../../server/security/request";
+import {
+  approveAndExecutePlan,
+  deleteImport,
+  queueLidarrPlan,
+  queuePlaylistUpdatePreview,
+  queueResolution,
+} from "../../../actions/workflows";
+import { queuePlaylistGeneration } from "../../../actions/exports";
+export default async function ImportPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  await connection();
+  const { id } = await params;
+  const repository = new ImportRepository(database);
+  let imported;
+  try {
+    imported = repository.getImport(id);
+  } catch {
+    notFound();
+  }
+  const entries = repository.entries(id);
+  const csrf = await requestCsrfToken();
+  const planHeader = database
+    .prepare(
+      "SELECT id, status FROM lidarr_plans WHERE import_id = ? ORDER BY created_at DESC LIMIT 1",
+    )
+    .get(id) as { id: string; status: string } | undefined;
+  const planActions = planHeader
+    ? (
+        database
+          .prepare(
+            "SELECT action_json FROM lidarr_plan_actions WHERE plan_id = ? ORDER BY position",
+          )
+          .all(planHeader.id) as { action_json: string }[]
+      ).map((row) => JSON.parse(row.action_json) as LidarrPlanAction)
+    : [];
+  return (
+    <main>
+      <p className="eyebrow">{imported.source}</p>
+      <h1>{imported.playlistName}</h1>
+      <p>
+        <span className="badge">
+          {imported.workflowState.replaceAll("_", " ")}
+        </span>{" "}
+        · {entries.length} tracks
+      </p>
+      {imported.lastError && <p role="alert">{imported.lastError}</p>}
+      <div className="actions">
+        <Link className="button" href={`/imports/${id}/revisions`}>
+          Revision history
+        </Link>
+        <form action={queuePlaylistUpdatePreview}>
+          <input type="hidden" name="csrf_token" value={csrf} />
+          <input type="hidden" name="import_id" value={id} />
+          <button>Check source updates</button>
+        </form>
+        <Link className="button" href={`/imports/${id}/local-additions`}>
+          Local additions
+        </Link>
+        {["library_status", "playlist_generated"].includes(imported.workflowState) && (
+          <form action={queuePlaylistGeneration}>
+            <input type="hidden" name="csrf_token" value={csrf} />
+            <input type="hidden" name="import_id" value={id} />
+            <button>Generate M3U8</button>
+          </form>
+        )}
+        {["ready_to_resolve", "review_required"].includes(
+          imported.workflowState,
+        ) && (
+          <form action={queueResolution}>
+            <input type="hidden" name="csrf_token" value={csrf} />
+            <input type="hidden" name="import_id" value={id} />
+            <button>Resolve tracks</button>
+          </form>
+        )}
+        {["ready_to_plan", "plan_ready", "execution_failed"].includes(
+          imported.workflowState,
+        ) && (
+          <form action={queueLidarrPlan}>
+            <input type="hidden" name="csrf_token" value={csrf} />
+            <input type="hidden" name="import_id" value={id} />
+            <button>Build Lidarr plan</button>
+          </form>
+        )}
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>State</th>
+              <th>Track</th>
+              <th>Album</th>
+              <th>Review</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.id}>
+                <td>{entry.position + 1}</td>
+                <td>{entry.resolutionState.replaceAll("_", " ")}</td>
+                <td>
+                  <strong>{entry.track.title}</strong>
+                  <small>{entry.track.artists.join(", ")}</small>
+                </td>
+                <td>{entry.track.album}</td>
+                <td>
+                  <Link href={`/entries/${entry.id}/review`}>Review</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {planHeader && (
+        <section>
+          <h2>
+            Lidarr plan <span className="badge">{planHeader.status}</span>
+          </h2>
+          <p>
+            Planning is read-only. Approval authorizes exactly these actions;
+            execution revalidates Lidarr immediately before mutation.
+          </p>
+          <div className="card-list">
+            {planActions.map((action, index) => (
+              <article className="card" key={index}>
+                <strong>{action.action.replaceAll("_", " ")}</strong>
+                <span>{action.artistName || action.artistMbid}</span>
+                <small>
+                  {action.albumTitle || action.releaseGroupId}{" "}
+                  {action.reason && `· ${action.reason.replaceAll("_", " ")}`}
+                </small>
+              </article>
+            ))}
+          </div>
+          {planHeader.status === "draft" && (
+            <form action={approveAndExecutePlan}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input type="hidden" name="plan_id" value={planHeader.id} />
+              <button>Approve and execute plan</button>
+            </form>
+          )}
+        </section>
+      )}
+      <form action={deleteImport}>
+        <input type="hidden" name="csrf_token" value={csrf} />
+        <input type="hidden" name="import_id" value={id} />
+        <button className="danger">Delete import</button>
+      </form>
+    </main>
+  );
+}

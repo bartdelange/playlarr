@@ -16,6 +16,8 @@ export class LidarrClient {
   artists() { return this.request<Record<string, unknown>[]>("GET", "artist"); }
   albumsByForeignId(id: string) { return this.request<Record<string, unknown>[]>("GET", `album?foreignAlbumId=${encodeURIComponent(id)}`); }
   tracksByAlbumId(id: number) { return this.request<Record<string, unknown>[]>("GET", `track?albumId=${id}`); }
+  tracksByArtistId(id: number) { return this.request<Record<string, unknown>[]>("GET", `track?artistId=${id}`); }
+  trackFilesByArtistId(id: number) { return this.request<Record<string, unknown>[]>("GET", `trackFile?artistId=${id}`); }
 
   async lookup(path: "artist" | "album", foreignId: string, idField: string): Promise<Record<string, unknown> | undefined> {
     const matches = await this.request<Record<string, unknown>[]>("GET", `${path}/lookup?term=${encodeURIComponent(`lidarr:${foreignId}`)}`);
