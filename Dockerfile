@@ -1,36 +1,40 @@
-FROM python:3.13-slim AS builder
+FROM node:22-bookworm-slim AS builder
 
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
 
-WORKDIR /build
-COPY pyproject.toml README.md ./
-COPY src ./src
-RUN python -m pip wheel --wheel-dir /wheels .
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-FROM python:3.13-slim
+FROM node:22-bookworm-slim AS runtime
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=8787 \
     DATA_DIR=/config/data \
-    OUTPUT_DIR=/playlists \
-    TIDAL_SESSION_FILE=/config/secrets/tidal-session.json \
-    SPOTIFY_TOKEN_CACHE=/config/secrets/spotify-token.json
+    OUTPUT_DIR=/playlists
 
-RUN groupadd --gid 1000 playlarr \
-    && useradd --uid 1000 --gid playlarr --create-home playlarr \
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes gosu \
+    && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /config /playlists \
-    && chown -R playlarr:playlarr /config /playlists
-
-COPY --from=builder /wheels /wheels
-RUN python -m pip install --no-cache-dir /wheels/* && rm -rf /wheels
+    && chown node:node /config /playlists
 
 WORKDIR /app
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY scripts/container-entrypoint.sh /usr/local/bin/playlarr-entrypoint
+
 EXPOSE 8787
 VOLUME ["/config", "/playlists"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
+    CMD ["node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 
-ENTRYPOINT ["python", "-m", "music_importer.app.container_entrypoint"]
-CMD ["python", "-m", "uvicorn", "music_importer.web.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8787"]
+ENTRYPOINT ["/usr/local/bin/playlarr-entrypoint"]

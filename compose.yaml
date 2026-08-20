@@ -5,6 +5,10 @@ services:
     ports:
       - "8787:8787"
     environment:
+      DATA_DIR: /config/data
+      OUTPUT_DIR: /playlists
+      TIDAL_SESSION_FILE: /config/secrets/tidal-session.json
+      SPOTIFY_TOKEN_CACHE: /config/secrets/spotify-token.json
       TZ: ${TZ:-UTC}
       MUSICBRAINZ_USER_AGENT: ${MUSICBRAINZ_USER_AGENT:?set this in .env}
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
@@ -21,7 +25,7 @@ services:
       - ./container-config:/config
       - ./container-playlists:/playlists
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3

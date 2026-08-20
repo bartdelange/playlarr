@@ -1,6 +1,10 @@
 .git
 .github
 .venv
+.next
+node_modules
+test-results
+playwright-report
 .ruff_cache
 .data
 .secrets
@@ -12,6 +16,9 @@ build
 dist
 *.egg-info
 tests
+tests-ts
+e2e
+spike
 __pycache__
 *.py[cod]
 *.db

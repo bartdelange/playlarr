@@ -7,6 +7,7 @@ export const SCHEMA_VERSION = 8;
 export function openDatabase(databasePath: string): Database.Database {
   mkdirSync(path.dirname(databasePath), { recursive: true });
   const database = new Database(databasePath);
+  database.pragma("busy_timeout = 10000");
   database.pragma("foreign_keys = ON");
   migrate(database);
   database.pragma("foreign_keys = ON");
@@ -16,9 +17,24 @@ export function openDatabase(databasePath: string): Database.Database {
 }
 
 export function migrate(database: Database.Database): void {
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    migrateLocked(database);
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function migrateLocked(database: Database.Database): void {
   let version = database.pragma("user_version", { simple: true }) as number;
   if (version > SCHEMA_VERSION) throw new Error(`database schema ${version} is newer than supported ${SCHEMA_VERSION}`);
-  const migration = (target: number, sql: string) => { database.exec(`${sql}\nPRAGMA user_version = ${target};`); version = target; };
+  const migration = (target: number, sql: string) => {
+    database.exec(sql);
+    database.pragma(`user_version = ${target}`);
+    version = target;
+  };
   if (version < 1) migration(1, `
     CREATE TABLE imports (id TEXT PRIMARY KEY, source TEXT NOT NULL, source_playlist_id TEXT NOT NULL, playlist_name TEXT NOT NULL, playlist_path TEXT, playlist_metadata_json TEXT NOT NULL DEFAULT '{}', workflow_state TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, last_error TEXT);
     CREATE INDEX imports_updated ON imports(updated_at DESC);
