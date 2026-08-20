@@ -35,5 +35,6 @@ th, td { padding: .75rem; border-bottom: 1px solid var(--border); text-align: le
 .skeleton { min-height: 6rem; color: #8993a2; animation: pulse 1.5s infinite alternate; }
 .danger { background: #ef777f; }
 progress { width: 100%; }
+.workflow-nav { display: flex; flex-wrap: wrap; gap: 1rem; padding: .75rem max(1.25rem, calc((100% - 72rem) / 2)); border-bottom: 1px solid var(--border); background: var(--surface); }
 @keyframes pulse { to { opacity: .55; } }
 @media (max-width: 45rem) { body > header { align-items: flex-start; flex-wrap: wrap; gap: .75rem; } nav { order: 3; width: 100%; overflow-x: auto; } main { padding-top: 2rem; } }

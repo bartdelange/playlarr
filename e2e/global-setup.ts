@@ -6,6 +6,7 @@ import { JobRepository } from "../src/server/persistence/job-repository";
 import { LidarrPlanRepository } from "../src/server/persistence/lidarr-plan-repository";
 import { PlaylistRevisionRepository } from "../src/server/persistence/playlist-revision-repository";
 import { ResolutionRepository } from "../src/server/persistence/resolution-repository";
+import { playlistSnapshotToken } from "../src/server/domain/playlist-snapshot";
 
 const fixtureImportId = "00000000-0000-4000-8000-000000000001";
 
@@ -65,5 +66,24 @@ export default function setup() {
   const jobs = new JobRepository(database);
   const job = jobs.create("resolution", imported.id, 1);
   jobs.update(job.id, { status: "completed", current: 1, currentItem: "Fixture Song" });
+  const previewEntries = [
+    {
+      position: 0,
+      track: {
+        source: "spotify",
+        sourceTrackId: "track-1",
+        title: "Fixture Song (updated)",
+        artists: ["Fixture Artist"],
+        album: "Fixture Album",
+      },
+    },
+  ];
+  const preview = jobs.create("playlist_update_preview", imported.id, 2);
+  jobs.setPayload(preview.id, {
+    playlist: { source: "spotify", id: "fixture-list", name: "Fixture Playlist" },
+    entries: previewEntries,
+    snapshotToken: playlistSnapshotToken(previewEntries),
+  });
+  jobs.update(preview.id, { status: "completed", current: 2, currentItem: "Playlist update preview ready" });
   database.close();
 }
