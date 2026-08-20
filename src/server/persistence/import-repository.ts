@@ -74,6 +74,17 @@ export class ImportRepository {
         .all(limit) as { id: string }[]
     ).map((row) => this.getImport(row.id));
   }
+  findImport(
+    source: string,
+    sourcePlaylistId: string,
+  ): StoredImport | undefined {
+    const row = this.database
+      .prepare(
+        "SELECT id FROM imports WHERE source = ? AND source_playlist_id = ? ORDER BY updated_at DESC LIMIT 1",
+      )
+      .get(source, sourcePlaylistId) as { id: string } | undefined;
+    return row ? this.getImport(row.id) : undefined;
+  }
 
   entries(importId: string): StoredEntry[] {
     return (

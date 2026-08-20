@@ -9,11 +9,15 @@ export function PlaylistCatalogue({
   existingImports,
   csrf,
   acquisitionAction,
+  analyses,
+  analysisAction,
 }: {
   playlists: PlaylistInfo[];
   existingImports: Record<string, string>;
   csrf: string;
   acquisitionAction: (form: FormData) => void | Promise<void>;
+  analyses: Record<string, Record<string, unknown>>;
+  analysisAction: (form: FormData) => void | Promise<void>;
 }) {
   const [filter, setFilter] = useState("");
   const visible = playlists.filter((playlist) =>
@@ -43,6 +47,14 @@ export function PlaylistCatalogue({
                 {(playlist.path || playlist.owner) && " · "}
                 {playlist.trackCount ?? "?"} tracks
               </small>
+              {analyses[playlist.id] && (
+                <small className="analysis">
+                  Analysis: {Number(analyses[playlist.id].resolved ?? 0)}/
+                  {String(analyses[playlist.id].tracks ?? "?")} resolved ·{" "}
+                  {Number(analyses[playlist.id].artists_to_add ?? 0)} new
+                  artists
+                </small>
+              )}
             </div>
             <div className="playlist-buttons">
               {existingImports[playlist.id] ? (
@@ -58,6 +70,14 @@ export function PlaylistCatalogue({
                   <input type="hidden" name="source" value={playlist.source} />
                   <input type="hidden" name="reference" value={playlist.id} />
                   <button>Import</button>
+                </form>
+              )}
+              {!playlist.isFollowed && (
+                <form action={analysisAction}>
+                  <input type="hidden" name="csrf_token" value={csrf} />
+                  <input type="hidden" name="source" value={playlist.source} />
+                  <input type="hidden" name="reference" value={playlist.id} />
+                  <button className="secondary">Analyze</button>
                 </form>
               )}
             </div>

@@ -26,6 +26,8 @@ import { playlistSnapshotToken } from "../domain/playlist-snapshot";
 import { previewPlaylistUpdate } from "../domain/playlist-updates";
 import { refreshLibraryStatus } from "../application/library-status";
 import { normalizeMusicBrainzResult } from "../domain/musicbrainz";
+import { PersistentAcquisitionService } from "../application/acquisition";
+import { analyzePlaylist } from "../application/playlist-analysis";
 
 export function productionJobHandlers(
   database: Database.Database,
@@ -156,6 +158,8 @@ export function productionJobHandlers(
     plans.save(job.importId, plan);
   };
   const acquisition: JobHandler = async (job, progress, cancelled) => {
+    if (!job.importId)
+      throw new Error("playlist acquisition has no import placeholder");
     const sourceName = String(job.payload?.source ?? "");
     const reference = String(job.payload?.reference ?? "");
     const source =
@@ -165,16 +169,62 @@ export function productionJobHandlers(
           ? tidalProvider(config).source
           : undefined;
     if (!source) throw new Error(`unsupported playlist source: ${sourceName}`);
-    const playlist = await source.getPlaylist(reference);
-    if (cancelled()) return;
-    progress(1, 2, `Loading ${playlist.name}`);
     const imports = new ImportRepository(database);
-    const imported = imports.createImport(playlist);
-    new JobRepository(database).assignImport(job.id, imported.id);
-    const entries = await source.getEntries(playlist);
-    if (cancelled()) return;
-    imports.replaceAcquiredTracks(imported.id, entries);
-    progress(2, 2, `Imported ${playlist.name}`);
+    try {
+      progress(0, 2, "Fetching playlist metadata");
+      const playlist = await source.getPlaylist(reference);
+      if (cancelled()) return;
+      progress(1, playlist.trackCount ?? 2, `Importing ${playlist.name}`);
+      await new PersistentAcquisitionService(imports).acquireInto(
+        job.importId,
+        source,
+        playlist,
+      );
+      const completed =
+        (playlist.trackCount ?? imports.entries(job.importId).length) || 1;
+      progress(completed, completed, `Imported ${playlist.name}`);
+    } catch (error) {
+      imports.setWorkflowState(
+        job.importId,
+        "acquisition_failed",
+        error instanceof Error ? error.message : String(error),
+      );
+      throw error;
+    }
+  };
+  const playlistAnalysis: JobHandler = async (job, progress, cancelled) => {
+    const sourceName = String(job.payload?.source ?? "");
+    const reference = String(job.payload?.reference ?? "");
+    const source =
+      sourceName === "spotify"
+        ? spotifyProvider(config, settings).source
+        : sourceName === "tidal"
+          ? tidalProvider(config).source
+          : undefined;
+    if (!source) throw new Error(`unsupported playlist source: ${sourceName}`);
+    const resolver = new MusicBrainzResolver(
+      new MusicBrainzClient({
+        baseUrl: config.musicBrainz.baseUrl,
+        userAgent: value("mb_user_agent", config.musicBrainz.userAgent),
+        requestDelayMs: config.musicBrainz.requestDelay * 1000,
+        timeoutMs: config.musicBrainz.timeout * 1000,
+        maxRetries: config.musicBrainz.maxRetries,
+      }),
+    );
+    const lidarr = new LidarrClient({
+      url: value("lidarr_url", config.lidarr.url ?? ""),
+      apiKey: value("lidarr_api_key", config.lidarr.apiKey ?? ""),
+    });
+    await analyzePlaylist(
+      sourceName,
+      reference,
+      source,
+      resolver,
+      lidarr,
+      new LibraryRepository(database),
+      progress,
+      cancelled,
+    );
   };
   const catalogue: JobHandler = async (job, progress, cancelled) => {
     const sourceName = String(job.payload?.source ?? "");
@@ -350,6 +400,7 @@ export function productionJobHandlers(
   return {
     playlist_catalogue: catalogue,
     playlist_acquisition: acquisition,
+    playlist_analysis: playlistAnalysis,
     playlist_update_preview: updatePreview,
     playlist_update: updatePlaylist,
     resolution,

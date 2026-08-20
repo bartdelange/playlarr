@@ -35,6 +35,18 @@ it("persists settings, library state, and exports without losing import state", 
   settings.set("services", { lidarrUrl: "http://lidarr" });
   expect(settings.get("services", {})).toEqual({ lidarrUrl: "http://lidarr" });
   const library = new LibraryRepository(database);
+  library.savePlaylistAnalysis("spotify", "mix", "Mix", "complete", {
+    tracks: 4,
+    resolved: 3,
+    artists_to_add: 1,
+  });
+  expect(library.playlistAnalyses("spotify").mix).toMatchObject({
+    status: "complete",
+    tracks: 4,
+    resolved: 3,
+    artists_to_add: 1,
+    updatedAt: expect.any(String),
+  });
   expect(library.latestExport(imported.id)).toBeUndefined();
   library.saveStatus(imported.id, [
     { position: 0, classification: "downloaded", path: "/music/song.flac" },

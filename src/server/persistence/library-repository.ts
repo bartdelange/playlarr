@@ -14,6 +14,10 @@ export interface PlaylistExport {
   missingTracks: number;
   createdAt: string;
 }
+export interface PlaylistAnalysis extends Record<string, unknown> {
+  status: string;
+  updatedAt: string;
+}
 export class LibraryRepository {
   constructor(private readonly database: Database.Database) {}
   saveStatus(importId: string, statuses: LibraryStatus[]): void {
@@ -93,5 +97,54 @@ export class LibraryRepository {
           createdAt: row.created_at,
         }
       : undefined;
+  }
+  savePlaylistAnalysis(
+    source: string,
+    playlistId: string,
+    playlistName: string,
+    status: string,
+    result: Record<string, unknown>,
+  ): void {
+    this.database
+      .prepare(
+        `INSERT INTO playlist_analyses
+         (source, playlist_id, playlist_name, status, result_json, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(source, playlist_id) DO UPDATE SET
+           playlist_name = excluded.playlist_name,
+           status = excluded.status,
+           result_json = excluded.result_json,
+           updated_at = excluded.updated_at`,
+      )
+      .run(
+        source,
+        playlistId,
+        playlistName,
+        status,
+        JSON.stringify(result),
+        now(),
+      );
+  }
+  playlistAnalyses(source: string): Record<string, PlaylistAnalysis> {
+    const rows = this.database
+      .prepare(
+        "SELECT playlist_id, status, result_json, updated_at FROM playlist_analyses WHERE source = ?",
+      )
+      .all(source) as {
+      playlist_id: string;
+      status: string;
+      result_json: string;
+      updated_at: string;
+    }[];
+    return Object.fromEntries(
+      rows.map((row) => [
+        row.playlist_id,
+        {
+          status: row.status,
+          updatedAt: row.updated_at,
+          ...(JSON.parse(row.result_json) as Record<string, unknown>),
+        },
+      ]),
+    );
   }
 }

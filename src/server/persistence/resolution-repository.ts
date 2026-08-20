@@ -177,6 +177,23 @@ export class ResolutionRepository {
       );
     return true;
   }
+  saveImported(entryId: number, result: MusicBrainzResult): void {
+    const outcome = this.database
+      .prepare(
+        `UPDATE resolutions SET state = ?, method = 'imported_from_csv',
+         result_json = ?, evidence_json = ?, is_manual = 0,
+         validation_status = NULL, updated_at = ? WHERE entry_id = ?`,
+      )
+      .run(
+        result.resolvedVia ? "automatically_resolved" : "unresolved",
+        JSON.stringify(result),
+        JSON.stringify({ source: "mapping_csv" }),
+        now(),
+        entryId,
+      );
+    if (outcome.changes !== 1)
+      throw new Error(`unknown playlist entry: ${entryId}`);
+  }
   markResolving(entryId: number): boolean {
     const current = this.database
       .prepare("SELECT is_manual FROM resolutions WHERE entry_id = ?")

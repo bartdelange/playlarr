@@ -3,11 +3,14 @@ import { PlaylistCatalogue } from "../../../../components/imports/playlist-catal
 import type { PlaylistInfo } from "../../../../server/domain/playlist";
 import { ImportRepository } from "../../../../server/persistence/import-repository";
 import { JobRepository } from "../../../../server/persistence/job-repository";
+import { LibraryRepository } from "../../../../server/persistence/library-repository";
 import { requestCsrfToken } from "../../../../server/security/request";
 import { database } from "../../../../server/runtime";
 import {
   queuePlaylistAcquisition,
   queuePlaylistCatalogue,
+  queuePlaylistAnalysis,
+  importMappingCsvAction,
 } from "../../../actions/workflows";
 
 export default async function NewImportPage({
@@ -49,6 +52,9 @@ export default async function NewImportPage({
   const existingImports = Object.fromEntries(
     imported.map((item) => [item.sourcePlaylistId, item.id]),
   );
+  const analyses = source
+    ? new LibraryRepository(database).playlistAnalyses(source)
+    : {};
 
   return (
     <main>
@@ -60,20 +66,36 @@ export default async function NewImportPage({
       </nav>
       {error && <p role="alert">{error}</p>}
       {!source && (
-        <div className="source-grid">
-          <SourceCard
-            source="spotify"
-            title="Spotify"
-            description="Authorization Code + PKCE"
-            csrf={csrf}
-          />
-          <SourceCard
-            source="tidal"
-            title="TIDAL"
-            description="Device authentication and saved session"
-            csrf={csrf}
-          />
-        </div>
+        <>
+          <div className="source-grid">
+            <SourceCard
+              source="spotify"
+              title="Spotify"
+              description="Authorization Code + PKCE"
+              csrf={csrf}
+            />
+            <SourceCard
+              source="tidal"
+              title="TIDAL"
+              description="Device authentication and saved session"
+              csrf={csrf}
+            />
+          </div>
+          <section className="card">
+            <h2>Import mapping CSV</h2>
+            <p>Restore a mapping report previously exported by Playlarr.</p>
+            <form action={importMappingCsvAction}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input
+                type="file"
+                name="mapping"
+                accept=".csv,text/csv"
+                required
+              />
+              <button>Import CSV</button>
+            </form>
+          </section>
+        </>
       )}
       {source && playlists && (
         <PlaylistCatalogue
@@ -81,6 +103,8 @@ export default async function NewImportPage({
           existingImports={existingImports}
           csrf={csrf}
           acquisitionAction={queuePlaylistAcquisition}
+          analyses={analyses}
+          analysisAction={queuePlaylistAnalysis}
         />
       )}
     </main>

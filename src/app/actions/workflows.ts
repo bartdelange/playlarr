@@ -11,6 +11,8 @@ import { JobRepository } from "../../server/persistence/job-repository";
 import { LidarrPlanRepository } from "../../server/persistence/lidarr-plan-repository";
 import { MappingOverridesRepository } from "../../server/persistence/mapping-overrides-repository";
 import { resetSpotify, spotify, tidal } from "../../server/providers";
+import { importMappingCsv } from "../../server/application/mapping-csv-import";
+import { ResolutionRepository } from "../../server/persistence/resolution-repository";
 import { database, settings } from "../../server/runtime";
 import { requireCsrf } from "./security";
 const jobs = () => new JobRepository(database);
@@ -85,9 +87,39 @@ export async function queuePlaylistAcquisition(form: FormData) {
   const reference = String(form.get("reference") ?? "").trim();
   if (!reference || !["spotify", "tidal"].includes(source))
     redirect("/imports/new?error=Choose%20a%20provider%20and%20playlist");
+  const existing = imports().findImport(source, reference);
+  if (existing) redirect(`/imports/${existing.id}`);
+  const imported = imports().createImport({
+    source,
+    id: reference,
+    name: "Loading playlist…",
+  });
   redirect(
-    `/jobs/${jobs().create("playlist_acquisition", undefined, 2, { source, reference }).id}`,
+    `/jobs/${jobs().create("playlist_acquisition", imported.id, 2, { source, reference }).id}`,
   );
+}
+export async function queuePlaylistAnalysis(form: FormData) {
+  await requireCsrf(form);
+  const source = String(form.get("source"));
+  const reference = String(form.get("reference"));
+  if (!reference || !["spotify", "tidal"].includes(source))
+    throw new Error("Choose a playlist to analyze");
+  redirect(
+    `/jobs/${jobs().create("playlist_analysis", undefined, 0, { source, reference }).id}`,
+  );
+}
+export async function importMappingCsvAction(form: FormData) {
+  await requireCsrf(form);
+  const file = form.get("mapping");
+  if (!(file instanceof File) || !file.size)
+    throw new Error("Choose a mapping CSV");
+  const imported = importMappingCsv(
+    await file.text(),
+    file.name.replace(/\.[^.]+$/, "") || "Imported playlist",
+    imports(),
+    new ResolutionRepository(database),
+  );
+  redirect(`/imports/${imported.id}`);
 }
 export async function queuePlaylistCatalogue(form: FormData) {
   await requireCsrf(form);

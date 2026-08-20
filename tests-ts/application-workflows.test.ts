@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { PersistentAcquisitionService } from "../src/server/application/acquisition";
 import { resolveImport } from "../src/server/application/resolution";
 it("acquires source tracks into ordered durable entries", async () => {
@@ -28,6 +28,35 @@ it("acquires source tracks into ordered durable entries", async () => {
   );
   expect(imported.id).toBe("import");
   expect(calls).toEqual(["update", "entries:1"]);
+});
+it("retains the acquisition placeholder and records provider failure", async () => {
+  const calls: unknown[][] = [];
+  const repository = {
+    updatePlaylist: (...values: unknown[]) => calls.push(["update", ...values]),
+    replaceAcquiredTracks: vi.fn(),
+    setWorkflowState: (...values: unknown[]) =>
+      calls.push(["state", ...values]),
+  };
+  await expect(
+    new PersistentAcquisitionService(repository as never).acquireInto(
+      "placeholder",
+      {
+        getTracks: async () => {
+          throw new Error("provider unavailable");
+        },
+      },
+      { source: "spotify", id: "mix", name: "Fetched name" },
+    ),
+  ).rejects.toThrow("provider unavailable");
+  expect(calls).toEqual([
+    [
+      "update",
+      "placeholder",
+      expect.objectContaining({ name: "Fetched name" }),
+      expect.any(Object),
+    ],
+    ["state", "placeholder", "acquisition_failed", "provider unavailable"],
+  ]);
 });
 it("moves unresolved automated work to review while retaining manual and skipped entries", async () => {
   const states: string[] = [];

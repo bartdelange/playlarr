@@ -67,6 +67,7 @@ it("registers every durable workflow job used by the web application", () => {
     [
       "playlist_catalogue",
       "playlist_acquisition",
+      "playlist_analysis",
       "playlist_update_preview",
       "playlist_update",
       "resolution",
