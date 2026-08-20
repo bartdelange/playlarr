@@ -75,7 +75,10 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await page.getByText(/Playlist refresh history/).click();
   await page.locator("details.history").getByRole("link").first().click();
   await expect(
-    page.getByRole("heading", { name: "Playlist revision" }),
+    page.getByRole("heading", { name: "Fixture Playlist" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Before · 1 tracks/ }),
   ).toBeVisible();
   await page.goto(`/imports/${fixtureImportId}`);
   await page.getByRole("link", { name: "Reuse mappings" }).click();
@@ -85,7 +88,7 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await page.goto(`/imports/${fixtureImportId}?stage=final`);
   await page.getByRole("link", { name: "Local additions" }).click();
   await expect(
-    page.getByRole("heading", { name: "Playlist additions" }),
+    page.getByRole("heading", { name: "Local additions" }),
   ).toBeVisible();
   await page.goto(`/imports/${fixtureImportId}`);
   await page.getByRole("link", { name: "Review" }).click();
@@ -99,20 +102,20 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await page.getByRole("link", { name: /playlist update preview/i }).click();
   await page.getByRole("link", { name: "Review source update" }).click();
   await expect(
-    page.getByRole("heading", { name: "Fixture Playlist" }),
+    page.getByRole("heading", { name: "Review changes to Fixture Playlist" }),
   ).toBeVisible();
-  await expect(page.getByText("1 metadata changes")).toBeVisible();
+  await expect(page.locator(".card").getByText(/1 updated/)).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Apply approved update" }),
+    page.getByRole("button", { name: "Apply update" }),
   ).toBeVisible();
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.locator('input[name="lidarr_api_key"]')).toHaveValue("");
   await expect(
-    page.locator('input[name="lidarr_quality_profile_id"]'),
+    page.locator('select[name="lidarr_quality_profile_id"]'),
   ).toHaveValue("1");
   await expect(
-    page.locator('input[name="lidarr_metadata_profile_id"]'),
+    page.locator('select[name="lidarr_metadata_profile_id"]'),
   ).toHaveValue("1");
   await page.screenshot({
     path: "docs/images/migration-output/settings-services.png",
