@@ -3,8 +3,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { DurableJobWorker } from "../src/server/jobs/worker";
+import { productionJobHandlers } from "../src/server/jobs/handlers";
+import { loadConfig } from "../src/server/config/environment";
 import { openDatabase } from "../src/server/persistence/database";
 import { JobRepository } from "../src/server/persistence/job-repository";
+import { SettingsRepository } from "../src/server/persistence/settings-repository";
 const paths: string[] = [];
 afterEach(() =>
   paths.splice(0).forEach((value) => rmSync(value, { recursive: true })),
@@ -43,4 +46,35 @@ it("never reclaims an interrupted mutation after restart", async () => {
   ).toBe(false);
   expect(restarted.get(job.id).status).toBe("interrupted");
   expect(handler).not.toHaveBeenCalled();
+});
+it("registers every durable workflow job used by the web application", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "playlarr-worker-"));
+  paths.push(directory);
+  const database = openDatabase(path.join(directory, "state.db"));
+  const handlers = productionJobHandlers(
+    database,
+    loadConfig({
+      DATA_DIR: directory,
+      OUTPUT_DIR: path.join(directory, "playlists"),
+      MUSICBRAINZ_USER_AGENT: "Playlarr test",
+      LIDARR_QUALITY_PROFILE_ID: "1",
+      LIDARR_METADATA_PROFILE_ID: "1",
+    }),
+    new SettingsRepository(database),
+  );
+
+  expect(Object.keys(handlers).sort()).toEqual(
+    [
+      "playlist_catalogue",
+      "playlist_acquisition",
+      "playlist_update_preview",
+      "playlist_update",
+      "resolution",
+      "resolution_retry",
+      "lidarr_planning",
+      "lidarr_execution",
+      "library_status",
+      "playlist_generation",
+    ].sort(),
+  );
 });

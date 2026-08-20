@@ -191,6 +191,29 @@ export function productionJobHandlers(
     imports.replaceAcquiredTracks(imported.id, entries);
     progress(2, 2, `Imported ${playlist.name}`);
   };
+  const catalogue: JobHandler = async (job, progress, cancelled) => {
+    const sourceName = String(job.payload?.source ?? "");
+    const source =
+      sourceName === "spotify"
+        ? spotifyProvider(config, settings).source
+        : sourceName === "tidal"
+          ? tidalProvider(config, settings).source
+          : undefined;
+    if (!source) throw new Error(`unsupported playlist source: ${sourceName}`);
+
+    progress(0, 0, `Loading ${sourceName} playlists`);
+    const playlists = await source.listPlaylists();
+    if (cancelled()) return;
+    new JobRepository(database).setPayload(job.id, {
+      source: sourceName,
+      playlists,
+    });
+    progress(
+      playlists.length,
+      playlists.length,
+      `Loaded ${playlists.length} playlists`,
+    );
+  };
   const updatePreview: JobHandler = async (job, progress, cancelled) => {
     if (!job.importId) throw new Error("playlist update preview has no import");
     const imported = new ImportRepository(database).getImport(job.importId);
@@ -343,6 +366,7 @@ export function productionJobHandlers(
     );
   };
   return {
+    playlist_catalogue: catalogue,
     playlist_acquisition: acquisition,
     playlist_update_preview: updatePreview,
     playlist_update: updatePlaylist,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import type { LidarrPlanAction } from "../../../../server/domain/lidarr";
+import type { MusicBrainzResult } from "../../../../server/domain/musicbrainz";
 import { ImportRepository } from "../../../../server/persistence/import-repository";
 import { database } from "../../../../server/runtime";
 import { requestCsrfToken } from "../../../../server/security/request";
@@ -34,6 +35,34 @@ export default async function ImportPage({
     notFound();
   }
   const entries = repository.entries(id);
+  const trackDetails = new Map(
+    (
+      database
+        .prepare(
+          `SELECT e.id, r.method, r.result_json, l.classification, l.file_path
+           FROM playlist_entries e
+           JOIN resolutions r ON r.entry_id = e.id
+           LEFT JOIN library_status l ON l.entry_id = e.id
+           WHERE e.import_id = ?
+           ORDER BY e.position`,
+        )
+        .all(id) as {
+        id: number;
+        method: string | null;
+        result_json: string;
+        classification: string | null;
+        file_path: string | null;
+      }[]
+    ).map((row) => [
+      row.id,
+      {
+        method: row.method ?? undefined,
+        result: JSON.parse(row.result_json) as MusicBrainzResult,
+        libraryClassification: row.classification ?? undefined,
+        libraryPath: row.file_path ?? undefined,
+      },
+    ]),
+  );
   const csrf = await requestCsrfToken();
   const planHeader = database
     .prepare(
@@ -209,6 +238,9 @@ export default async function ImportPage({
               title: entry.track.title,
               artists: entry.track.artists,
               album: entry.track.album,
+              method: trackDetails.get(entry.id)?.method,
+              matchedTitle: trackDetails.get(entry.id)?.result.recordingTitle,
+              matchedArtists: trackDetails.get(entry.id)?.result.artistNames,
             }))}
           />
         </section>
@@ -266,13 +298,30 @@ export default async function ImportPage({
         </div>
       )}
       {stage === "final" && finalAvailable && (
-        <section id="final-library" className="card">
-          <p className="eyebrow">Final</p>
-          <h2>Library & export</h2>
-          <p className="muted">
-            Refresh downloaded files, add local tracks, then generate the
-            ordered M3U8 playlist.
-          </p>
+        <section id="final-library">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Tracks</p>
+              <h2>Library &amp; export</h2>
+            </div>
+          </div>
+          <ImportTrackTable
+            stage="final"
+            rows={entries.map((entry) => ({
+              id: entry.id,
+              position: entry.position,
+              state: entry.resolutionState,
+              title: entry.track.title,
+              artists: entry.track.artists,
+              album: entry.track.album,
+              method: trackDetails.get(entry.id)?.method,
+              matchedTitle: trackDetails.get(entry.id)?.result.recordingTitle,
+              matchedArtists: trackDetails.get(entry.id)?.result.artistNames,
+              libraryClassification: trackDetails.get(entry.id)
+                ?.libraryClassification,
+              libraryPath: trackDetails.get(entry.id)?.libraryPath,
+            }))}
+          />
         </section>
       )}
     </main>

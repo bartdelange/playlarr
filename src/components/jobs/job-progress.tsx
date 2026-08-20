@@ -15,11 +15,15 @@ export function JobProgress({ initial }: { initial: StoredJob }) {
     return () => clearInterval(timer);
   }, [job.id, job.status]);
   const destination =
-    job.status === "completed" && job.importId
-      ? job.kind === "playlist_update_preview"
-        ? `/imports/${job.importId}/update?preview_job=${job.id}`
-        : `/imports/${job.importId}`
-      : undefined;
+    job.status !== "completed"
+      ? undefined
+      : job.kind === "playlist_catalogue" && job.payload?.source
+        ? `/imports/new?source=${encodeURIComponent(String(job.payload.source))}&catalog_job=${job.id}`
+        : job.importId
+          ? job.kind === "playlist_update_preview"
+            ? `/imports/${job.importId}/update?preview_job=${job.id}`
+            : `/imports/${job.importId}`
+          : undefined;
   return (
     <section className="card">
       <span className={`badge job-${job.status}`}>{job.status}</span>
@@ -32,9 +36,11 @@ export function JobProgress({ initial }: { initial: StoredJob }) {
       {job.error && <p role="alert">{job.error}</p>}
       {destination && (
         <Link className="button" href={destination}>
-          {job.kind === "playlist_update_preview"
-            ? "Review source update"
-            : "Return to playlist"}
+          {job.kind === "playlist_catalogue"
+            ? "Choose a playlist"
+            : job.kind === "playlist_update_preview"
+              ? "Review source update"
+              : "Return to playlist"}
         </Link>
       )}
     </section>

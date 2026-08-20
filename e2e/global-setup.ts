@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 
 import { openDatabase } from "../src/server/persistence/database";
 import { ImportRepository } from "../src/server/persistence/import-repository";
@@ -11,6 +11,7 @@ import { playlistSnapshotToken } from "../src/server/domain/playlist-snapshot";
 const fixtureImportId = "00000000-0000-4000-8000-000000000001";
 
 export default function setup() {
+  mkdirSync("docs/images/migration-output", { recursive: true });
   rmSync("/private/tmp/playlarr-e2e", { recursive: true, force: true });
   const database = openDatabase(
     "/private/tmp/playlarr-e2e/data/music-importer.db",

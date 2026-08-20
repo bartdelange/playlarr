@@ -69,7 +69,6 @@ export async function saveServiceSettings(form: FormData) {
   const allowed: Record<string, string[]> = {
     musicbrainz: ["mb_user_agent"],
     spotify: ["spotify_client_id", "spotify_redirect_uri"],
-    tidal: ["tidal_client_id", "tidal_redirect_uri"],
     lidarr: [
       "lidarr_url",
       "lidarr_api_key",
@@ -110,6 +109,15 @@ export async function queuePlaylistAcquisition(form: FormData) {
     redirect("/imports/new?error=Choose%20a%20provider%20and%20playlist");
   redirect(
     `/jobs/${jobs().create("playlist_acquisition", undefined, 2, { source, reference }).id}`,
+  );
+}
+export async function queuePlaylistCatalogue(form: FormData) {
+  await requireCsrf(form);
+  const source = String(form.get("source"));
+  if (!["spotify", "tidal"].includes(source))
+    redirect("/imports/new?error=Choose%20a%20playlist%20source");
+  redirect(
+    `/jobs/${jobs().create("playlist_catalogue", undefined, 0, { source }).id}`,
   );
 }
 export async function queueResolution(form: FormData) {

@@ -26,6 +26,10 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
 }) => {
   await login(page);
   await expect(page.getByText("Fixture Playlist")).toBeVisible();
+  await page.screenshot({
+    path: "docs/images/migration-output/dashboard.png",
+    fullPage: true,
+  });
   await page.getByText("Fixture Playlist").click();
   await expect(
     page.getByRole("heading", { name: "Fixture Playlist" }),
@@ -62,6 +66,14 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
     page.getByRole("button", { name: "Refresh monitored & downloaded" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Export M3U" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Downloaded \(/ }),
+  ).toBeVisible();
+  await expect(page.getByText("No matched Lidarr track")).toBeVisible();
+  await page.screenshot({
+    path: "docs/images/migration-output/final.png",
+    fullPage: true,
+  });
   await importNavigation.getByRole("link", { name: "History" }).click();
   await expect(
     page.getByRole("heading", { name: "Playlist revisions" }),
@@ -101,6 +113,33 @@ test("login, dashboard, playlist detail, review, revisions, jobs, and settings u
   await expect(
     page.locator('input[name="lidarr_metadata_profile_id"]'),
   ).toHaveValue("1");
+  await page.screenshot({
+    path: "docs/images/migration-output/settings-services.png",
+    fullPage: true,
+  });
+  await expect(page.getByText("Services", { exact: true })).toBeVisible();
+  await page.getByText("Data Settings", { exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Playlist paths" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "docs/images/migration-output/settings-data.png",
+    fullPage: true,
+  });
+  await page.goto("/imports/new");
+  await expect(
+    page.getByRole("heading", { name: "Choose a source" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Choose Spotify" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Choose TIDAL" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "docs/images/migration-output/new-import.png",
+    fullPage: true,
+  });
 });
 
 test("job progress and logout enforce session state", async ({ page }) => {
