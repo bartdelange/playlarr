@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type TrackRow = {
@@ -31,6 +32,7 @@ export function ImportTrackTable({
   rows: TrackRow[];
   stage?: "match" | "final";
 }) {
+  const params = useParams<{ id?: string }>();
   const [filter, setFilter] = useState("all");
   const [columns, setColumns] = useState({ state: true });
   const visibleRows = useMemo(
@@ -81,11 +83,11 @@ export function ImportTrackTable({
 
   return (
     <>
-      {stage === "match" && reviewCount > 0 && (
+      {stage === "match" && params.id && reviewCount > 0 && (
         <div className="actions">
           <Link
             className="button secondary"
-            href={`/entries/${rows.find((row) => reviewStates.has(row.state))!.id}/review?session=true`}
+            href={`/imports/${params.id}/review`}
           >
             Review {reviewCount} tracks
           </Link>
