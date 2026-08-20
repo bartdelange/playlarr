@@ -25,6 +25,7 @@ import type { AcquiredTrack, PlaylistInfo } from "../domain/playlist";
 import { playlistSnapshotToken } from "../domain/playlist-snapshot";
 import { previewPlaylistUpdate } from "../domain/playlist-updates";
 import { refreshLibraryStatus } from "../application/library-status";
+import { normalizeMusicBrainzResult } from "../domain/musicbrainz";
 
 export function productionJobHandlers(
   database: Database.Database,
@@ -296,7 +297,9 @@ export function productionJobHandlers(
     progress(0, 2, "Building ordered playlist");
     let exported = buildPlaylistExport(
       entries.map((entry) => entry.track),
-      rows.map((row) => JSON.parse(row.result_json)),
+      rows.map((row) =>
+        normalizeMusicBrainzResult(JSON.parse(row.result_json)),
+      ),
       new Map(
         rows
           .filter((row) => row.file_path)
@@ -348,12 +351,7 @@ export function productionJobHandlers(
           "SELECT r.result_json FROM resolutions r JOIN playlist_entries e ON e.id = r.entry_id WHERE e.import_id = ? ORDER BY e.position",
         )
         .all(job.importId) as { result_json: string }[]
-    ).map(
-      (row) =>
-        JSON.parse(
-          row.result_json,
-        ) as import("../domain/musicbrainz").MusicBrainzResult,
-    );
+    ).map((row) => normalizeMusicBrainzResult(JSON.parse(row.result_json)));
     if (!results.some((result) => result.resolvedVia))
       throw new Error("there are no resolved tracks to check");
     const client = new LidarrClient({

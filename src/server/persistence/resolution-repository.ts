@@ -1,5 +1,8 @@
 import type Database from "better-sqlite3";
-import type { MusicBrainzResult } from "../domain/musicbrainz";
+import {
+  normalizeMusicBrainzResult,
+  type MusicBrainzResult,
+} from "../domain/musicbrainz";
 const now = () => new Date().toISOString();
 const manualMethods = new Set([
   "manual_search",
@@ -25,7 +28,7 @@ export class ResolutionRepository {
     return {
       state: String(row.state),
       method: row.method ? String(row.method) : undefined,
-      result: JSON.parse(String(row.result_json)) as MusicBrainzResult,
+      result: normalizeMusicBrainzResult(JSON.parse(String(row.result_json))),
       evidence: JSON.parse(String(row.evidence_json)) as Record<
         string,
         unknown

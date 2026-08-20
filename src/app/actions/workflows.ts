@@ -95,7 +95,7 @@ export async function saveServiceSettings(form: FormData) {
 }
 export async function authenticateSpotify(form: FormData) {
   await requireCsrf(form);
-  redirect(spotify().auth.authorizationUrl());
+  redirect(await spotify().auth.authorizationUrl());
 }
 export async function authenticateTidal(form: FormData) {
   await requireCsrf(form);

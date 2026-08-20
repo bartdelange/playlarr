@@ -1,4 +1,6 @@
 import type Database from "better-sqlite3";
+import { normalizeMusicBrainzResult } from "../domain/musicbrainz";
+import type { MusicBrainzResult } from "../domain/musicbrainz";
 import type { StoredEntry } from "../domain/playlist";
 
 interface ResolutionRow {
@@ -11,10 +13,10 @@ export interface MappingOverrideCandidate {
   target: StoredEntry;
   source: StoredEntry;
   status: "conflict" | "already_same" | "will_override" | "will_map";
-  sourceResult: Record<string, unknown>;
+  sourceResult: MusicBrainzResult;
 }
 const now = () => new Date().toISOString();
-const identity = (result: Record<string, unknown>) =>
+const identity = (result: ReturnType<typeof normalizeMusicBrainzResult>) =>
   JSON.stringify([
     result.recordingIds ?? [],
     result.releaseGroupIds ?? [],
@@ -54,10 +56,9 @@ export class MappingOverridesRepository {
     });
     const sources = new Map<string, Record<string, unknown>[]>();
     for (const row of rows(sourceImportId)) {
-      const result = JSON.parse(String(row.result_json)) as Record<
-        string,
-        unknown
-      >;
+      const result = normalizeMusicBrainzResult(
+        JSON.parse(String(row.result_json)),
+      );
       if (row.isrc && result.resolvedVia)
         sources.set(String(row.isrc), [
           ...(sources.get(String(row.isrc)) ?? []),
@@ -72,19 +73,17 @@ export class MappingOverridesRepository {
       const identities = new Set(
         matches.map((row) =>
           identity(
-            JSON.parse(String(row.result_json)) as Record<string, unknown>,
+            normalizeMusicBrainzResult(JSON.parse(String(row.result_json))),
           ),
         ),
       );
       const sourceRow = matches[0];
-      const sourceResult = JSON.parse(String(sourceRow.result_json)) as Record<
-        string,
-        unknown
-      >;
-      const targetResult = JSON.parse(String(targetRow.result_json)) as Record<
-        string,
-        unknown
-      >;
+      const sourceResult = normalizeMusicBrainzResult(
+        JSON.parse(String(sourceRow.result_json)),
+      );
+      const targetResult = normalizeMusicBrainzResult(
+        JSON.parse(String(targetRow.result_json)),
+      );
       const status =
         identities.size > 1
           ? "conflict"
