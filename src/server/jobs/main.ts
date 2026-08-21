@@ -4,10 +4,7 @@ import { productionJobHandlers } from "./handlers";
 import { DurableJobWorker } from "./worker";
 
 async function main(): Promise<void> {
-  const worker = new DurableJobWorker(
-    new JobRepository(database),
-    productionJobHandlers(database, config, settings),
-  );
+  const worker = new DurableJobWorker(new JobRepository(database), productionJobHandlers(database, config, settings));
   const shutdown = () => worker.stop();
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);

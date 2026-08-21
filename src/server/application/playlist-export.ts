@@ -1,5 +1,6 @@
 import type { MusicBrainzResult } from "../domain/musicbrainz";
 import type { SourceTrack } from "../domain/playlist";
+
 export interface PlaylistFileEntry {
   position: number;
   artist: string;
@@ -22,16 +23,9 @@ export interface LocalAddition {
   artists: string[];
   album: string;
 }
-export function translatePath(
-  value: string,
-  mappings: [string, string][],
-): string {
+export function translatePath(value: string, mappings: [string, string][]): string {
   for (const [source, target] of mappings)
-    if (
-      value === source ||
-      value.startsWith(`${source}/`) ||
-      value.startsWith(`${source}\\`)
-    )
+    if (value === source || value.startsWith(`${source}/`) || value.startsWith(`${source}\\`))
       return target + value.slice(source.length);
   return value;
 }
@@ -42,9 +36,7 @@ export function buildPlaylistExport(
   mappings: [string, string][],
 ): PlaylistExportResult {
   if (tracks.length !== results.length)
-    throw new Error(
-      "playlist tracks and MusicBrainz results must have equal length",
-    );
+    throw new Error("playlist tracks and MusicBrainz results must have equal length");
   const entries: PlaylistFileEntry[] = [];
   const missing: MissingPlaylistEntry[] = [];
   tracks.forEach((track, position) => {
@@ -60,9 +52,7 @@ export function buildPlaylistExport(
       missing.push({
         position,
         track,
-        reason: results[position].resolvedVia
-          ? "not_downloaded_or_unmatched"
-          : "musicbrainz_unresolved",
+        reason: results[position].resolvedVia ? "not_downloaded_or_unmatched" : "musicbrainz_unresolved",
       });
   });
   return { entries, missing };

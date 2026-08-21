@@ -1,8 +1,4 @@
-import type {
-  AcquiredTrack,
-  PlaylistInfo,
-  SourceTrack,
-} from "../../domain/playlist";
+import type { AcquiredTrack, PlaylistInfo, SourceTrack } from "../../domain/playlist";
 import { TidalAuthenticationError, type TidalAuthenticator } from "./auth";
 
 type FetchLike = typeof fetch;
@@ -19,16 +15,10 @@ export class TidalSource {
     private readonly folders?: TidalFolderReader,
   ) {}
   static playlistId(value: string): string {
-    return (
-      /(?:playlist\/|playlist:)([0-9a-f-]+)/i.exec(value)?.[1] ??
-      value.trim().split("?", 1)[0].replace(/\/$/, "")
-    );
+    return /(?:playlist\/|playlist:)([0-9a-f-]+)/i.exec(value)?.[1] ?? value.trim().split("?", 1)[0].replace(/\/$/, "");
   }
   async listPlaylists(): Promise<PlaylistInfo[]> {
-    const paths =
-      (await this.folders
-        ?.playlistPaths()
-        .catch(() => new Map<string, string>())) ?? new Map();
+    const paths = (await this.folders?.playlistPaths().catch(() => new Map<string, string>())) ?? new Map();
     return (await this.all("playlists")).map((item) => {
       const attributes = record(item.attributes);
       const id = String(item.id);
@@ -54,9 +44,7 @@ export class TidalSource {
     };
   }
   async getTracks(playlist: PlaylistInfo): Promise<SourceTrack[]> {
-    const items = await this.all(
-      `playlists/${encodeURIComponent(playlist.id)}/relationships/items`,
-    );
+    const items = await this.all(`playlists/${encodeURIComponent(playlist.id)}/relationships/items`);
     return items.flatMap((item) => this.track(item) ?? []);
   }
   async getEntries(playlist: PlaylistInfo): Promise<AcquiredTrack[]> {
@@ -72,11 +60,7 @@ export class TidalSource {
     if (id === undefined || !title) return undefined;
     const artists = Array.isArray(attributes.artists)
       ? attributes.artists
-          .map((artist) =>
-            typeof artist === "string"
-              ? artist
-              : String(record(artist).name ?? ""),
-          )
+          .map((artist) => (typeof artist === "string" ? artist : String(record(artist).name ?? "")))
           .filter(Boolean)
       : [];
     const album = record(attributes.album);
@@ -99,47 +83,31 @@ export class TidalSource {
     const result: Record<string, unknown>[] = [];
     let offset = 0;
     while (true) {
-      const page = await this.request(
-        `${path}?${new URLSearchParams({ limit: "100", offset: String(offset) })}`,
-      );
-      const data = Array.isArray(page.data)
-        ? page.data
-        : Array.isArray(page.items)
-          ? page.items
-          : [];
+      const page = await this.request(`${path}?${new URLSearchParams({ limit: "100", offset: String(offset) })}`);
+      const data = Array.isArray(page.data) ? page.data : Array.isArray(page.items) ? page.items : [];
       result.push(...data.map(record));
       const links = record(page.links);
       const meta = record(page.meta);
-      if (!links.next || result.length >= Number(meta.total ?? result.length))
-        return result;
+      if (!links.next || result.length >= Number(meta.total ?? result.length)) return result;
       offset += 100;
     }
   }
-  private async request(
-    path: string,
-    retried = false,
-  ): Promise<Record<string, unknown>> {
+  private async request(path: string, retried = false): Promise<Record<string, unknown>> {
     const session = await this.auth.session();
-    const response = await this.fetcher(
-      `${this.baseUrl.replace(/\/$/, "")}/${path}`,
-      {
-        headers: {
-          Accept: "application/vnd.tidal.v1+json",
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-        signal: AbortSignal.timeout(30_000),
+    const response = await this.fetcher(`${this.baseUrl.replace(/\/$/, "")}/${path}`, {
+      headers: {
+        Accept: "application/vnd.tidal.v1+json",
+        Authorization: `Bearer ${session.accessToken}`,
       },
-    );
+      signal: AbortSignal.timeout(30_000),
+    });
     if (response.status === 401 && !retried) {
       await this.auth.refresh(session);
       return this.request(path, true);
     }
     if (response.status === 401 || response.status === 403)
-      throw new TidalAuthenticationError(
-        `TIDAL authentication failed (${response.status})`,
-      );
-    if (!response.ok)
-      throw new TidalApiError(`TIDAL request failed (${response.status})`);
+      throw new TidalAuthenticationError(`TIDAL authentication failed (${response.status})`);
+    if (!response.ok) throw new TidalApiError(`TIDAL request failed (${response.status})`);
     return response.json() as Promise<Record<string, unknown>>;
   }
 }

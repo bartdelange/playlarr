@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   filterFinalRows,
   finalAvailabilityCounts,
+  type FinalTableEntry,
   finalTableRows,
   libraryAvailability,
-  type FinalTableEntry,
 } from "../../server/application/final-table-view";
 
 function entry(overrides: Partial<FinalTableEntry> = {}): FinalTableEntry {
@@ -150,11 +150,7 @@ describe("Final table view", () => {
       downloadable: 0,
       not_downloadable: 1,
     });
-    expect(filterFinalRows(rows, "downloaded").map((row) => row.id)).toEqual([
-      8,
-    ]);
-    expect(
-      filterFinalRows(rows, "not_downloadable").map((row) => row.id),
-    ).toEqual([9]);
+    expect(filterFinalRows(rows, "downloaded").map((row) => row.id)).toEqual([8]);
+    expect(filterFinalRows(rows, "not_downloadable").map((row) => row.id)).toEqual([9]);
   });
 });

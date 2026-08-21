@@ -6,20 +6,10 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig([
   ...nextVitals,
-  globalIgnores([
-    ".next/**",
-    "coverage/**",
-    "node_modules/**",
-    "playwright-report/**",
-    "spike/**",
-    "test-results/**",
-  ]),
+  globalIgnores([".next/**", "coverage/**", "node_modules/**", "playwright-report/**", "spike/**", "test-results/**"]),
   {
     files: ["src/**/*.{ts,tsx}", "e2e/**/*.ts"],
-    extends: [
-      tseslint.configs.recommended,
-      promise.configs["flat/recommended"],
-    ],
+    extends: [tseslint.configs.recommended, promise.configs["flat/recommended"]],
     languageOptions: {
       parserOptions: {
         projectService: true,

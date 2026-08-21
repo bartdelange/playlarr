@@ -16,12 +16,7 @@ export const serviceFields: Record<string, string[]> = {
   navidrome: ["navidrome_url", "navidrome_username", "navidrome_password"],
 };
 
-const retainedWhenBlank = new Set([
-  "spotify_client_id",
-  "lidarr_api_key",
-  "navidrome_username",
-  "navidrome_password",
-]);
+const retainedWhenBlank = new Set(["spotify_client_id", "lidarr_api_key", "navidrome_username", "navidrome_password"]);
 
 export function saveServiceConfiguration(
   store: ServiceSettingsStore,
@@ -33,11 +28,6 @@ export function saveServiceConfiguration(
   for (const key of fields) {
     const value = (submitted[key] ?? "").trim();
     if (!value && retainedWhenBlank.has(key)) continue;
-    store.set(
-      key,
-      /^lidarr_(quality|metadata)_profile_id$/.test(key)
-        ? Number(value || store.get(key, 1))
-        : value,
-    );
+    store.set(key, /^lidarr_(quality|metadata)_profile_id$/.test(key) ? Number(value || store.get(key, 1)) : value);
   }
 }

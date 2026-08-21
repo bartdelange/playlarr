@@ -49,9 +49,7 @@ export class FileTidalSessionStore implements TidalSessionStore {
   }
   async loadPending(): Promise<TidalPendingAuthorization | undefined> {
     try {
-      return JSON.parse(
-        await readFile(this.pendingPath, "utf8"),
-      ) as TidalPendingAuthorization;
+      return JSON.parse(await readFile(this.pendingPath, "utf8")) as TidalPendingAuthorization;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw error;
@@ -70,10 +68,7 @@ export class FileTidalSessionStore implements TidalSessionStore {
   private get pendingPath(): string {
     return `${this.sessionPath}.pending`;
   }
-  private async writePrivateJson(
-    destination: string,
-    value: TidalSession | TidalPendingAuthorization,
-  ): Promise<void> {
+  private async writePrivateJson(destination: string, value: TidalSession | TidalPendingAuthorization): Promise<void> {
     await mkdir(path.dirname(destination), { recursive: true });
     const temporary = `${destination}.tmp`;
     await writeFile(temporary, JSON.stringify(value), { mode: 0o600 });
@@ -81,10 +76,7 @@ export class FileTidalSessionStore implements TidalSessionStore {
   }
 }
 
-function nestedString(
-  value: Record<string, { data?: unknown }>,
-  key: string,
-): string | undefined {
+function nestedString(value: Record<string, { data?: unknown }>, key: string): string | undefined {
   const item = value[key]?.data;
   return typeof item === "string" && item ? item : undefined;
 }

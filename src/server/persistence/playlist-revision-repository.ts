@@ -1,10 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { AcquiredTrack, StoredEntry } from "../domain/playlist";
-import {
-  previewPlaylistUpdate,
-  type PlaylistUpdate,
-} from "../domain/playlist-updates";
+import { type PlaylistUpdate, previewPlaylistUpdate } from "../domain/playlist-updates";
+
 const now = () => new Date().toISOString();
 const snapshot = (entries: (StoredEntry | AcquiredTrack)[]) =>
   entries.map((entry) => ({
@@ -80,9 +78,7 @@ export class PlaylistRevisionRepository {
     after: ReturnType<typeof snapshot>;
   } {
     const row = this.database
-      .prepare(
-        "SELECT * FROM playlist_revisions WHERE id = ? AND import_id = ?",
-      )
+      .prepare("SELECT * FROM playlist_revisions WHERE id = ? AND import_id = ?")
       .get(id, importId) as Record<string, unknown> | undefined;
     if (!row) throw new Error(`unknown playlist revision: ${id}`);
     return {
@@ -93,9 +89,7 @@ export class PlaylistRevisionRepository {
       updated: Number(row.updated),
       moved: Number(row.moved),
       unchanged: Number(row.unchanged),
-      before: JSON.parse(String(row.before_json)) as ReturnType<
-        typeof snapshot
-      >,
+      before: JSON.parse(String(row.before_json)) as ReturnType<typeof snapshot>,
       after: JSON.parse(String(row.after_json)) as ReturnType<typeof snapshot>,
     };
   }

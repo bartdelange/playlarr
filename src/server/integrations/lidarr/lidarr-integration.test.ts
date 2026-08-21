@@ -1,20 +1,12 @@
 import { expect, it, vi } from "vitest";
-import {
-  planLidarr,
-  type LidarrPlanningClient,
-} from "../../../server/application/lidarr-planning";
+import { type LidarrPlanningClient, planLidarr } from "../../../server/application/lidarr-planning";
 import { LidarrClient } from "../../../server/integrations/lidarr/client";
 
 it("uses the Lidarr v1 API with an API-key header", async () => {
   const fetcher = vi.fn().mockResolvedValue(Response.json([]));
-  const client = new LidarrClient(
-    { url: "http://lidarr/", apiKey: "secret" },
-    fetcher,
-  );
+  const client = new LidarrClient({ url: "http://lidarr/", apiKey: "secret" }, fetcher);
   await client.albumsByArtistId(7);
-  expect(fetcher.mock.calls[0][0]).toBe(
-    "http://lidarr/api/v1/album?artistId=7",
-  );
+  expect(fetcher.mock.calls[0][0]).toBe("http://lidarr/api/v1/album?artistId=7");
   expect(fetcher.mock.calls[0][1].headers["X-Api-Key"]).toBe("secret");
 });
 
@@ -24,20 +16,11 @@ it("loads authoritative Lidarr setting options from their production endpoints",
     .mockResolvedValueOnce(Response.json([{ path: "/music" }]))
     .mockResolvedValueOnce(Response.json([{ id: 2, name: "Lossless" }]))
     .mockResolvedValueOnce(Response.json([{ id: 3, name: "Standard" }]));
-  const client = new LidarrClient(
-    { url: "http://lidarr", apiKey: "secret" },
-    fetcher,
-  );
+  const client = new LidarrClient({ url: "http://lidarr", apiKey: "secret" }, fetcher);
 
-  await expect(client.rootFolders()).resolves.toEqual([
-    { value: "/music", label: "/music" },
-  ]);
-  await expect(client.qualityProfiles()).resolves.toEqual([
-    { value: 2, label: "Lossless" },
-  ]);
-  await expect(client.metadataProfiles()).resolves.toEqual([
-    { value: 3, label: "Standard" },
-  ]);
+  await expect(client.rootFolders()).resolves.toEqual([{ value: "/music", label: "/music" }]);
+  await expect(client.qualityProfiles()).resolves.toEqual([{ value: 2, label: "Lossless" }]);
+  await expect(client.metadataProfiles()).resolves.toEqual([{ value: 3, label: "Standard" }]);
   expect(fetcher.mock.calls.map((call) => call[0])).toEqual([
     "http://lidarr/api/v1/rootfolder",
     "http://lidarr/api/v1/qualityprofile",
@@ -86,11 +69,7 @@ it("persists exact downloaded recording, release, and file identity as an unchan
     }),
   );
   expect(
-    plan.actions.filter((action) =>
-      ["create_release", "monitor_release", "queue_search"].includes(
-        action.action,
-      ),
-    ),
+    plan.actions.filter((action) => ["create_release", "monitor_release", "queue_search"].includes(action.action)),
   ).toEqual([]);
 });
 
@@ -99,11 +78,7 @@ it("plans an additive release for an existing artist when the release is missing
 
   const plan = await planLidarr([result()], client);
 
-  expect(plan.actions.map((action) => action.action)).toEqual([
-    "create_release",
-    "monitor_release",
-    "queue_search",
-  ]);
+  expect(plan.actions.map((action) => action.action)).toEqual(["create_release", "monitor_release", "queue_search"]);
   expect(plan.actions[1].payload).toEqual({
     requested_recording_ids: ["recording"],
     requested_release_ids: ["release"],
@@ -116,13 +91,9 @@ it("plans every associated release group instead of taking only the first", asyn
     planningClient({ artists: [artist()] }),
   );
 
-  expect(
-    new Set(
-      plan.actions.flatMap((action) =>
-        action.releaseGroupId ? [action.releaseGroupId] : [],
-      ),
-    ),
-  ).toEqual(new Set(["group", "alternate-group"]));
+  expect(new Set(plan.actions.flatMap((action) => (action.releaseGroupId ? [action.releaseGroupId] : [])))).toEqual(
+    new Set(["group", "alternate-group"]),
+  );
 });
 
 it("scopes release mutations to only recordings that are still missing", async () => {
@@ -151,9 +122,7 @@ it("scopes release mutations to only recordings that are still missing", async (
 
   expect(
     plan.actions
-      .filter((action) =>
-        ["monitor_release", "queue_search"].includes(action.action),
-      )
+      .filter((action) => ["monitor_release", "queue_search"].includes(action.action))
       .map((action) => action.payload?.requested_recording_ids),
   ).toEqual([["missing"], ["missing"]]);
 });
@@ -174,14 +143,9 @@ it("keeps an existing monitored release unchanged but searches for its missing r
 
   const plan = await planLidarr([result({ releaseIds: [] })], client);
 
-  expect(plan.actions.map((action) => action.action)).toEqual([
-    "unchanged",
-    "queue_search",
-  ]);
+  expect(plan.actions.map((action) => action.action)).toEqual(["unchanged", "queue_search"]);
   expect(plan.actions[0].reason).toBe("already_monitored");
-  expect(plan.actions[1].payload?.requested_recording_ids).toEqual([
-    "recording",
-  ]);
+  expect(plan.actions[1].payload?.requested_recording_ids).toEqual(["recording"]);
 });
 
 it("preserves a selected release by planning a pin even when its album is monitored", async () => {
@@ -201,9 +165,9 @@ it("preserves a selected release by planning a pin even when its album is monito
 
   const plan = await planLidarr([result()], client);
 
-  expect(
-    plan.actions.find((action) => action.action === "monitor_release")?.payload,
-  ).toMatchObject({ requested_release_ids: ["release"] });
+  expect(plan.actions.find((action) => action.action === "monitor_release")?.payload).toMatchObject({
+    requested_release_ids: ["release"],
+  });
 });
 
 it("reuses a globally existing release instead of creating a duplicate", async () => {
@@ -246,17 +210,11 @@ it("protects Various Artists albums unless the recording-scoped override is pres
     planningClient({ artists: [artist()], artistAlbums: [compilation] }),
     new Set(["recording"]),
   );
-  expect(allowedPlan.actions.some((action) => action.action === "skip")).toBe(
-    false,
-  );
+  expect(allowedPlan.actions.some((action) => action.action === "skip")).toBe(false);
   expect(
     allowedPlan.actions
-      .filter((action) =>
-        ["monitor_release", "queue_search"].includes(action.action),
-      )
-      .every(
-        (action) => action.payload?.allow_various_artists_release === true,
-      ),
+      .filter((action) => ["monitor_release", "queue_search"].includes(action.action))
+      .every((action) => action.payload?.allow_various_artists_release === true),
   ).toBe(true);
 });
 
@@ -298,9 +256,7 @@ it("uses only the master-compatible title fallback and records its match method"
     planningClient({
       artists: [artist()],
       artistAlbums: [album()],
-      artistTracks: [
-        { id: 32, albumId: 20, title: "Song", hasFile: true, trackFileId: 92 },
-      ],
+      artistTracks: [{ id: 32, albumId: 20, title: "Song", hasFile: true, trackFileId: 92 }],
     }),
   );
   expect(fallback.actions[0].payload?.matched_track).toMatchObject({
@@ -313,16 +269,10 @@ it("uses only the master-compatible title fallback and records its match method"
     planningClient({
       artists: [artist()],
       artistAlbums: [album()],
-      artistTracks: [
-        { albumId: 20, title: "Song (Radio Edit)", hasFile: true },
-      ],
+      artistTracks: [{ albumId: 20, title: "Song (Radio Edit)", hasFile: true }],
     }),
   );
-  expect(
-    incompatibleVersions.actions.some(
-      (action) => action.action === "queue_search",
-    ),
-  ).toBe(true);
+  expect(incompatibleVersions.actions.some((action) => action.action === "queue_search")).toBe(true);
 });
 
 function result(overrides: Record<string, unknown> = {}) {

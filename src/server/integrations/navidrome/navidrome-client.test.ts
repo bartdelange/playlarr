@@ -7,9 +7,7 @@ it("uses Subsonic token authentication without exposing the password", async () 
       "subsonic-response": {
         status: "ok",
         searchResult3: {
-          song: [
-            { id: "1", title: "Song", artist: "Artist", path: "A/S.flac" },
-          ],
+          song: [{ id: "1", title: "Song", artist: "Artist", path: "A/S.flac" }],
         },
       },
     }),

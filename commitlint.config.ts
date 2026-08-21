@@ -13,17 +13,7 @@ const config: UserConfig = {
     "scope-enum": [
       2,
       "always",
-      [
-        "config",
-        "deployment",
-        "lidarr",
-        "musicbrainz",
-        "persistence",
-        "playlist",
-        "repo",
-        "sources",
-        "web",
-      ],
+      ["config", "deployment", "lidarr", "musicbrainz", "persistence", "playlist", "repo", "sources", "web"],
     ],
     "header-max-length": [2, "always", 100],
     "subject-empty": [2, "never"],

@@ -3,10 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { addLocalTrack, removeLocalTrack } from "../../../../actions/exports";
-import {
-  NavidromeClient,
-  type NavidromeSong,
-} from "../../../../../server/integrations/navidrome/client";
+import { NavidromeClient, type NavidromeSong } from "../../../../../server/integrations/navidrome/client";
 import { ImportRepository } from "../../../../../server/persistence/import-repository";
 import { LocalAdditionsRepository } from "../../../../../server/persistence/local-additions-repository";
 import { config, database, settings } from "../../../../../server/runtime";
@@ -49,18 +46,10 @@ async function LocalAdditionsContent({
   const additions = new LocalAdditionsRepository(database).list(id);
   const navidrome = {
     url: settings.get("navidrome_url", config.navidrome.url ?? ""),
-    username: settings.get(
-      "navidrome_username",
-      config.navidrome.username ?? "",
-    ),
-    password: settings.get(
-      "navidrome_password",
-      config.navidrome.password ?? "",
-    ),
+    username: settings.get("navidrome_username", config.navidrome.username ?? ""),
+    password: settings.get("navidrome_password", config.navidrome.password ?? ""),
   };
-  const configured = Boolean(
-    navidrome.url && navidrome.username && navidrome.password,
-  );
+  const configured = Boolean(navidrome.url && navidrome.username && navidrome.password);
   let songs: NavidromeSong[] = [];
   let error = requestedError;
   if (configured && q.trim()) {
@@ -99,11 +88,7 @@ async function LocalAdditionsContent({
         <form method="get" className="card">
           <label>
             Search Navidrome
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="Song, artist, or album"
-            />
+            <input name="q" defaultValue={q} placeholder="Song, artist, or album" />
           </label>
           <button>Search</button>
         </form>
@@ -151,8 +136,7 @@ async function LocalAdditionsContent({
           <ol>
             {additions.map((addition) => (
               <li key={addition.id}>
-                <strong>{addition.title}</strong> —{" "}
-                {addition.artists.join(", ")}
+                <strong>{addition.title}</strong> — {addition.artists.join(", ")}
                 {addition.album && ` · ${addition.album}`}
                 <form action={removeLocalTrack} className="inline">
                   <input type="hidden" name="csrf_token" value={csrf} />

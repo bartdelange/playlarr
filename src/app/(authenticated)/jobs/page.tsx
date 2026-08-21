@@ -6,6 +6,7 @@ import { JobRepository } from "../../../server/persistence/job-repository";
 import { cancelJob } from "../../actions/workflows";
 import { requestCsrfToken } from "../../../server/security/request";
 import { queuePositions } from "../../../server/application/job-presentation";
+
 export default function JobsPage() {
   return (
     <main>
@@ -29,10 +30,7 @@ async function JobsList() {
       {!jobs.length && (
         <div className="empty">
           <h2>No background jobs</h2>
-          <p>
-            Playlist analysis, resolution, Lidarr operations, and playlist
-            generation will appear here.
-          </p>
+          <p>Playlist analysis, resolution, Lidarr operations, and playlist generation will appear here.</p>
         </div>
       )}
       {jobs.map((job) => (
@@ -49,14 +47,13 @@ async function JobsList() {
           <span>
             {job.current} / {job.total}
           </span>
-          {["queued", "running"].includes(job.status) &&
-            !job.cancelRequested && (
-              <form action={cancelJob}>
-                <input type="hidden" name="csrf_token" value={csrf} />
-                <input type="hidden" name="job_id" value={job.id} />
-                <button>Cancel</button>
-              </form>
-            )}
+          {["queued", "running"].includes(job.status) && !job.cancelRequested && (
+            <form action={cancelJob}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input type="hidden" name="job_id" value={job.id} />
+              <button>Cancel</button>
+            </form>
+          )}
         </article>
       ))}
     </div>

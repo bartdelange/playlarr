@@ -3,10 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { finalTableRows } from "../../server/application/final-table-view";
-import {
-  lidarrPlanRows,
-  lidarrPlanSummary,
-} from "../../server/application/lidarr-plan-view";
+import { lidarrPlanRows, lidarrPlanSummary } from "../../server/application/lidarr-plan-view";
 import { loadConfig } from "../../server/config/environment";
 import { productionJobHandlers } from "../../server/jobs/handlers";
 import { openDatabase } from "../../server/persistence/database";
@@ -18,8 +15,7 @@ import { SettingsRepository } from "../../server/persistence/settings-repository
 const directories: string[] = [];
 afterEach(() => {
   vi.unstubAllGlobals();
-  for (const directory of directories.splice(0))
-    rmSync(directory, { recursive: true });
+  for (const directory of directories.splice(0)) rmSync(directory, { recursive: true });
 });
 
 it("creates a master-equivalent persisted plan that feeds Lidarr, library, and Final projections", async () => {
@@ -41,9 +37,7 @@ it("creates a master-equivalent persisted plan that feeds Lidarr, library, and F
     resolution("downloaded", "artist-a", "group-a", "recording-a"),
     resolution("missing release", "artist-b", "group-b", "recording-b"),
     resolution("monitored missing", "artist-c", "group-c", "recording-c"),
-    resolution("selected edition", "artist-d", "group-d", "recording-d", [
-      "release-d",
-    ]),
+    resolution("selected edition", "artist-d", "group-d", "recording-d", ["release-d"]),
     resolution("global album", "artist-e", "group-e", "recording-e"),
     resolution("protected compilation", "artist-f", "group-f", "recording-f"),
     resolution("allowed compilation", "artist-g", "group-g", "recording-g"),
@@ -72,17 +66,13 @@ it("creates a master-equivalent persisted plan that feeds Lidarr, library, and F
       fixture.state ?? "automatically_resolved",
       fixture.method ?? "isrc",
       JSON.stringify(fixture.result),
-      JSON.stringify(
-        position === 6 ? { allow_various_artists_release: true } : {},
-      ),
+      JSON.stringify(position === 6 ? { allow_various_artists_release: true } : {}),
       fixture.state === "skipped" ? 1 : 0,
       entries[position].id,
     ),
   );
   database
-    .prepare(
-      "UPDATE resolutions SET selected_release_group_id = 'group-d' WHERE entry_id = ?",
-    )
+    .prepare("UPDATE resolutions SET selected_release_group_id = 'group-d' WHERE entry_id = ?")
     .run(entries[3].id);
 
   vi.stubGlobal("fetch", vi.fn(lidarrTransport));
@@ -104,14 +94,11 @@ it("creates a master-equivalent persisted plan that feeds Lidarr, library, and F
 
   const plans = new LidarrPlanRepository(database);
   const header = database
-    .prepare(
-      "SELECT id FROM lidarr_plans WHERE import_id = ? ORDER BY created_at DESC LIMIT 1",
-    )
+    .prepare("SELECT id FROM lidarr_plans WHERE import_id = ? ORDER BY created_at DESC LIMIT 1")
     .get(imported.id) as { id: string };
   const plan = plans.get(header.id).plan;
   const downloaded = plan.actions.find(
-    (action) =>
-      action.action === "unchanged" && action.releaseGroupId === "group-a",
+    (action) => action.action === "unchanged" && action.releaseGroupId === "group-a",
   );
   expect(downloaded).toMatchObject({
     albumTitle: "Downloaded album",
@@ -128,48 +115,26 @@ it("creates a master-equivalent persisted plan that feeds Lidarr, library, and F
       },
     },
   });
-  expect(actionsFor(plan.actions, "group-b")).toEqual([
-    "create_release",
-    "monitor_release",
-    "queue_search",
-  ]);
-  expect(actionsFor(plan.actions, "group-c")).toEqual([
-    "unchanged",
-    "queue_search",
-  ]);
+  expect(actionsFor(plan.actions, "group-b")).toEqual(["create_release", "monitor_release", "queue_search"]);
+  expect(actionsFor(plan.actions, "group-c")).toEqual(["unchanged", "queue_search"]);
   expect(
-    plan.actions.find(
-      (action) =>
-        action.action === "monitor_release" &&
-        action.releaseGroupId === "group-d",
-    )?.payload,
+    plan.actions.find((action) => action.action === "monitor_release" && action.releaseGroupId === "group-d")?.payload,
   ).toMatchObject({ requested_release_ids: ["release-d"] });
-  expect(actionsFor(plan.actions, "group-e")).toContain(
-    "reuse_existing_release",
-  );
+  expect(actionsFor(plan.actions, "group-e")).toContain("reuse_existing_release");
   expect(actionsFor(plan.actions, "group-f")).toEqual(["skip"]);
   expect(
     plan.actions
       .filter(
-        (action) =>
-          action.releaseGroupId === "group-g" &&
-          ["monitor_release", "queue_search"].includes(action.action),
+        (action) => action.releaseGroupId === "group-g" && ["monitor_release", "queue_search"].includes(action.action),
       )
-      .every(
-        (action) => action.payload?.allow_various_artists_release === true,
-      ),
+      .every((action) => action.payload?.allow_various_artists_release === true),
   ).toBe(true);
   expect(
-    plan.actions.find(
-      (action) =>
-        action.action === "unchanged" && action.releaseGroupId === "group-h",
-    )?.payload?.matched_track,
+    plan.actions.find((action) => action.action === "unchanged" && action.releaseGroupId === "group-h")?.payload
+      ?.matched_track,
   ).toMatchObject({ id: 1008, match_method: "normalized_title" });
   expect(
-    plan.actions.filter(
-      (action) =>
-        action.action === "skip" && action.reason === "musicbrainz_unresolved",
-    ),
+    plan.actions.filter((action) => action.action === "skip" && action.reason === "musicbrainz_unresolved"),
   ).toHaveLength(1);
 
   const resolutions = plans.planningResolutions(imported.id);
@@ -237,13 +202,7 @@ it("creates a master-equivalent persisted plan that feeds Lidarr, library, and F
   database.close();
 });
 
-function resolution(
-  title: string,
-  artist: string,
-  group: string,
-  recording: string,
-  releases: string[] = [],
-) {
+function resolution(title: string, artist: string, group: string, recording: string, releases: string[] = []) {
   return {
     title,
     result: {
@@ -258,13 +217,8 @@ function resolution(
   };
 }
 
-function actionsFor(
-  actions: { action: string; releaseGroupId?: string }[],
-  group: string,
-) {
-  return actions
-    .filter((action) => action.releaseGroupId === group)
-    .map((action) => action.action);
+function actionsFor(actions: { action: string; releaseGroupId?: string }[], group: string) {
+  return actions.filter((action) => action.releaseGroupId === group).map((action) => action.action);
 }
 
 async function lidarrTransport(input: string | URL | Request) {
@@ -303,38 +257,21 @@ async function lidarrTransport(input: string | URL | Request) {
   }
   if (endpoint === "album" && url.searchParams.has("foreignAlbumId")) {
     const group = url.searchParams.get("foreignAlbumId")!;
-    if (group === "group-e")
-      return Response.json([album(105, 99, group, "Global album", true)]);
+    if (group === "group-e") return Response.json([album(105, 99, group, "Global album", true)]);
     return Response.json([]);
   }
   if (endpoint === "track" && url.searchParams.has("artistId")) {
     const id = Number(url.searchParams.get("artistId"));
-    if (id === 1)
-      return Response.json([
-        track(1001, 101, "Downloaded", "recording-a", 5001),
-      ]);
-    if (id === 3)
-      return Response.json([
-        track(1003, 103, "monitored missing", "recording-c"),
-      ]);
-    if (id === 8)
-      return Response.json([
-        track(1008, 108, "title fallback", "different-h", 5008),
-      ]);
+    if (id === 1) return Response.json([track(1001, 101, "Downloaded", "recording-a", 5001)]);
+    if (id === 3) return Response.json([track(1003, 103, "monitored missing", "recording-c")]);
+    if (id === 8) return Response.json([track(1008, 108, "title fallback", "different-h", 5008)]);
     return Response.json([]);
   }
-  if (endpoint === "track" && url.searchParams.has("albumId"))
-    return Response.json([]);
+  if (endpoint === "track" && url.searchParams.has("albumId")) return Response.json([]);
   if (endpoint === "trackFile") {
     const id = Number(url.searchParams.get("artistId"));
-    if (id === 1)
-      return Response.json([
-        { id: 5001, path: "/music/Artist A/Downloaded.flac" },
-      ]);
-    if (id === 8)
-      return Response.json([
-        { id: 5008, path: "/music/Artist H/Fallback.flac" },
-      ]);
+    if (id === 1) return Response.json([{ id: 5001, path: "/music/Artist A/Downloaded.flac" }]);
+    if (id === 8) return Response.json([{ id: 5008, path: "/music/Artist H/Fallback.flac" }]);
     return Response.json([]);
   }
   if (endpoint === "album/lookup") {
@@ -373,13 +310,7 @@ function compilation(id: number, artistId: number, group: string) {
   });
 }
 
-function track(
-  id: number,
-  albumId: number,
-  title: string,
-  recording: string,
-  trackFileId?: number,
-) {
+function track(id: number, albumId: number, title: string, recording: string, trackFileId?: number) {
   return {
     id,
     albumId,

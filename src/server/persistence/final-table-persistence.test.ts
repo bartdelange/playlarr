@@ -2,11 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, it } from "vitest";
-import {
-  filterFinalRows,
-  finalAvailabilityCounts,
-  finalTableRows,
-} from "../../server/application/final-table-view";
+import { filterFinalRows, finalAvailabilityCounts, finalTableRows } from "../../server/application/final-table-view";
 import { openDatabase } from "../../server/persistence/database";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { LibraryRepository } from "../../server/persistence/library-repository";
@@ -15,9 +11,7 @@ import { LidarrPlanRepository } from "../../server/persistence/lidarr-plan-repos
 const directories: string[] = [];
 
 afterEach(() => {
-  directories
-    .splice(0)
-    .forEach((directory) => rmSync(directory, { recursive: true }));
+  directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true }));
 });
 
 it("projects persisted schema-v8 Lidarr matches independently from library availability", () => {
@@ -46,12 +40,7 @@ it("projects persisted schema-v8 Lidarr matches independently from library avail
      SET state = ?, method = ?, result_json = ?, is_manual = ?
      WHERE entry_id = ?`,
   );
-  const resolved = (
-    resolvedVia: string,
-    recording: string,
-    artist: string,
-    group: string,
-  ) =>
+  const resolved = (resolvedVia: string, recording: string, artist: string, group: string) =>
     JSON.stringify({
       resolved_via: resolvedVia,
       recording_title: `${recording} title`,
@@ -63,36 +52,21 @@ it("projects persisted schema-v8 Lidarr matches independently from library avail
   update.run(
     "automatically_resolved",
     "isrc",
-    resolved(
-      "isrc",
-      "automatic-recording",
-      "automatic-artist",
-      "automatic-group",
-    ),
+    resolved("isrc", "automatic-recording", "automatic-artist", "automatic-group"),
     0,
     entries[0].id,
   );
   update.run(
     "manually_resolved",
     "manual_mbid",
-    resolved(
-      "manual_mbid",
-      "manual-recording",
-      "manual-artist",
-      "manual-group",
-    ),
+    resolved("manual_mbid", "manual-recording", "manual-artist", "manual-group"),
     1,
     entries[1].id,
   );
   update.run(
     "manually_resolved",
     "manual_search",
-    resolved(
-      "manual_search",
-      "missing-recording",
-      "missing-artist",
-      "missing-group",
-    ),
+    resolved("manual_search", "missing-recording", "missing-artist", "missing-group"),
     1,
     entries[2].id,
   );
@@ -162,9 +136,7 @@ it("projects persisted schema-v8 Lidarr matches independently from library avail
     ],
   });
   const resolutions = new Map(
-    plans
-      .planningResolutions(imported.id)
-      .map((resolution) => [resolution.entryId, resolution.result]),
+    plans.planningResolutions(imported.id).map((resolution) => [resolution.entryId, resolution.result]),
   );
   const library = new Map(
     (

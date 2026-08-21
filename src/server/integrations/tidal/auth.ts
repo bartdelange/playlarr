@@ -1,13 +1,7 @@
-import type {
-  TidalPendingAuthorization,
-  TidalSession,
-  TidalSessionStore,
-} from "./session";
+import type { TidalPendingAuthorization, TidalSession, TidalSessionStore } from "./session";
 
 type FetchLike = typeof fetch;
-type AuthorizationStatus =
-  | { status: "missing" | "pending" | "completed" }
-  | { status: "failed"; error: string };
+type AuthorizationStatus = { status: "missing" | "pending" | "completed" } | { status: "failed"; error: string };
 
 export interface TidalDeviceAuthorization {
   verificationUrl: string;
@@ -17,8 +11,7 @@ export interface TidalDeviceAuthorization {
 
 const scope = "r_usr w_usr w_sub";
 const deviceGrant = "urn:ietf:params:oauth:grant-type:device_code";
-const deviceAuthorizationUrl =
-  "https://auth.tidal.com/v1/oauth2/device_authorization";
+const deviceAuthorizationUrl = "https://auth.tidal.com/v1/oauth2/device_authorization";
 const tokenUrl = "https://auth.tidal.com/v1/oauth2/token";
 const sessionUrl = "https://api.tidal.com/v1/sessions";
 
@@ -26,10 +19,7 @@ export class TidalAuthenticationError extends Error {}
 
 export class TidalAuthenticator {
   private pending?: TidalPendingAuthorization;
-  private readonly clientId = tidalapiCredential([
-    "WmxneVNuaGtiVzUw",
-    "V2xkTE1HbDRWQT09",
-  ]);
+  private readonly clientId = tidalapiCredential(["WmxneVNuaGtiVzUw", "V2xkTE1HbDRWQT09"]);
   private readonly clientSecret = tidalapiCredential([
     "TVU1dU9VRm1SRUZxZUhKblNrWktZa3RPVjB4bFFY",
     "bExSMVpIYlVsT2RWaFFVRXhJVmxoQmRuaEJaejA9",
@@ -49,22 +39,15 @@ export class TidalAuthenticator {
       client_id: this.clientId,
       scope,
     });
-    if (!response.ok)
-      throw new TidalAuthenticationError(
-        `TIDAL device authorization failed (${response.status})`,
-      );
+    if (!response.ok) throw new TidalAuthenticationError(`TIDAL device authorization failed (${response.status})`);
     const payload = await json(response);
     const deviceCode = text(payload.deviceCode);
     const userCode = text(payload.userCode);
-    const verification = text(
-      payload.verificationUriComplete ?? payload.verificationUri,
-    );
+    const verification = text(payload.verificationUriComplete ?? payload.verificationUri);
     const expiresIn = positiveNumber(payload.expiresIn, 300);
     const intervalMs = positiveNumber(payload.interval, 2) * 1000;
     if (!deviceCode || !userCode || !verification)
-      throw new TidalAuthenticationError(
-        "TIDAL returned an incomplete device authorization",
-      );
+      throw new TidalAuthenticationError("TIDAL returned an incomplete device authorization");
 
     this.pending = {
       deviceCode,
@@ -75,9 +58,7 @@ export class TidalAuthenticator {
     };
     await this.store.savePending(this.pending);
     return {
-      verificationUrl: /^https?:\/\//i.test(verification)
-        ? verification
-        : `https://${verification}`,
+      verificationUrl: /^https?:\/\//i.test(verification) ? verification : `https://${verification}`,
       userCode,
       expiresIn,
     };
@@ -93,10 +74,7 @@ export class TidalAuthenticator {
         error: pending.error ?? "Authentication failed",
       };
     if (this.now() >= pending.expiresAt)
-      return await this.fail(
-        pending,
-        "TIDAL device authorization expired; try again",
-      );
+      return await this.fail(pending, "TIDAL device authorization expired; try again");
     if (this.now() < pending.nextPollAt) return { status: "pending" };
 
     pending.nextPollAt = this.now() + pending.intervalMs;
@@ -135,10 +113,7 @@ export class TidalAuthenticator {
 
   async session(): Promise<TidalSession> {
     const current = await this.store.load();
-    if (!current)
-      throw new TidalAuthenticationError(
-        "authenticate TIDAL in Settings first",
-      );
+    if (!current) throw new TidalAuthenticationError("authenticate TIDAL in Settings first");
     if (current.expiresAt > this.now() + 30_000) return current;
     return this.refresh(current);
   }
@@ -146,9 +121,7 @@ export class TidalAuthenticator {
   async refresh(current?: TidalSession): Promise<TidalSession> {
     const session = current ?? (await this.store.load());
     if (!session?.refreshToken)
-      throw new TidalAuthenticationError(
-        "TIDAL refresh token is missing; authenticate again in Settings",
-      );
+      throw new TidalAuthenticationError("TIDAL refresh token is missing; authenticate again in Settings");
     const response = await this.post(this.oauthTokenUrl, {
       grant_type: "refresh_token",
       refresh_token: session.refreshToken,
@@ -168,8 +141,7 @@ export class TidalAuthenticator {
     verify = false,
   ): Promise<TidalSession> {
     const accessToken = text(payload.access_token);
-    if (!accessToken)
-      throw new TidalAuthenticationError("TIDAL returned no access token");
+    if (!accessToken) throw new TidalAuthenticationError("TIDAL returned no access token");
     const session = {
       accessToken,
       refreshToken: text(payload.refresh_token) || oldRefresh,
@@ -187,10 +159,7 @@ export class TidalAuthenticator {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(30_000),
     });
-    if (!response.ok)
-      throw new TidalAuthenticationError(
-        `TIDAL session verification failed (${response.status})`,
-      );
+    if (!response.ok) throw new TidalAuthenticationError(`TIDAL session verification failed (${response.status})`);
   }
 
   private post(url: string, values: Record<string, string>) {
@@ -202,10 +171,7 @@ export class TidalAuthenticator {
     });
   }
 
-  private async fail(
-    pending: TidalPendingAuthorization,
-    error: string,
-  ): Promise<{ status: "failed"; error: string }> {
+  private async fail(pending: TidalPendingAuthorization, error: string): Promise<{ status: "failed"; error: string }> {
     pending.status = "failed";
     pending.error = error;
     await this.store.savePending(pending);
@@ -214,9 +180,7 @@ export class TidalAuthenticator {
 }
 
 function tidalapiCredential(parts: string[]): string {
-  const inner = parts
-    .map((part) => Buffer.from(part, "base64").toString())
-    .join("");
+  const inner = parts.map((part) => Buffer.from(part, "base64").toString()).join("");
   return Buffer.from(inner, "base64").toString();
 }
 

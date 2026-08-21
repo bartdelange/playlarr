@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import type { LocalAddition } from "../application/playlist-export";
+
 export interface StoredLocalAddition extends LocalAddition {
   id: number;
   importId: string;
@@ -11,9 +12,7 @@ export class LocalAdditionsRepository {
   list(importId: string): StoredLocalAddition[] {
     return (
       this.database
-        .prepare(
-          "SELECT * FROM local_playlist_additions WHERE import_id = ? ORDER BY ordinal, id",
-        )
+        .prepare("SELECT * FROM local_playlist_additions WHERE import_id = ? ORDER BY ordinal, id")
         .all(importId) as Record<string, unknown>[]
     ).map((row) => ({
       id: Number(row.id),
@@ -28,16 +27,12 @@ export class LocalAdditionsRepository {
     }));
   }
   add(importId: string, addition: LocalAddition, pathSnapshot = ""): number {
-    if (
-      !this.database.prepare("SELECT 1 FROM imports WHERE id = ?").get(importId)
-    )
+    if (!this.database.prepare("SELECT 1 FROM imports WHERE id = ?").get(importId))
       throw new Error(`unknown import: ${importId}`);
     const ordinal = Number(
       (
         this.database
-          .prepare(
-            "SELECT COALESCE(MAX(ordinal), -1) + 1 value FROM local_playlist_additions WHERE import_id = ?",
-          )
+          .prepare("SELECT COALESCE(MAX(ordinal), -1) + 1 value FROM local_playlist_additions WHERE import_id = ?")
           .get(importId) as { value: number }
       ).value,
     );
@@ -61,11 +56,8 @@ export class LocalAdditionsRepository {
   }
   remove(importId: string, id: number): void {
     const result = this.database
-      .prepare(
-        "DELETE FROM local_playlist_additions WHERE id = ? AND import_id = ?",
-      )
+      .prepare("DELETE FROM local_playlist_additions WHERE id = ? AND import_id = ?")
       .run(id, importId);
-    if (result.changes !== 1)
-      throw new Error(`local playlist addition ${id} does not exist`);
+    if (result.changes !== 1) throw new Error(`local playlist addition ${id} does not exist`);
   }
 }

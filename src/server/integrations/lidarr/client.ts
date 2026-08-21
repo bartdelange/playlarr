@@ -16,29 +16,20 @@ export class LidarrClient {
 
   async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      this.config.timeoutMs ?? 30_000,
-    );
+    const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 30_000);
     try {
-      const response = await this.fetcher(
-        `${this.config.url.replace(/\/$/, "")}/api/v1/${path}`,
-        {
-          method,
-          headers: {
-            "X-Api-Key": this.config.apiKey,
-            Accept: "application/json",
-            ...(body ? { "Content-Type": "application/json" } : {}),
-          },
-          body: body ? JSON.stringify(body) : undefined,
-          signal: controller.signal,
+      const response = await this.fetcher(`${this.config.url.replace(/\/$/, "")}/api/v1/${path}`, {
+        method,
+        headers: {
+          "X-Api-Key": this.config.apiKey,
+          Accept: "application/json",
+          ...(body ? { "Content-Type": "application/json" } : {}),
         },
-      );
-      if (!response.ok)
-        throw new Error(`Lidarr ${method} ${path} failed: ${response.status}`);
-      return response.status === 204
-        ? (undefined as T)
-        : ((await response.json()) as T);
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`Lidarr ${method} ${path} failed: ${response.status}`);
+      return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
     } finally {
       clearTimeout(timeout);
     }
@@ -48,34 +39,19 @@ export class LidarrClient {
     return this.request<Record<string, unknown>[]>("GET", "artist");
   }
   albumsByForeignId(id: string) {
-    return this.request<Record<string, unknown>[]>(
-      "GET",
-      `album?foreignAlbumId=${encodeURIComponent(id)}`,
-    );
+    return this.request<Record<string, unknown>[]>("GET", `album?foreignAlbumId=${encodeURIComponent(id)}`);
   }
   albumsByArtistId(id: number) {
-    return this.request<Record<string, unknown>[]>(
-      "GET",
-      `album?artistId=${id}`,
-    );
+    return this.request<Record<string, unknown>[]>("GET", `album?artistId=${id}`);
   }
   tracksByAlbumId(id: number) {
-    return this.request<Record<string, unknown>[]>(
-      "GET",
-      `track?albumId=${id}`,
-    );
+    return this.request<Record<string, unknown>[]>("GET", `track?albumId=${id}`);
   }
   tracksByArtistId(id: number) {
-    return this.request<Record<string, unknown>[]>(
-      "GET",
-      `track?artistId=${id}`,
-    );
+    return this.request<Record<string, unknown>[]>("GET", `track?artistId=${id}`);
   }
   trackFilesByArtistId(id: number) {
-    return this.request<Record<string, unknown>[]>(
-      "GET",
-      `trackFile?artistId=${id}`,
-    );
+    return this.request<Record<string, unknown>[]>("GET", `trackFile?artistId=${id}`);
   }
   systemStatus() {
     return this.request<Record<string, unknown>>("GET", "system/status");
@@ -89,9 +65,7 @@ export class LidarrClient {
       .filter((item) => item.value);
   }
   async qualityProfiles(): Promise<{ value: number; label: string }[]> {
-    return (
-      await this.request<Record<string, unknown>[]>("GET", "qualityprofile")
-    )
+    return (await this.request<Record<string, unknown>[]>("GET", "qualityprofile"))
       .filter((item) => item.id !== undefined)
       .map((item) => ({
         value: Number(item.id),
@@ -99,9 +73,7 @@ export class LidarrClient {
       }));
   }
   async metadataProfiles(): Promise<{ value: number; label: string }[]> {
-    return (
-      await this.request<Record<string, unknown>[]>("GET", "metadataprofile")
-    )
+    return (await this.request<Record<string, unknown>[]>("GET", "metadataprofile"))
       .filter((item) => item.id !== undefined)
       .map((item) => ({
         value: Number(item.id),
@@ -140,8 +112,7 @@ export class LidarrClient {
 
   async createArtist(artistMbid: string): Promise<Record<string, unknown>> {
     const lookup = await this.lookup("artist", artistMbid, "foreignArtistId");
-    if (!lookup)
-      throw new Error(`Lidarr could not look up artist ${artistMbid}`);
+    if (!lookup) throw new Error(`Lidarr could not look up artist ${artistMbid}`);
     return this.request("POST", "artist", this.artistPayload(lookup));
   }
 
@@ -151,10 +122,7 @@ export class LidarrClient {
     requestedReleaseIds: string[],
   ): Promise<Record<string, unknown> | undefined> {
     const lookup = await this.lookup("album", releaseGroupId, "foreignAlbumId");
-    if (!lookup)
-      throw new Error(
-        `Lidarr could not look up release group ${releaseGroupId}`,
-      );
+    if (!lookup) throw new Error(`Lidarr could not look up release group ${releaseGroupId}`);
     const payload = {
       ...lookup,
       artistId: artist.id,
@@ -175,17 +143,11 @@ export function isVariousArtistsAlbum(album: Record<string, unknown>): boolean {
   );
 }
 
-export function pinSelectedRelease(
-  album: Record<string, unknown>,
-  requested: Set<string>,
-): boolean {
+export function pinSelectedRelease(album: Record<string, unknown>, requested: Set<string>): boolean {
   const releases = (album.releases ?? []) as Record<string, unknown>[];
-  const candidates = releases.filter((release) =>
-    requested.has(String(release.foreignReleaseId ?? "")),
-  );
+  const candidates = releases.filter((release) => requested.has(String(release.foreignReleaseId ?? "")));
   if (!candidates.length) return false;
-  const selected =
-    candidates.find((release) => release.monitored) ?? candidates[0];
+  const selected = candidates.find((release) => release.monitored) ?? candidates[0];
   let changed = album.anyReleaseOk !== false;
   album.anyReleaseOk = false;
   for (const release of releases) {

@@ -1,16 +1,9 @@
 import type Database from "better-sqlite3";
-import {
-  normalizeMusicBrainzResult,
-  type MusicBrainzResult,
-} from "../domain/musicbrainz";
+import { type MusicBrainzResult, normalizeMusicBrainzResult } from "../domain/musicbrainz";
 import type { SourceTrack } from "../domain/playlist";
+
 const now = () => new Date().toISOString();
-const manualMethods = new Set([
-  "manual_search",
-  "manual_mbid",
-  "imported_from_csv",
-  "reused_manual",
-]);
+const manualMethods = new Set(["manual_search", "manual_mbid", "imported_from_csv", "reused_manual"]);
 export interface ManualMatchSuggestion {
   entryId: number;
   playlistName: string;
@@ -39,33 +32,23 @@ export class ResolutionRepository {
     validationStatus?: string;
     selectedReleaseGroupId?: string;
   } {
-    const row = this.database
-      .prepare("SELECT * FROM resolutions WHERE entry_id = ?")
-      .get(entryId) as Record<string, unknown> | undefined;
+    const row = this.database.prepare("SELECT * FROM resolutions WHERE entry_id = ?").get(entryId) as
+      Record<string, unknown> | undefined;
     if (!row) throw new Error(`unknown playlist entry: ${entryId}`);
     return {
       state: String(row.state),
       method: row.method ? String(row.method) : undefined,
       result: normalizeMusicBrainzResult(JSON.parse(String(row.result_json))),
-      evidence: JSON.parse(String(row.evidence_json)) as Record<
-        string,
-        unknown
-      >,
+      evidence: JSON.parse(String(row.evidence_json)) as Record<string, unknown>,
       isManual: Boolean(row.is_manual),
-      validationStatus: row.validation_status
-        ? String(row.validation_status)
-        : undefined,
-      selectedReleaseGroupId: row.selected_release_group_id
-        ? String(row.selected_release_group_id)
-        : undefined,
+      validationStatus: row.validation_status ? String(row.validation_status) : undefined,
+      selectedReleaseGroupId: row.selected_release_group_id ? String(row.selected_release_group_id) : undefined,
     };
   }
   candidates(entryId: number): object[] {
     return (
       this.database
-        .prepare(
-          "SELECT candidate_json FROM resolution_candidates WHERE entry_id = ? ORDER BY position",
-        )
+        .prepare("SELECT candidate_json FROM resolution_candidates WHERE entry_id = ? ORDER BY position")
         .all(entryId) as { candidate_json: string }[]
     ).map((row) => JSON.parse(row.candidate_json) as object);
   }
@@ -91,8 +74,7 @@ export class ResolutionRepository {
         artists: JSON.parse(String(row.artists_json)) as string[],
         album: String(row.album),
         isrc: row.isrc ? String(row.isrc) : undefined,
-        durationMs:
-          row.duration_ms === null ? undefined : Number(row.duration_ms),
+        durationMs: row.duration_ms === null ? undefined : Number(row.duration_ms),
       },
       resolution: this.get(entryId),
     };
@@ -134,10 +116,7 @@ export class ResolutionRepository {
     const identities = new Set<string>();
     return rows.flatMap((row) => {
       const resolution = this.get(row.id);
-      const identity = JSON.stringify([
-        resolution.result.recordingIds ?? [],
-        resolution.result.releaseGroupIds ?? [],
-      ]);
+      const identity = JSON.stringify([resolution.result.recordingIds ?? [], resolution.result.releaseGroupIds ?? []]);
       if (identities.has(identity)) return [];
       identities.add(identity);
       return [
@@ -146,21 +125,15 @@ export class ResolutionRepository {
           playlistName: row.playlist_name,
           result: resolution.result,
           evidence: resolution.evidence,
-          validationStatus:
-            resolution.validationStatus === "warning" ? "warning" : "valid",
+          validationStatus: resolution.validationStatus === "warning" ? "warning" : "valid",
           selectedReleaseGroupId: resolution.selectedReleaseGroupId,
         },
       ];
     });
   }
-  saveAutomatic(
-    entryId: number,
-    result: MusicBrainzResult,
-    evidence: object = {},
-  ): boolean {
-    const current = this.database
-      .prepare("SELECT is_manual FROM resolutions WHERE entry_id = ?")
-      .get(entryId) as { is_manual: number } | undefined;
+  saveAutomatic(entryId: number, result: MusicBrainzResult, evidence: object = {}): boolean {
+    const current = this.database.prepare("SELECT is_manual FROM resolutions WHERE entry_id = ?").get(entryId) as
+      { is_manual: number } | undefined;
     if (!current) throw new Error(`unknown playlist entry: ${entryId}`);
     if (current.is_manual) return false;
     this.database
@@ -191,33 +164,25 @@ export class ResolutionRepository {
         now(),
         entryId,
       );
-    if (outcome.changes !== 1)
-      throw new Error(`unknown playlist entry: ${entryId}`);
+    if (outcome.changes !== 1) throw new Error(`unknown playlist entry: ${entryId}`);
   }
   markResolving(entryId: number): boolean {
-    const current = this.database
-      .prepare("SELECT is_manual FROM resolutions WHERE entry_id = ?")
-      .get(entryId) as { is_manual: number } | undefined;
+    const current = this.database.prepare("SELECT is_manual FROM resolutions WHERE entry_id = ?").get(entryId) as
+      { is_manual: number } | undefined;
     if (!current) throw new Error(`unknown playlist entry: ${entryId}`);
     if (current.is_manual) return false;
     this.database
-      .prepare(
-        "UPDATE resolutions SET state = 'resolving', updated_at = ? WHERE entry_id = ?",
-      )
+      .prepare("UPDATE resolutions SET state = 'resolving', updated_at = ? WHERE entry_id = ?")
       .run(now(), entryId);
     return true;
   }
   saveCandidates(entryId: number, candidates: object[]): void {
     const save = this.database.transaction(() => {
-      this.database
-        .prepare("DELETE FROM resolution_candidates WHERE entry_id = ?")
-        .run(entryId);
+      this.database.prepare("DELETE FROM resolution_candidates WHERE entry_id = ?").run(entryId);
       const insert = this.database.prepare(
         "INSERT INTO resolution_candidates (entry_id, position, candidate_json, created_at) VALUES (?, ?, ?, ?)",
       );
-      candidates.forEach((candidate, position) =>
-        insert.run(entryId, position, JSON.stringify(candidate), now()),
-      );
+      candidates.forEach((candidate, position) => insert.run(entryId, position, JSON.stringify(candidate), now()));
     });
     save();
   }
@@ -229,11 +194,9 @@ export class ResolutionRepository {
     evidence: object = {},
     selectedReleaseGroupId?: string,
   ): void {
-    if (!manualMethods.has(method))
-      throw new Error(`invalid manual resolution method: ${method}`);
-    const owner = this.database
-      .prepare("SELECT import_id FROM playlist_entries WHERE id = ?")
-      .get(entryId) as { import_id: string } | undefined;
+    if (!manualMethods.has(method)) throw new Error(`invalid manual resolution method: ${method}`);
+    const owner = this.database.prepare("SELECT import_id FROM playlist_entries WHERE id = ?").get(entryId) as
+      { import_id: string } | undefined;
     if (!owner) throw new Error(`unknown playlist entry: ${entryId}`);
     const at = now();
     const write = this.database.transaction(() => {
@@ -253,9 +216,7 @@ export class ResolutionRepository {
         );
       this.invalidateDraftPlans(owner.import_id);
       this.database
-        .prepare(
-          "UPDATE imports SET workflow_state = 'ready_to_plan', updated_at = ? WHERE id = ?",
-        )
+        .prepare("UPDATE imports SET workflow_state = 'ready_to_plan', updated_at = ? WHERE id = ?")
         .run(at, owner.import_id);
     });
     write();
@@ -266,8 +227,7 @@ export class ResolutionRepository {
         "UPDATE resolutions SET state = 'pending', method = NULL, result_json = '{}', evidence_json = '{}', is_manual = 0, validation_status = NULL, selected_release_group_id = NULL, confirmed_at = NULL, updated_at = ? WHERE entry_id = ?",
       )
       .run(now(), entryId);
-    if (result.changes !== 1)
-      throw new Error(`unknown playlist entry: ${entryId}`);
+    if (result.changes !== 1) throw new Error(`unknown playlist entry: ${entryId}`);
   }
   markSkipped(entryId: number): void {
     const owner = this.owner(entryId);
@@ -286,9 +246,8 @@ export class ResolutionRepository {
     })();
   }
   markValidationFailed(entryId: number, errors: string[]): void {
-    const current = this.database
-      .prepare("SELECT is_manual FROM resolutions WHERE entry_id = ?")
-      .get(entryId) as { is_manual: number } | undefined;
+    const current = this.database.prepare("SELECT is_manual FROM resolutions WHERE entry_id = ?").get(entryId) as
+      { is_manual: number } | undefined;
     if (!current) throw new Error(`unknown playlist entry: ${entryId}`);
     if (current.is_manual) return;
     this.database
@@ -303,23 +262,17 @@ export class ResolutionRepository {
   updateReviewWorkflow(importId: string): void {
     if (this.reviewQueue(importId).length) return;
     this.database
-      .prepare(
-        "UPDATE imports SET workflow_state = 'ready_to_plan', updated_at = ? WHERE id = ?",
-      )
+      .prepare("UPDATE imports SET workflow_state = 'ready_to_plan', updated_at = ? WHERE id = ?")
       .run(now(), importId);
   }
   requireReview(importId: string): void {
     this.database
-      .prepare(
-        "UPDATE imports SET workflow_state = 'review_required', updated_at = ? WHERE id = ?",
-      )
+      .prepare("UPDATE imports SET workflow_state = 'review_required', updated_at = ? WHERE id = ?")
       .run(now(), importId);
   }
   planBelongsToImport(planId: string, importId: string): boolean {
     return Boolean(
-      this.database
-        .prepare("SELECT 1 FROM lidarr_plans WHERE id = ? AND import_id = ?")
-        .get(planId, importId),
+      this.database.prepare("SELECT 1 FROM lidarr_plans WHERE id = ? AND import_id = ?").get(planId, importId),
     );
   }
   setVariousArtistsOverride(entryId: number, allowed: boolean): void {
@@ -329,38 +282,28 @@ export class ResolutionRepository {
       )
       .get(entryId) as { import_id: string; evidence_json: string } | undefined;
     if (!row) throw new Error(`unknown playlist entry: ${entryId}`);
-    const evidence = JSON.parse(row.evidence_json || "{}") as Record<
-      string,
-      unknown
-    >;
+    const evidence = JSON.parse(row.evidence_json || "{}") as Record<string, unknown>;
     if (allowed) evidence.allow_various_artists_release = true;
     else delete evidence.allow_various_artists_release;
     const at = now();
     this.database.transaction(() => {
       this.database
-        .prepare(
-          "UPDATE resolutions SET evidence_json = ?, updated_at = ? WHERE entry_id = ?",
-        )
+        .prepare("UPDATE resolutions SET evidence_json = ?, updated_at = ? WHERE entry_id = ?")
         .run(JSON.stringify(evidence), at, entryId);
       this.invalidateDraftPlans(row.import_id);
       this.database
-        .prepare(
-          "UPDATE imports SET workflow_state = 'ready_to_plan', updated_at = ? WHERE id = ?",
-        )
+        .prepare("UPDATE imports SET workflow_state = 'ready_to_plan', updated_at = ? WHERE id = ?")
         .run(at, row.import_id);
     })();
   }
   private invalidateDraftPlans(importId: string): void {
     this.database
-      .prepare(
-        "UPDATE lidarr_plans SET status = 'superseded' WHERE import_id = ? AND status = 'draft'",
-      )
+      .prepare("UPDATE lidarr_plans SET status = 'superseded' WHERE import_id = ? AND status = 'draft'")
       .run(importId);
   }
   private owner(entryId: number): string {
-    const row = this.database
-      .prepare("SELECT import_id FROM playlist_entries WHERE id = ?")
-      .get(entryId) as { import_id: string } | undefined;
+    const row = this.database.prepare("SELECT import_id FROM playlist_entries WHERE id = ?").get(entryId) as
+      { import_id: string } | undefined;
     if (!row) throw new Error(`unknown playlist entry: ${entryId}`);
     return row.import_id;
   }

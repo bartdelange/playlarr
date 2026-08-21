@@ -43,12 +43,8 @@ async function MappingOverridesContent({
     notFound();
   }
   const sources = imports.listImports().filter((item) => item.id !== id);
-  const selectedSource = sourceId
-    ? sources.find((source) => source.id === sourceId)
-    : undefined;
-  const candidates = selectedSource
-    ? new MappingOverridesRepository(database).candidates(id, selectedSource.id)
-    : [];
+  const selectedSource = sourceId ? sources.find((source) => source.id === sourceId) : undefined;
+  const candidates = selectedSource ? new MappingOverridesRepository(database).candidates(id, selectedSource.id) : [];
   const csrf = await requestCsrfToken();
 
   return (
@@ -57,15 +53,11 @@ async function MappingOverridesContent({
       <section className="card">
         <h2>Choose a source import</h2>
         <p>
-          Only exact, non-empty ISRC matches are considered. Nothing changes
-          until you review and apply the selected rows.
+          Only exact, non-empty ISRC matches are considered. Nothing changes until you review and apply the selected
+          rows.
         </p>
         <form method="get">
-          <select
-            name="source_import_id"
-            defaultValue={sourceId ?? ""}
-            required
-          >
+          <select name="source_import_id" defaultValue={sourceId ?? ""} required>
             <option value="">Select an import…</option>
             {sources.map((source) => (
               <option key={source.id} value={source.id}>
@@ -91,7 +83,5 @@ async function MappingOverridesContent({
 }
 
 function MappingOverridesSkeleton() {
-  return (
-    <section className="card skeleton">Loading mapping candidates…</section>
-  );
+  return <section className="card skeleton">Loading mapping candidates…</section>;
 }

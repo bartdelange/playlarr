@@ -7,11 +7,7 @@ import { JobRepository } from "../../../../server/persistence/job-repository";
 import { LibraryRepository } from "../../../../server/persistence/library-repository";
 import { requestCsrfToken } from "../../../../server/security/request";
 import { database } from "../../../../server/runtime";
-import {
-  queuePlaylistAcquisition,
-  queuePlaylistAnalysis,
-  queuePlaylistCatalogue,
-} from "../../../actions/workflows";
+import { queuePlaylistAcquisition, queuePlaylistAnalysis, queuePlaylistCatalogue } from "../../../actions/workflows";
 
 export default function NewImportPage({
   searchParams,
@@ -64,17 +60,9 @@ async function NewImportContent({
     playlists = job.payload.playlists as PlaylistInfo[];
   }
 
-  const imported = source
-    ? new ImportRepository(database)
-        .listImports()
-        .filter((item) => item.source === source)
-    : [];
-  const existingImports = Object.fromEntries(
-    imported.map((item) => [item.sourcePlaylistId, item.id]),
-  );
-  const analyses = source
-    ? new LibraryRepository(database).playlistAnalyses(source)
-    : {};
+  const imported = source ? new ImportRepository(database).listImports().filter((item) => item.source === source) : [];
+  const existingImports = Object.fromEntries(imported.map((item) => [item.sourcePlaylistId, item.id]));
+  const analyses = source ? new LibraryRepository(database).playlistAnalyses(source) : {};
 
   return (
     <>
@@ -87,12 +75,7 @@ async function NewImportContent({
       {!source && (
         <>
           <div className="source-grid">
-            <SourceCard
-              source="spotify"
-              title="Spotify"
-              description="Authorization Code + PKCE"
-              csrf={csrf}
-            />
+            <SourceCard source="spotify" title="Spotify" description="Authorization Code + PKCE" csrf={csrf} />
             <SourceCard
               source="tidal"
               title="TIDAL"

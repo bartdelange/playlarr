@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 import {
   confirmManualResolution,
+  type ManualResolutionMethod,
   prepareAutomaticRetry,
   reusePreviousResolution,
   reviewDecisionDestination,
-  type ManualResolutionMethod,
 } from "../../server/application/manual-review";
 import { MusicBrainzClient } from "../../server/integrations/musicbrainz/client";
 import { ManualMusicBrainzMatcher } from "../../server/integrations/musicbrainz/manual-matching";
@@ -34,13 +34,9 @@ function context(form: FormData) {
   };
 }
 
-function reviewUrl(
-  entryId: number,
-  values: Record<string, string | undefined> = {},
-): string {
+function reviewUrl(entryId: number, values: Record<string, string | undefined> = {}): string {
   const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(values))
-    if (value) query.set(key, value);
+  for (const [key, value] of Object.entries(values)) if (value) query.set(key, value);
   return `/entries/${entryId}/review${query.size ? `?${query}` : ""}`;
 }
 
@@ -56,10 +52,7 @@ export async function searchManualCandidates(form: FormData) {
   const entryId = Number(form.get("entry_id"));
   const query = String(form.get("query") ?? "").trim();
   const repository = resolutions();
-  const candidates = await matcher().search(
-    repository.reviewEntry(entryId).track,
-    query || undefined,
-  );
+  const candidates = await matcher().search(repository.reviewEntry(entryId).track, query || undefined);
   repository.saveCandidates(entryId, candidates);
   redirect(
     reviewUrl(entryId, {
@@ -73,13 +66,9 @@ export async function validateManualMbid(form: FormData) {
   await requireCsrf(form);
   const entryId = Number(form.get("entry_id"));
   const mbid = String(form.get("mbid") ?? "").trim();
-  const method =
-    form.get("method") === "manual_search" ? "manual_search" : "manual_mbid";
+  const method = form.get("method") === "manual_search" ? "manual_search" : "manual_mbid";
   const repository = resolutions();
-  const validation = await matcher().validateRecordingMbid(
-    mbid,
-    repository.reviewEntry(entryId).track,
-  );
+  const validation = await matcher().validateRecordingMbid(mbid, repository.reviewEntry(entryId).track);
   const values = context(form);
   if (validation.status === "invalid" || !validation.candidate) {
     repository.markValidationFailed(entryId, validation.errors);
@@ -107,13 +96,9 @@ export async function acceptManualMapping(form: FormData) {
   const entryId = Number(form.get("entry_id"));
   const mbid = String(form.get("mbid") ?? "");
   const method = String(form.get("method") ?? "");
-  if (!new Set(["manual_search", "manual_mbid"]).has(method))
-    throw new Error("invalid manual resolution method");
+  if (!new Set(["manual_search", "manual_mbid"]).has(method)) throw new Error("invalid manual resolution method");
   const repository = resolutions();
-  const validation = await matcher().validateRecordingMbid(
-    mbid,
-    repository.reviewEntry(entryId).track,
-  );
+  const validation = await matcher().validateRecordingMbid(mbid, repository.reviewEntry(entryId).track);
   const selected = String(form.get("release_group_id") ?? "") || undefined;
   confirmManualResolution(
     repository,
@@ -124,14 +109,7 @@ export async function acceptManualMapping(form: FormData) {
     selected,
   );
   const values = context(form);
-  redirect(
-    reviewDecisionDestination(
-      repository,
-      entryId,
-      values.session,
-      values.planId,
-    ),
-  );
+  redirect(reviewDecisionDestination(repository, entryId, values.session, values.planId));
 }
 
 export async function reuseManualMapping(form: FormData) {
@@ -141,14 +119,7 @@ export async function reuseManualMapping(form: FormData) {
   const repository = resolutions();
   reusePreviousResolution(repository, entryId, sourceEntryId);
   const values = context(form);
-  redirect(
-    reviewDecisionDestination(
-      repository,
-      entryId,
-      values.session,
-      values.planId,
-    ),
-  );
+  redirect(reviewDecisionDestination(repository, entryId, values.session, values.planId));
 }
 
 export async function skipReviewEntry(form: FormData) {
@@ -158,14 +129,7 @@ export async function skipReviewEntry(form: FormData) {
   repository.markSkipped(entryId);
   repository.updateReviewWorkflow(repository.reviewEntry(entryId).importId);
   const values = context(form);
-  redirect(
-    reviewDecisionDestination(
-      repository,
-      entryId,
-      values.session,
-      values.planId,
-    ),
-  );
+  redirect(reviewDecisionDestination(repository, entryId, values.session, values.planId));
 }
 
 export async function clearManualOverride(form: FormData) {
@@ -183,11 +147,6 @@ export async function retryAutomaticResolution(form: FormData) {
   const entryId = Number(form.get("entry_id"));
   const repository = resolutions();
   const values = context(form);
-  const job = prepareAutomaticRetry(
-    repository,
-    new JobRepository(database),
-    entryId,
-    values.planId,
-  );
+  const job = prepareAutomaticRetry(repository, new JobRepository(database), entryId, values.planId);
   redirect(`/jobs/${job.id}`);
 }

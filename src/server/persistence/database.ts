@@ -12,9 +12,7 @@ export function openDatabase(databasePath: string): Database.Database {
   migrate(database);
   database.pragma("foreign_keys = ON");
   database
-    .prepare(
-      "UPDATE jobs SET status = 'interrupted', updated_at = ? WHERE status = 'running'",
-    )
+    .prepare("UPDATE jobs SET status = 'interrupted', updated_at = ? WHERE status = 'running'")
     .run(new Date().toISOString());
   return database;
 }
@@ -32,10 +30,7 @@ export function migrate(database: Database.Database): void {
 
 function migrateLocked(database: Database.Database): void {
   let version = database.pragma("user_version", { simple: true }) as number;
-  if (version > SCHEMA_VERSION)
-    throw new Error(
-      `database schema ${version} is newer than supported ${SCHEMA_VERSION}`,
-    );
+  if (version > SCHEMA_VERSION) throw new Error(`database schema ${version} is newer than supported ${SCHEMA_VERSION}`);
   const migration = (target: number, sql: string) => {
     database.exec(sql);
     database.pragma(`user_version = ${target}`);
@@ -76,13 +71,8 @@ function migrateLocked(database: Database.Database): void {
       5,
       "CREATE TABLE playlist_revisions (id TEXT PRIMARY KEY, import_id TEXT NOT NULL REFERENCES imports(id) ON DELETE CASCADE, created_at TEXT NOT NULL, before_json TEXT NOT NULL, after_json TEXT NOT NULL, added INTEGER NOT NULL, removed INTEGER NOT NULL, moved INTEGER NOT NULL, unchanged INTEGER NOT NULL); CREATE INDEX playlist_revisions_import ON playlist_revisions(import_id, created_at DESC);",
     );
-  if (version < 6)
-    migration(6, "ALTER TABLE jobs ADD COLUMN result_json TEXT;");
-  if (version < 7)
-    migration(
-      7,
-      "ALTER TABLE playlist_revisions ADD COLUMN updated INTEGER NOT NULL DEFAULT 0;",
-    );
+  if (version < 6) migration(6, "ALTER TABLE jobs ADD COLUMN result_json TEXT;");
+  if (version < 7) migration(7, "ALTER TABLE playlist_revisions ADD COLUMN updated INTEGER NOT NULL DEFAULT 0;");
   if (version < 8)
     migration(
       8,

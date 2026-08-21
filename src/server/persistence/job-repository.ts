@@ -17,33 +17,18 @@ const now = () => new Date().toISOString();
 
 export class JobRepository {
   constructor(private readonly database: Database.Database) {}
-  create(
-    kind: string,
-    importId?: string,
-    total = 0,
-    payload?: Record<string, unknown>,
-  ): StoredJob {
+  create(kind: string, importId?: string, total = 0, payload?: Record<string, unknown>): StoredJob {
     const id = randomUUID();
     const at = now();
     this.database
       .prepare(
         "INSERT INTO jobs (id, import_id, kind, status, total, result_json, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?, ?, ?)",
       )
-      .run(
-        id,
-        importId ?? null,
-        kind,
-        total,
-        payload ? JSON.stringify(payload) : null,
-        at,
-        at,
-      );
+      .run(id, importId ?? null, kind, total, payload ? JSON.stringify(payload) : null, at, at);
     return this.get(id);
   }
   get(id: string): StoredJob {
-    const row = this.database
-      .prepare("SELECT * FROM jobs WHERE id = ?")
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.database.prepare("SELECT * FROM jobs WHERE id = ?").get(id) as Record<string, unknown> | undefined;
     if (!row) throw new Error(`unknown job: ${id}`);
     return {
       id: row.id as string,
@@ -55,9 +40,7 @@ export class JobRepository {
       currentItem: row.current_item as string | undefined,
       cancelRequested: Boolean(row.cancel_requested),
       error: row.error as string | undefined,
-      payload: row.result_json
-        ? (JSON.parse(String(row.result_json)) as Record<string, unknown>)
-        : undefined,
+      payload: row.result_json ? (JSON.parse(String(row.result_json)) as Record<string, unknown>) : undefined,
     };
   }
   list(limit = 50): StoredJob[] {
@@ -77,41 +60,29 @@ export class JobRepository {
       .run(now(), id);
   }
   assignImport(id: string, importId: string): void {
-    this.database
-      .prepare("UPDATE jobs SET import_id = ?, updated_at = ? WHERE id = ?")
-      .run(importId, now(), id);
+    this.database.prepare("UPDATE jobs SET import_id = ?, updated_at = ? WHERE id = ?").run(importId, now(), id);
   }
   setPayload(id: string, payload: Record<string, unknown>): void {
     this.database
       .prepare("UPDATE jobs SET result_json = ?, updated_at = ? WHERE id = ?")
       .run(JSON.stringify(payload), now(), id);
   }
-  update(
-    id: string,
-    values: Partial<
-      Pick<StoredJob, "status" | "current" | "total" | "currentItem" | "error">
-    >,
-  ): void {
+  update(id: string, values: Partial<Pick<StoredJob, "status" | "current" | "total" | "currentItem" | "error">>): void {
     const columns: Record<string, unknown> = { updated_at: now() };
     if (values.status !== undefined) columns.status = values.status;
     if (values.current !== undefined) columns.current = values.current;
     if (values.total !== undefined) columns.total = values.total;
-    if (values.currentItem !== undefined)
-      columns.current_item = values.currentItem;
+    if (values.currentItem !== undefined) columns.current_item = values.currentItem;
     if (values.error !== undefined) columns.error = values.error;
     const assignments = Object.keys(columns)
       .map((key) => `${key} = ?`)
       .join(", ");
-    this.database
-      .prepare(`UPDATE jobs SET ${assignments} WHERE id = ?`)
-      .run(...Object.values(columns), id);
+    this.database.prepare(`UPDATE jobs SET ${assignments} WHERE id = ?`).run(...Object.values(columns), id);
   }
   claimNext(): StoredJob | undefined {
     return this.database.transaction(() => {
       const row = this.database
-        .prepare(
-          "SELECT id FROM jobs WHERE status = 'queued' AND cancel_requested = 0 ORDER BY created_at, id LIMIT 1",
-        )
+        .prepare("SELECT id FROM jobs WHERE status = 'queued' AND cancel_requested = 0 ORDER BY created_at, id LIMIT 1")
         .get() as { id: string } | undefined;
       if (!row) return undefined;
       const claimed = this.database

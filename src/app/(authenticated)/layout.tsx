@@ -5,15 +5,11 @@ import { logout } from "../actions/security";
 import { security } from "../../server/runtime";
 import { sessionCookie } from "../../server/security/web-security";
 import { ActiveNav } from "../../components/navigation/active-nav";
-export default async function AuthenticatedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+
+export default async function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const session = (await cookies()).get(sessionCookie)?.value;
   if (!security.configured) redirect("/setup");
-  if (!security.authorizationEnabled && !security.validSession(session))
-    redirect("/api/auth/session");
+  if (!security.authorizationEnabled && !security.validSession(session)) redirect("/api/auth/session");
   if (!security.validSession(session)) redirect("/login");
   const csrf = security.csrfToken(session!);
   return (

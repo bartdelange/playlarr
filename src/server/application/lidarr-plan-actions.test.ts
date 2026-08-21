@@ -53,9 +53,7 @@ afterEach(() => {
 });
 
 it("persists a selected plan release as a confirmed manual mapping", () => {
-  expect(changePlannedRelease(database, planId, entryId, "release-b")).toBe(
-    importId,
-  );
+  expect(changePlannedRelease(database, planId, entryId, "release-b")).toBe(importId);
   expect(new ResolutionRepository(database).get(entryId)).toMatchObject({
     state: "manually_resolved",
     method: "manual_mbid",
@@ -63,15 +61,13 @@ it("persists a selected plan release as a confirmed manual mapping", () => {
     selectedReleaseGroupId: "release-b",
     result: { releaseGroupIds: ["release-b"] },
   });
-  expect(new LidarrPlanRepository(database).get(planId).status).toBe(
-    "superseded",
-  );
+  expect(new LidarrPlanRepository(database).get(planId).status).toBe("superseded");
 });
 
 it("rejects a release that was not persisted for the entry", () => {
-  expect(() =>
-    changePlannedRelease(database, planId, entryId, "unrelated-release"),
-  ).toThrow("does not belong to this track");
+  expect(() => changePlannedRelease(database, planId, entryId, "unrelated-release")).toThrow(
+    "does not belong to this track",
+  );
 });
 
 it("persists the per-recording Various Artists override and supersedes the draft", () => {
@@ -79,9 +75,7 @@ it("persists the per-recording Various Artists override and supersedes the draft
   expect(new ResolutionRepository(database).get(entryId).evidence).toEqual({
     allow_various_artists_release: true,
   });
-  expect(new LidarrPlanRepository(database).get(planId).status).toBe(
-    "superseded",
-  );
+  expect(new LidarrPlanRepository(database).get(planId).status).toBe("superseded");
 });
 
 it("retry clears a manual mapping only after validating plan ownership", () => {

@@ -16,11 +16,9 @@ import { ResolutionRepository } from "../../server/persistence/resolution-reposi
 import { config, database, settings } from "../../server/runtime";
 import { LidarrClient } from "../../server/integrations/lidarr/client";
 import { NavidromeClient } from "../../server/integrations/navidrome/client";
-import {
-  saveServiceConfiguration,
-  serviceFields,
-} from "../../server/application/service-settings";
+import { saveServiceConfiguration, serviceFields } from "../../server/application/service-settings";
 import { requireCsrf } from "./security";
+
 const jobs = () => new JobRepository(database);
 const imports = () => new ImportRepository(database);
 export async function cancelJob(form: FormData) {
@@ -48,18 +46,11 @@ export async function saveServiceSettings(form: FormData) {
   saveServiceConfiguration(
     settings,
     service,
-    Object.fromEntries(
-      (serviceFields[service] ?? []).map((key) => [
-        key,
-        String(form.get(key) ?? ""),
-      ]),
-    ),
+    Object.fromEntries((serviceFields[service] ?? []).map((key) => [key, String(form.get(key) ?? "")])),
   );
   if (service === "spotify") resetSpotify();
   revalidatePath("/settings");
-  redirect(
-    `/settings?message=${encodeURIComponent(`${service} settings saved`)}`,
-  );
+  redirect(`/settings?message=${encodeURIComponent(`${service} settings saved`)}`);
 }
 export async function testServiceConnection(form: FormData) {
   await requireCsrf(form);
@@ -73,14 +64,8 @@ export async function testServiceConnection(form: FormData) {
     else if (service === "navidrome")
       await new NavidromeClient({
         url: settings.get("navidrome_url", config.navidrome.url ?? ""),
-        username: settings.get(
-          "navidrome_username",
-          config.navidrome.username ?? "",
-        ),
-        password: settings.get(
-          "navidrome_password",
-          config.navidrome.password ?? "",
-        ),
+        username: settings.get("navidrome_username", config.navidrome.username ?? ""),
+        password: settings.get("navidrome_password", config.navidrome.password ?? ""),
       }).searchSongs("", 1);
     else throw new Error(`unknown service: ${service}`);
     redirect(
@@ -120,25 +105,19 @@ export async function queuePlaylistAcquisition(form: FormData) {
     id: reference,
     name: "Loading playlist…",
   });
-  redirect(
-    `/jobs/${jobs().create("playlist_acquisition", imported.id, 2, { source, reference }).id}`,
-  );
+  redirect(`/jobs/${jobs().create("playlist_acquisition", imported.id, 2, { source, reference }).id}`);
 }
 export async function queuePlaylistAnalysis(form: FormData) {
   await requireCsrf(form);
   const source = String(form.get("source"));
   const reference = String(form.get("reference"));
-  if (!reference || !["spotify", "tidal"].includes(source))
-    throw new Error("Choose a playlist to analyze");
-  redirect(
-    `/jobs/${jobs().create("playlist_analysis", undefined, 0, { source, reference }).id}`,
-  );
+  if (!reference || !["spotify", "tidal"].includes(source)) throw new Error("Choose a playlist to analyze");
+  redirect(`/jobs/${jobs().create("playlist_analysis", undefined, 0, { source, reference }).id}`);
 }
 export async function importMappingCsvAction(form: FormData) {
   await requireCsrf(form);
   const file = form.get("mapping");
-  if (!(file instanceof File) || !file.size)
-    throw new Error("Choose a mapping CSV");
+  if (!(file instanceof File) || !file.size) throw new Error("Choose a mapping CSV");
   const imported = importMappingCsv(
     await file.text(),
     file.name.replace(/\.[^.]+$/, "") || "Imported playlist",
@@ -150,18 +129,13 @@ export async function importMappingCsvAction(form: FormData) {
 export async function queuePlaylistCatalogue(form: FormData) {
   await requireCsrf(form);
   const source = String(form.get("source"));
-  if (!["spotify", "tidal"].includes(source))
-    redirect("/imports/new?error=Choose%20a%20playlist%20source");
-  redirect(
-    `/jobs/${jobs().create("playlist_catalogue", undefined, 0, { source }).id}`,
-  );
+  if (!["spotify", "tidal"].includes(source)) redirect("/imports/new?error=Choose%20a%20playlist%20source");
+  redirect(`/jobs/${jobs().create("playlist_catalogue", undefined, 0, { source }).id}`);
 }
 export async function queueResolution(form: FormData) {
   await requireCsrf(form);
   const importId = String(form.get("import_id"));
-  redirect(
-    `/jobs/${jobs().create("resolution", importId, imports().entries(importId).length).id}`,
-  );
+  redirect(`/jobs/${jobs().create("resolution", importId, imports().entries(importId).length).id}`);
 }
 export async function queueLidarrPlan(form: FormData) {
   await requireCsrf(form);
@@ -173,18 +147,12 @@ export async function retryLidarrPlanEntry(form: FormData) {
   const planId = String(form.get("plan_id"));
   const entryId = Number(form.get("entry_id"));
   const importId = preparePlanEntryRetry(database, planId, entryId);
-  redirect(
-    `/jobs/${jobs().create("resolution_retry", importId, 1, { entryId }).id}`,
-  );
+  redirect(`/jobs/${jobs().create("resolution_retry", importId, 1, { entryId }).id}`);
 }
 export async function allowVariousArtistsRelease(form: FormData) {
   await requireCsrf(form);
   const planId = String(form.get("plan_id"));
-  const importId = allowVariousArtistsReleaseForPlan(
-    database,
-    planId,
-    Number(form.get("entry_id")),
-  );
+  const importId = allowVariousArtistsReleaseForPlan(database, planId, Number(form.get("entry_id")));
   revalidatePath(`/imports/${importId}`);
   redirect(`/imports/${importId}?stage=lidarr`);
 }
@@ -211,20 +179,14 @@ export async function applyPlaylistUpdate(form: FormData) {
   const importId = String(form.get("import_id"));
   const previewJob = String(form.get("preview_job"));
   const snapshotToken = String(form.get("snapshot_token"));
-  redirect(
-    `/jobs/${jobs().create("playlist_update", importId, 2, { previewJob, snapshotToken }).id}`,
-  );
+  redirect(`/jobs/${jobs().create("playlist_update", importId, 2, { previewJob, snapshotToken }).id}`);
 }
 export async function applyMappingOverrides(form: FormData) {
   await requireCsrf(form);
   const importId = String(form.get("import_id"));
   const sourceImportId = String(form.get("source_import_id"));
   const targets = new Set(form.getAll("target_entry_ids").map(Number));
-  new MappingOverridesRepository(database).apply(
-    importId,
-    sourceImportId,
-    targets,
-  );
+  new MappingOverridesRepository(database).apply(importId, sourceImportId, targets);
   revalidatePath(`/imports/${importId}`);
   redirect(`/imports/${importId}`);
 }
@@ -234,7 +196,5 @@ export async function approveAndExecutePlan(form: FormData) {
   const plans = new LidarrPlanRepository(database);
   plans.approve(planId);
   const plan = plans.get(planId);
-  redirect(
-    `/jobs/${jobs().create("lidarr_execution", plan.importId, plan.plan.actions.length, { planId }).id}`,
-  );
+  redirect(`/jobs/${jobs().create("lidarr_execution", plan.importId, plan.plan.actions.length, { planId }).id}`);
 }

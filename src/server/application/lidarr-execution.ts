@@ -1,8 +1,5 @@
 import type { LidarrPlan } from "../domain/lidarr";
-import {
-  isVariousArtistsAlbum,
-  pinSelectedRelease,
-} from "../integrations/lidarr/client";
+import { isVariousArtistsAlbum, pinSelectedRelease } from "../integrations/lidarr/client";
 
 const variousArtists = "89ad4ac3-39f7-470e-963a-56509c546377";
 interface ApprovedPlanRepository {
@@ -32,14 +29,8 @@ export async function executeApprovedPlan(
   id: string,
 ): Promise<ExecutionResult[]> {
   const current = repository.get(id);
-  if (current.status !== "approved")
-    throw new Error("plan is not approved or has been superseded");
-  const artists = new Map(
-    (await client.artists()).map((artist) => [
-      String(artist.foreignArtistId),
-      artist,
-    ]),
-  );
+  if (current.status !== "approved") throw new Error("plan is not approved or has been superseded");
+  const artists = new Map((await client.artists()).map((artist) => [String(artist.foreignArtistId), artist]));
   const albums = new Map<string, Record<string, unknown> | undefined>();
   const createdArtists = new Set<string>();
   const changedReleases = new Set<string>();
@@ -48,9 +39,7 @@ export async function executeApprovedPlan(
     if (!albums.has(group))
       albums.set(
         group,
-        (await client.albumsByForeignId(group)).find(
-          (item) => item.foreignAlbumId === group,
-        ),
+        (await client.albumsByForeignId(group)).find((item) => item.foreignAlbumId === group),
       );
     return albums.get(group);
   };
@@ -58,36 +47,25 @@ export async function executeApprovedPlan(
   for (const action of current.plan.actions) {
     try {
       if (
-        ![
-          "create_artist",
-          "monitor_artist",
-          "create_release",
-          "monitor_release",
-          "queue_search",
-        ].includes(action.action)
+        !["create_artist", "monitor_artist", "create_release", "monitor_release", "queue_search"].includes(
+          action.action,
+        )
       ) {
         results.push({ outcome: "unchanged", details: action.reason });
         continue;
       }
-      const allowVarious = Boolean(
-        action.payload?.allow_various_artists_release,
-      );
+      const allowVarious = Boolean(action.payload?.allow_various_artists_release);
       if (action.artistMbid === variousArtists && !allowVarious) {
         results.push({ outcome: "skipped", details: "various_artists" });
         continue;
       }
       const artistMbid = action.artistMbid ?? "";
       if (action.action === "create_artist") {
-        if (artists.has(artistMbid))
-          results.push({ outcome: "unchanged", details: "artist_exists" });
+        if (artists.has(artistMbid)) results.push({ outcome: "unchanged", details: "artist_exists" });
         else {
-          if (!client.createArtist)
-            throw new Error("safe artist creation is unavailable");
+          if (!client.createArtist) throw new Error("safe artist creation is unavailable");
           const created = await client.createArtist(artistMbid);
-          if (created.id === undefined)
-            throw new Error(
-              `Lidarr did not return created artist ${artistMbid}`,
-            );
+          if (created.id === undefined) throw new Error(`Lidarr did not return created artist ${artistMbid}`);
           artists.set(artistMbid, created);
           createdArtists.add(artistMbid);
           results.push({ outcome: "created" });
@@ -119,8 +97,7 @@ export async function executeApprovedPlan(
         else {
           const artist = artists.get(artistMbid);
           if (!artist) throw new Error(`artist is unavailable: ${artistMbid}`);
-          if (!client.createAlbum)
-            throw new Error("safe release creation is unavailable");
+          if (!client.createAlbum) throw new Error("safe release creation is unavailable");
           const created = await client.createAlbum(
             artist,
             group,
@@ -163,24 +140,13 @@ export async function executeApprovedPlan(
         }
         continue;
       }
-      let searchEnabled =
-        changedReleases.has(group) || createdArtists.has(artistMbid);
-      const requested = stringPayload(
-        action.payload,
-        "requested_recording_ids",
-      );
+      let searchEnabled = changedReleases.has(group) || createdArtists.has(artistMbid);
+      const requested = stringPayload(action.payload, "requested_recording_ids");
       if (!searchEnabled && requested.length) {
         const tracks = client.tracksByAlbumId
           ? await client.tracksByAlbumId(Number(existing.id))
-          : ((await client.request(
-              "GET",
-              `track?albumId=${existing.id}`,
-            )) as Record<string, unknown>[]);
-        searchEnabled = !tracks.some(
-          (track) =>
-            track.hasFile &&
-            requested.includes(String(track.foreignRecordingId)),
-        );
+          : ((await client.request("GET", `track?albumId=${existing.id}`)) as Record<string, unknown>[]);
+        searchEnabled = !tracks.some((track) => track.hasFile && requested.includes(String(track.foreignRecordingId)));
       }
       if (!searchEnabled)
         results.push({
@@ -205,12 +171,7 @@ export async function executeApprovedPlan(
   return results;
 }
 
-function stringPayload(
-  payload: Record<string, unknown> | undefined,
-  key: string,
-): string[] {
+function stringPayload(payload: Record<string, unknown> | undefined, key: string): string[] {
   const value = payload?.[key];
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }

@@ -10,13 +10,7 @@ export default function TidalAuthenticationPage({
     <main className="settings-page">
       <p className="eyebrow">TIDAL authentication</p>
       <h1>Connect TIDAL</h1>
-      <Suspense
-        fallback={
-          <section className="card skeleton">
-            Preparing TIDAL authentication…
-          </section>
-        }
-      >
+      <Suspense fallback={<section className="card skeleton">Preparing TIDAL authentication…</section>}>
         <TidalAuthenticationContent searchParams={searchParams} />
       </Suspense>
     </main>
@@ -35,10 +29,7 @@ async function TidalAuthenticationContent({
   return (
     <>
       <div className="card">
-        <p>
-          Open TIDAL and approve this device. This page will continue
-          automatically.
-        </p>
+        <p>Open TIDAL and approve this device. This page will continue automatically.</p>
         {userCode && (
           <p>
             Device code: <strong>{userCode}</strong>
@@ -46,12 +37,7 @@ async function TidalAuthenticationContent({
         )}
         {verificationUrl ? (
           <p>
-            <a
-              className="button"
-              href={verificationUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="button" href={verificationUrl} target="_blank" rel="noreferrer">
               Open TIDAL authentication
             </a>
           </p>
@@ -68,8 +54,7 @@ function tidalVerificationUrl(value?: string): string | undefined {
   if (!value) return undefined;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" &&
-      (url.hostname === "tidal.com" || url.hostname.endsWith(".tidal.com"))
+    return url.protocol === "https:" && (url.hostname === "tidal.com" || url.hostname.endsWith(".tidal.com"))
       ? url.href
       : undefined;
   } catch {

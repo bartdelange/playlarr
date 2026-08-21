@@ -9,15 +9,7 @@ type NavItem = {
   exact?: boolean;
 };
 
-export function ActiveNav({
-  items,
-  label,
-  className,
-}: {
-  items: NavItem[];
-  label: string;
-  className?: string;
-}) {
+export function ActiveNav({ items, label, className }: { items: NavItem[]; label: string; className?: string }) {
   const pathname = usePathname();
 
   return (

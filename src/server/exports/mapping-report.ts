@@ -3,6 +3,7 @@ import path from "node:path";
 import type { MusicBrainzResult } from "../domain/musicbrainz";
 import type { PlaylistInfo, SourceTrack } from "../domain/playlist";
 import { safeFilename } from "./m3u";
+
 export const mappingFields = [
   "source",
   "source_playlist_id",
@@ -47,19 +48,11 @@ export function mappingRow(
     duration_ms: track.durationMs === undefined ? "" : String(track.durationMs),
   };
 }
-export function serializeCsv(
-  rows: Record<string, string>[],
-  fields: readonly string[] = mappingFields,
-): string {
-  const cell = (value: string) =>
-    /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-  return [
-    fields.join(","),
-    ...rows.map((row) =>
-      fields.map((field) => cell(row[field] ?? "")).join(","),
-    ),
-    "",
-  ].join("\r\n");
+export function serializeCsv(rows: Record<string, string>[], fields: readonly string[] = mappingFields): string {
+  const cell = (value: string) => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+  return [fields.join(","), ...rows.map((row) => fields.map((field) => cell(row[field] ?? "")).join(",")), ""].join(
+    "\r\n",
+  );
 }
 export function mappingReportStem(playlist: PlaylistInfo): string {
   return safeFilename(`${playlist.source}_${playlist.name}_${playlist.id}`);
@@ -75,11 +68,7 @@ export async function writeMappingReports(
   const unresolved = path.join(outputDirectory, `${stem}_unresolved.csv`);
   await Promise.all([
     writeFile(mapping, serializeCsv(rows), "utf8"),
-    writeFile(
-      unresolved,
-      serializeCsv(rows.filter((row) => row.resolved_via === "none")),
-      "utf8",
-    ),
+    writeFile(unresolved, serializeCsv(rows.filter((row) => row.resolved_via === "none")), "utf8"),
   ]);
   return { mapping, unresolved };
 }

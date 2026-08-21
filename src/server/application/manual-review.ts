@@ -17,8 +17,7 @@ export function confirmManualResolution(
   if (validation.status === "warning" && !allowWarning)
     throw new Error("mapping has warnings and requires explicit confirmation");
   const groups = validation.candidate.result.releaseGroupIds ?? [];
-  if (groups.length > 1 && !selectedReleaseGroupId)
-    throw new Error("select a release group for this recording");
+  if (groups.length > 1 && !selectedReleaseGroupId) throw new Error("select a release group for this recording");
   if (selectedReleaseGroupId && !groups.includes(selectedReleaseGroupId))
     throw new Error("release group is not associated with this recording");
   repository.saveManual(
@@ -51,11 +50,8 @@ export function reviewDecisionDestination(
   }
   if (!session) return `/imports/${entry.importId}`;
   const queue = repository.reviewQueue(entry.importId);
-  const target =
-    queue.find((item) => item.position > entry.position) ?? queue[0];
-  return target
-    ? `/entries/${target.id}/review?session=true`
-    : `/imports/${entry.importId}`;
+  const target = queue.find((item) => item.position > entry.position) ?? queue[0];
+  return target ? `/entries/${target.id}/review?session=true` : `/imports/${entry.importId}`;
 }
 
 export function reusePreviousResolution(
@@ -63,11 +59,8 @@ export function reusePreviousResolution(
   entryId: number,
   sourceEntryId: number,
 ): void {
-  const suggestion = repository
-    .manualMatchSuggestions(entryId)
-    .find((item) => item.entryId === sourceEntryId);
-  if (!suggestion)
-    throw new Error("that manual match is not available for this track");
+  const suggestion = repository.manualMatchSuggestions(entryId).find((item) => item.entryId === sourceEntryId);
+  if (!suggestion) throw new Error("that manual match is not available for this track");
   repository.saveManual(
     entryId,
     suggestion.result,
@@ -91,8 +84,7 @@ export function prepareAutomaticRetry(
 ): StoredJob {
   const entry = repository.reviewEntry(entryId);
   if (entry.resolution.isManual) {
-    if (!planId)
-      throw new Error("clear the manual override before retrying automation");
+    if (!planId) throw new Error("clear the manual override before retrying automation");
     if (!repository.planBelongsToImport(planId, entry.importId))
       throw new Error("Lidarr plan does not belong to this playlist");
     repository.clearManual(entryId);

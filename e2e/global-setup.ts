@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 
 import { openDatabase } from "../src/server/persistence/database";
 import { ImportRepository } from "../src/server/persistence/import-repository";
@@ -12,11 +12,8 @@ const fixtureImportId = "00000000-0000-4000-8000-000000000001";
 const reviewImportId = "00000000-0000-4000-8000-000000000002";
 
 export default function setup() {
-  mkdirSync("docs/images/migration-output", { recursive: true });
   rmSync("/private/tmp/playlarr-e2e", { recursive: true, force: true });
-  const database = openDatabase(
-    "/private/tmp/playlarr-e2e/data/music-importer.db",
-  );
+  const database = openDatabase("/private/tmp/playlarr-e2e/data/music-importer.db");
   const imports = new ImportRepository(database);
   const imported = imports.createImport(
     { source: "spotify", id: "fixture-list", name: "Fixture Playlist" },
@@ -56,22 +53,18 @@ export default function setup() {
     ],
   });
   imports.setWorkflowState(imported.id, "library_status");
-  new PlaylistRevisionRepository(database).record(
-    imported.id,
-    imports.entries(imported.id),
-    [
-      {
-        position: 0,
-        track: {
-          source: "spotify",
-          sourceTrackId: "track-1",
-          title: "Fixture Song",
-          artists: ["Fixture Artist"],
-          album: "Fixture Album",
-        },
+  new PlaylistRevisionRepository(database).record(imported.id, imports.entries(imported.id), [
+    {
+      position: 0,
+      track: {
+        source: "spotify",
+        sourceTrackId: "track-1",
+        title: "Fixture Song",
+        artists: ["Fixture Artist"],
+        album: "Fixture Album",
       },
-    ],
-  );
+    },
+  ]);
   const jobs = new JobRepository(database);
   const job = jobs.create("resolution", imported.id, 1);
   jobs.update(job.id, {

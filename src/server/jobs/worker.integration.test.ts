@@ -8,16 +8,13 @@ import { loadConfig } from "../../server/config/environment";
 import { openDatabase } from "../../server/persistence/database";
 import { JobRepository } from "../../server/persistence/job-repository";
 import { SettingsRepository } from "../../server/persistence/settings-repository";
+
 const paths: string[] = [];
-afterEach(() =>
-  paths.splice(0).forEach((value) => rmSync(value, { recursive: true })),
-);
+afterEach(() => paths.splice(0).forEach((value) => rmSync(value, { recursive: true })));
 it("runs one durable job with persisted progress and completion", async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-worker-"));
   paths.push(directory);
-  const jobs = new JobRepository(
-    openDatabase(path.join(directory, "state.db")),
-  );
+  const jobs = new JobRepository(openDatabase(path.join(directory, "state.db")));
   const job = jobs.create("resolve", undefined, 3);
   const handler = vi.fn(async (_job, progress) => progress(2, 3, "Song"));
   await new DurableJobWorker(jobs, { resolve: handler }).runOnce();

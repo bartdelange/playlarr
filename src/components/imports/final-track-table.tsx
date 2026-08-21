@@ -2,24 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type {
-  FinalExecutionNote,
-  FinalTableRow,
-  LibraryAvailability,
-} from "../../server/application/final-table-view";
-import {
-  filterFinalRows,
-  finalAvailabilityCounts,
-} from "../../server/application/final-table-view";
+import type { FinalExecutionNote, FinalTableRow, LibraryAvailability } from "../../server/application/final-table-view";
+import { filterFinalRows, finalAvailabilityCounts } from "../../server/application/final-table-view";
 
-const columnLabels = [
-  "#",
-  "Status",
-  "Source track",
-  "Lidarr matched",
-  "Library state",
-  "Actions",
-];
+const columnLabels = ["#", "Status", "Source track", "Lidarr matched", "Library state", "Actions"];
 
 export function FinalTrackTable({ rows }: { rows: FinalTableRow[] }) {
   const [filter, setFilter] = useState<"all" | LibraryAvailability>("all");
@@ -27,10 +13,7 @@ export function FinalTrackTable({ rows }: { rows: FinalTableRow[] }) {
   const counts = useMemo(() => finalAvailabilityCounts(rows), [rows]);
   const visibleRows = filterFinalRows(rows, filter);
   const filters = [
-    [
-      "all",
-      `All (${counts.downloaded + counts.downloadable + counts.not_downloadable})`,
-    ],
+    ["all", `All (${counts.downloaded + counts.downloadable + counts.not_downloadable})`],
     ["downloaded", `Downloaded (${counts.downloaded})`],
     ["downloadable", `Missing but downloadable (${counts.downloadable})`],
     ["not_downloadable", `Not downloadable (${counts.not_downloadable})`],
@@ -50,9 +33,7 @@ export function FinalTrackTable({ rows }: { rows: FinalTableRow[] }) {
           </button>
         ))}
       </div>
-      {visibleRows.length === 0 && (
-        <p className="empty-filter">No tracks in this filter.</p>
-      )}
+      {visibleRows.length === 0 && <p className="empty-filter">No tracks in this filter.</p>}
       <details className="column-picker">
         <summary>Choose visible columns</summary>
         <div className="column-options">
@@ -62,9 +43,7 @@ export function FinalTrackTable({ rows }: { rows: FinalTableRow[] }) {
                 checked={columns[index]}
                 onChange={(event) =>
                   setColumns((current) =>
-                    current.map((value, currentIndex) =>
-                      currentIndex === index ? event.target.checked : value,
-                    ),
+                    current.map((value, currentIndex) => (currentIndex === index ? event.target.checked : value)),
                   )
                 }
                 type="checkbox"
@@ -77,11 +56,7 @@ export function FinalTrackTable({ rows }: { rows: FinalTableRow[] }) {
       <div className="table-wrap final-table-wrap">
         <table>
           <thead>
-            <tr>
-              {columnLabels.map((label, index) =>
-                columns[index] ? <th key={label}>{label}</th> : null,
-              )}
-            </tr>
+            <tr>{columnLabels.map((label, index) => (columns[index] ? <th key={label}>{label}</th> : null))}</tr>
           </thead>
           <tbody>
             {visibleRows.map((row) => (
@@ -89,9 +64,7 @@ export function FinalTrackTable({ rows }: { rows: FinalTableRow[] }) {
                 {columns[0] && <td>{row.position + 1}</td>}
                 {columns[1] && (
                   <td>
-                    <span className="badge">
-                      {row.resolutionState.replaceAll("_", " ")}
-                    </span>
+                    <span className="badge">{row.resolutionState.replaceAll("_", " ")}</span>
                   </td>
                 )}
                 {columns[2] && (
@@ -131,11 +104,7 @@ export function FinalTrackTable({ rows }: { rows: FinalTableRow[] }) {
   );
 }
 
-function MatchedLidarrTrack({
-  match,
-}: {
-  match: NonNullable<FinalTableRow["lidarrMatch"]>;
-}) {
+function MatchedLidarrTrack({ match }: { match: NonNullable<FinalTableRow["lidarrMatch"]> }) {
   return (
     <div className="matched-lidarr-track">
       <span className="eyebrow">Matched Lidarr track</span>
@@ -144,20 +113,14 @@ function MatchedLidarrTrack({
         {match.trackNumber && `Track ${match.trackNumber} · `}
         {match.foreignRecordingId && (
           <>
-            <a
-              href={`https://musicbrainz.org/recording/${match.foreignRecordingId}`}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a href={`https://musicbrainz.org/recording/${match.foreignRecordingId}`} target="_blank" rel="noreferrer">
               Recording {match.foreignRecordingId}
             </a>{" "}
             ·{" "}
           </>
         )}
-        {match.matchMethod === "recording_id"
-          ? "Exact recording ID"
-          : "Normalized title fallback"}{" "}
-        · {match.hasFile ? "File downloaded" : "No file"}
+        {match.matchMethod === "recording_id" ? "Exact recording ID" : "Normalized title fallback"} ·{" "}
+        {match.hasFile ? "File downloaded" : "No file"}
         {match.trackFileId && ` · Lidarr file ${match.trackFileId}`}
       </small>
       {match.releaseGroupId && <small>{match.albumTitle}</small>}
@@ -166,13 +129,10 @@ function MatchedLidarrTrack({
 }
 
 function LibraryState({ row }: { row: FinalTableRow }) {
-  if (row.availability === "not_refreshed")
-    return <span className="status attention">Not refreshed</span>;
+  if (row.availability === "not_refreshed") return <span className="status attention">Not refreshed</span>;
   return (
     <>
-      <span
-        className={`status ${row.availability === "downloaded" ? "ok" : "attention"}`}
-      >
+      <span className={`status ${row.availability === "downloaded" ? "ok" : "attention"}`}>
         {row.availability === "downloaded"
           ? "Downloaded"
           : row.availability === "downloadable"
@@ -182,9 +142,7 @@ function LibraryState({ row }: { row: FinalTableRow }) {
       {row.availability === "downloaded" && row.libraryPath ? (
         <small>{row.libraryPath}</small>
       ) : (
-        row.libraryClassification && (
-          <small>{classificationExplanation(row)}</small>
-        )
+        row.libraryClassification && <small>{classificationExplanation(row)}</small>
       )}
       {row.availability !== "downloaded" &&
         row.executionNotes.map((note, index) =>
@@ -193,8 +151,7 @@ function LibraryState({ row }: { row: FinalTableRow }) {
               <strong>
                 {note.action.replaceAll("_", " ")}: {note.outcome}
               </strong>
-              {(note.details || note.reason) &&
-                ` — ${(note.details || note.reason)?.replaceAll("_", " ")}`}
+              {(note.details || note.reason) && ` — ${(note.details || note.reason)?.replaceAll("_", " ")}`}
             </small>
           ) : null,
         )}
@@ -203,22 +160,15 @@ function LibraryState({ row }: { row: FinalTableRow }) {
 }
 
 function classificationExplanation(row: FinalTableRow) {
-  if (
-    row.executionNotes.some((note) => note.reason === "various_artists_album")
-  )
+  if (row.executionNotes.some((note) => note.reason === "various_artists_album"))
     return "Not added: selected release is a Various Artists compilation excluded by the safety policy.";
   const explanations: Record<string, string> = {
-    release_monitored_missing:
-      "Release exists and is monitored, but this recording has not downloaded yet.",
-    release_unmonitored_missing:
-      "Release exists but is unmonitored and this recording has no file.",
+    release_monitored_missing: "Release exists and is monitored, but this recording has not downloaded yet.",
+    release_unmonitored_missing: "Release exists but is unmonitored and this recording has no file.",
     release_missing: "Selected release is not currently present in Lidarr.",
     artist_missing: "Artist is not currently present in Lidarr.",
   };
-  return (
-    explanations[row.libraryClassification ?? ""] ??
-    row.libraryClassification?.replaceAll("_", " ")
-  );
+  return explanations[row.libraryClassification ?? ""] ?? row.libraryClassification?.replaceAll("_", " ");
 }
 
 function showExecutionNote(note: FinalExecutionNote) {

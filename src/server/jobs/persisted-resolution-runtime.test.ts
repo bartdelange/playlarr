@@ -127,30 +127,21 @@ it("recognizes schema-v8 resolved rows in the library-status worker", async () =
       recordingIds: ["recording-manual"],
     },
   });
-  new ImportRepository(database).setWorkflowState(
-    imported.id,
-    "waiting_for_downloads",
-  );
+  new ImportRepository(database).setWorkflowState(imported.id, "waiting_for_downloads");
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
-      if (url.endsWith("/artist"))
-        return Response.json([{ id: 7, foreignArtistId: "artist" }]);
+      if (url.endsWith("/artist")) return Response.json([{ id: 7, foreignArtistId: "artist" }]);
       if (url.includes("trackFile?artistId=7")) return Response.json([]);
       if (url.includes("track?artistId=7")) return Response.json([]);
-      if (url.includes("album?foreignAlbumId=release-group"))
-        return Response.json([]);
+      if (url.includes("album?foreignAlbumId=release-group")) return Response.json([]);
       throw new Error(`unexpected Lidarr request: ${url}`);
     }),
   );
   const jobs = new JobRepository(database);
   const job = jobs.create("library_status", imported.id);
-  const handler = productionJobHandlers(
-    database,
-    config,
-    new SettingsRepository(database),
-  ).library_status;
+  const handler = productionJobHandlers(database, config, new SettingsRepository(database)).library_status;
 
   await handler(job, vi.fn(), () => false);
 
@@ -166,10 +157,7 @@ it("recognizes schema-v8 resolved rows in the library-status worker", async () =
 
 it("generates a playlist from the same schema-v8 resolution rows", async () => {
   const { database, config, imported, entries } = fixture();
-  new ImportRepository(database).setWorkflowState(
-    imported.id,
-    "library_status",
-  );
+  new ImportRepository(database).setWorkflowState(imported.id, "library_status");
   new LibraryRepository(database).saveStatus(imported.id, [
     {
       position: 0,
@@ -180,20 +168,15 @@ it("generates a playlist from the same schema-v8 resolution rows", async () => {
   ]);
   const jobs = new JobRepository(database);
   const job = jobs.create("playlist_generation", imported.id);
-  const handler = productionJobHandlers(
-    database,
-    config,
-    new SettingsRepository(database),
-  ).playlist_generation;
+  const handler = productionJobHandlers(database, config, new SettingsRepository(database)).playlist_generation;
 
   await handler(job, vi.fn(), () => false);
 
-  expect(
-    readFileSync(path.join(config.outputDir, "Runtime-parity.m3u8"), "utf8"),
-  ).toContain("/music/Automatic.flac");
-  expect(
-    new LibraryRepository(database).latestExport(imported.id),
-  ).toMatchObject({ writtenTracks: 1, missingTracks: 1 });
+  expect(readFileSync(path.join(config.outputDir, "Runtime-parity.m3u8"), "utf8")).toContain("/music/Automatic.flac");
+  expect(new LibraryRepository(database).latestExport(imported.id)).toMatchObject({
+    writtenTracks: 1,
+    missingTracks: 1,
+  });
   expect(entries).toHaveLength(2);
   database.close();
 });

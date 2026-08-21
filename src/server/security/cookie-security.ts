@@ -1,12 +1,5 @@
-export function secureSessionCookie(
-  requestHeaders: Pick<Headers, "get">,
-  requestUrl?: string,
-): boolean {
-  const forwarded = requestHeaders
-    .get("x-forwarded-proto")
-    ?.split(",", 1)[0]
-    .trim()
-    .toLowerCase();
+export function secureSessionCookie(requestHeaders: Pick<Headers, "get">, requestUrl?: string): boolean {
+  const forwarded = requestHeaders.get("x-forwarded-proto")?.split(",", 1)[0].trim().toLowerCase();
   if (forwarded) return forwarded === "https";
   const origin = requestHeaders.get("origin");
   if (origin) {

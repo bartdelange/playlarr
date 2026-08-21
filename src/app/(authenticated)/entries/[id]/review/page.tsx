@@ -11,9 +11,9 @@ import {
   validateManualMbid,
 } from "../../../../actions/manual-review";
 import {
-  validationWarnings,
   type Candidate,
   type CandidateRelease,
+  validationWarnings,
 } from "../../../../../server/integrations/musicbrainz/candidates";
 import { ResolutionRepository } from "../../../../../server/persistence/resolution-repository";
 import { database } from "../../../../../server/runtime";
@@ -29,25 +29,13 @@ interface ReviewQuery {
   mbid?: string;
 }
 
-function HiddenContext({
-  entryId,
-  csrf,
-  query,
-}: {
-  entryId: number;
-  csrf: string;
-  query: ReviewQuery;
-}) {
+function HiddenContext({ entryId, csrf, query }: { entryId: number; csrf: string; query: ReviewQuery }) {
   return (
     <>
       <input type="hidden" name="csrf_token" value={csrf} />
       <input type="hidden" name="entry_id" value={entryId} />
-      {query.session === "true" && (
-        <input type="hidden" name="session" value="true" />
-      )}
-      {query.plan_id && (
-        <input type="hidden" name="plan_id" value={query.plan_id} />
-      )}
+      {query.session === "true" && <input type="hidden" name="session" value="true" />}
+      {query.plan_id && <input type="hidden" name="plan_id" value={query.plan_id} />}
     </>
   );
 }
@@ -101,16 +89,11 @@ async function ManualReviewContent({
     queue.findIndex((item) => item.id === entryId),
   );
   const previous = sessionIndex > 0 ? queue[sessionIndex - 1] : undefined;
-  const next =
-    sessionIndex + 1 < queue.length ? queue[sessionIndex + 1] : undefined;
+  const next = sessionIndex + 1 < queue.length ? queue[sessionIndex + 1] : undefined;
   const candidates =
-    query.q !== undefined || query.validation !== undefined
-      ? (repository.candidates(entryId) as Candidate[])
-      : [];
+    query.q !== undefined || query.validation !== undefined ? (repository.candidates(entryId) as Candidate[]) : [];
   const validationIndex = Number(query.validation);
-  const validation = Number.isInteger(validationIndex)
-    ? candidates[validationIndex]
-    : undefined;
+  const validation = Number.isInteger(validationIndex) ? candidates[validationIndex] : undefined;
   const warnings = validation ? validationWarnings(validation) : [];
   const suggestions = repository.manualMatchSuggestions(entryId);
   const csrf = await requestCsrfToken();
@@ -122,8 +105,7 @@ async function ManualReviewContent({
         <div className="next-step">
           <strong>Editing the final Lidarr binding.</strong>
           <span>
-            Saving queues this change without rebuilding the plan. Make the rest
-            of your changes, then rebuild once.
+            Saving queues this change without rebuilding the plan. Make the rest of your changes, then rebuild once.
           </span>
         </div>
       )}
@@ -142,18 +124,12 @@ async function ManualReviewContent({
           </div>
           <div>
             {previous && (
-              <a
-                className="button secondary"
-                href={`/entries/${previous.id}/review?session=true`}
-              >
+              <a className="button secondary" href={`/entries/${previous.id}/review?session=true`}>
                 Previous
               </a>
             )}
             {next && (
-              <a
-                className="button secondary"
-                href={`/entries/${next.id}/review?session=true`}
-              >
+              <a className="button secondary" href={`/entries/${next.id}/review?session=true`}>
                 Next
               </a>
             )}
@@ -166,21 +142,15 @@ async function ManualReviewContent({
         <strong>{entry.track.artists.join(", ")}</strong>
         <p>
           {entry.track.album || "No album"}
-          {entry.track.durationMs
-            ? ` · ${(entry.track.durationMs / 1000).toFixed(1)} sec`
-            : ""}
+          {entry.track.durationMs ? ` · ${(entry.track.durationMs / 1000).toFixed(1)} sec` : ""}
           {entry.track.isrc ? ` · ${entry.track.isrc}` : ""}
         </p>
         <p>
           Automatic result: {entry.resolution.state.replaceAll("_", " ")}
-          {entry.resolution.result.failureReason
-            ? ` — ${entry.resolution.result.failureReason}`
-            : ""}
+          {entry.resolution.result.failureReason ? ` — ${entry.resolution.result.failureReason}` : ""}
         </p>
       </div>
-      {query.error && (
-        <p className="alert">{query.error.replaceAll("_", " ")}</p>
-      )}
+      {query.error && <p className="alert">{query.error.replaceAll("_", " ")}</p>}
 
       {suggestions.length > 0 && (
         <section className="card match-suggestions">
@@ -190,21 +160,15 @@ async function ManualReviewContent({
             <div className="reuse-match" key={suggestion.entryId}>
               <div>
                 <strong>
-                  {suggestion.result.artistNames?.join(", ")} —{" "}
-                  {suggestion.result.recordingTitle}
+                  {suggestion.result.artistNames?.join(", ")} — {suggestion.result.recordingTitle}
                 </strong>
                 <small>
-                  Manually matched in {suggestion.playlistName} ·{" "}
-                  {suggestion.result.recordingIds?.join(", ")}
+                  Manually matched in {suggestion.playlistName} · {suggestion.result.recordingIds?.join(", ")}
                 </small>
               </div>
               <form action={reuseManualMapping}>
                 <HiddenContext {...context} />
-                <input
-                  type="hidden"
-                  name="source_entry_id"
-                  value={suggestion.entryId}
-                />
+                <input type="hidden" name="source_entry_id" value={suggestion.entryId} />
                 <button>Apply match</button>
               </form>
             </div>
@@ -217,11 +181,7 @@ async function ManualReviewContent({
           <HiddenContext {...context} />
           <label>
             Search MusicBrainz
-            <input
-              name="query"
-              defaultValue={query.q ?? ""}
-              placeholder="Track title or search terms"
-            />
+            <input name="query" defaultValue={query.q ?? ""} placeholder="Track title or search terms" />
           </label>
           <button>Search</button>
         </form>
@@ -245,8 +205,7 @@ async function ManualReviewContent({
         <section className="card validation">
           <h2>Validation: {warnings.length ? "warning" : "valid"}</h2>
           <h3>
-            {validation.result.artistNames?.join(", ")} —{" "}
-            {validation.result.recordingTitle}
+            {validation.result.artistNames?.join(", ")} — {validation.result.recordingTitle}
           </h3>
           <dl>
             <dt>Artist match</dt>
@@ -258,9 +217,7 @@ async function ManualReviewContent({
             <dt>ISRC match</dt>
             <dd>{String(validation.evidence.isrcMatch)}</dd>
             <dt>Release group</dt>
-            <dd>
-              {validation.result.releaseGroupIds?.join(", ") || "Missing"}
-            </dd>
+            <dd>{validation.result.releaseGroupIds?.join(", ") || "Missing"}</dd>
           </dl>
           {warnings.map((warning) => (
             <p className="warning" key={warning}>
@@ -273,11 +230,7 @@ async function ManualReviewContent({
             <input
               type="hidden"
               name="method"
-              value={
-                query.method === "manual_search"
-                  ? "manual_search"
-                  : "manual_mbid"
-              }
+              value={query.method === "manual_search" ? "manual_search" : "manual_mbid"}
             />
             {(validation.result.releaseGroupIds?.length ?? 0) > 1 && (
               <label>
@@ -285,9 +238,7 @@ async function ManualReviewContent({
                 <select name="release_group_id" required defaultValue="">
                   <option value="">Select…</option>
                   {validation.result.releaseGroupIds?.map((group) => {
-                    const release = validation.releases.find(
-                      (item) => item.releaseGroupId === group,
-                    );
+                    const release = validation.releases.find((item) => item.releaseGroupId === group);
                     return (
                       <option value={group} key={group}>
                         {release ? releaseLabel(release) : group}
@@ -299,14 +250,8 @@ async function ManualReviewContent({
             )}
             {warnings.length > 0 && (
               <label>
-                <input
-                  className="checkbox"
-                  type="checkbox"
-                  name="allow_warning"
-                  value="true"
-                  required
-                />
-                I understand and accept these differences
+                <input className="checkbox" type="checkbox" name="allow_warning" value="true" required />I understand
+                and accept these differences
               </label>
             )}
             <button>Accept validated mapping</button>
@@ -319,38 +264,26 @@ async function ManualReviewContent({
           <h2>Candidates</h2>
           <div className="candidate-list">
             {candidates.map((candidate, index) => (
-              <article
-                className="card"
-                key={`${candidate.result.recordingIds?.[0]}-${index}`}
-              >
+              <article className="card" key={`${candidate.result.recordingIds?.[0]}-${index}`}>
                 <div>
                   <span className="score">{Math.round(candidate.score)}</span>
                   <h3>
-                    {candidate.result.artistNames?.join(", ")} —{" "}
-                    {candidate.result.recordingTitle}
+                    {candidate.result.artistNames?.join(", ")} — {candidate.result.recordingTitle}
                   </h3>
                   <p>MBID {candidate.result.recordingIds?.[0]}</p>
                   <p>
-                    Title similarity {candidate.evidence.titleSimilarity} ·
-                    Artist{" "}
-                    {candidate.evidence.artistMatch ? "match" : "differs"} ·
-                    ISRC{" "}
+                    Title similarity {candidate.evidence.titleSimilarity} · Artist{" "}
+                    {candidate.evidence.artistMatch ? "match" : "differs"} · ISRC{" "}
                     {candidate.evidence.isrcMatch ? "match" : "not matched"}
                   </p>
                   {candidate.releases.slice(0, 4).map((release) => (
-                    <small key={`${release.id}-${release.releaseGroupId}`}>
-                      {releaseLabel(release)}
-                    </small>
+                    <small key={`${release.id}-${release.releaseGroupId}`}>{releaseLabel(release)}</small>
                   ))}
                 </div>
                 <form action={validateManualMbid}>
                   <HiddenContext {...context} />
                   <input type="hidden" name="method" value="manual_search" />
-                  <input
-                    type="hidden"
-                    name="mbid"
-                    value={candidate.result.recordingIds?.[0]}
-                  />
+                  <input type="hidden" name="mbid" value={candidate.result.recordingIds?.[0]} />
                   <button>Validate</button>
                 </form>
               </article>
@@ -375,9 +308,7 @@ async function ManualReviewContent({
         )}
         <form action={skipReviewEntry}>
           <HiddenContext {...context} />
-          <button className="secondary">
-            Skip track{session ? " and continue" : ""}
-          </button>
+          <button className="secondary">Skip track{session ? " and continue" : ""}</button>
         </form>
       </div>
     </>

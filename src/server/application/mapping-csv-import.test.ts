@@ -36,12 +36,7 @@ it("imports a master mapping CSV with ordered tracks and imported resolution sem
       },
     ]);
 
-    const imported = importMappingCsv(
-      csv,
-      "Imported Mix",
-      imports,
-      resolutions,
-    );
+    const imported = importMappingCsv(csv, "Imported Mix", imports, resolutions);
 
     expect(imported).toMatchObject({
       sourcePlaylistId: "mix",

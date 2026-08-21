@@ -11,10 +11,7 @@ import { ImportTrackTable } from "../../../../components/imports/import-track-ta
 import { FinalTrackTable } from "../../../../components/imports/final-track-table";
 import { LidarrPlanTable } from "../../../../components/imports/lidarr-plan-table";
 import { finalTableRows } from "../../../../server/application/final-table-view";
-import {
-  lidarrPlanRows,
-  lidarrPlanSummary,
-} from "../../../../server/application/lidarr-plan-view";
+import { lidarrPlanRows, lidarrPlanSummary } from "../../../../server/application/lidarr-plan-view";
 import { LibraryRepository } from "../../../../server/persistence/library-repository";
 import {
   allowVariousArtistsRelease,
@@ -26,10 +23,8 @@ import {
   queueResolution,
   retryLidarrPlanEntry,
 } from "../../../actions/workflows";
-import {
-  queueLibraryStatus,
-  queuePlaylistGeneration,
-} from "../../../actions/exports";
+import { queueLibraryStatus, queuePlaylistGeneration } from "../../../actions/exports";
+
 export default function ImportPage({
   params,
   searchParams,
@@ -65,9 +60,7 @@ async function ImportWorkflowContent({
   }
   const entries = repository.entries(id);
   const musicMatchRecordings = repository.musicMatchRecordings(id);
-  const hasMappingSources = repository
-    .listImports()
-    .some((candidate) => candidate.id !== id);
+  const hasMappingSources = repository.listImports().some((candidate) => candidate.id !== id);
   const revisions = database
     .prepare(
       `SELECT id, created_at, added, removed, updated, moved
@@ -121,18 +114,14 @@ async function ImportWorkflowContent({
   );
   const csrf = await requestCsrfToken();
   const planHeader = database
-    .prepare(
-      "SELECT id, status FROM lidarr_plans WHERE import_id = ? ORDER BY created_at DESC LIMIT 1",
-    )
+    .prepare("SELECT id, status FROM lidarr_plans WHERE import_id = ? ORDER BY created_at DESC LIMIT 1")
     .get(id) as { id: string; status: string } | undefined;
   const plans = new LidarrPlanRepository(database);
   const planActions = planHeader ? plans.get(planHeader.id).plan.actions : [];
   const planSummary = lidarrPlanSummary({ actions: planActions });
   const latestExport = new LibraryRepository(database).latestExport(id);
   const lidarrResolutions = new Map(
-    plans
-      .planningResolutions(id)
-      .map((resolution) => [resolution.entryId, resolution]),
+    plans.planningResolutions(id).map((resolution) => [resolution.entryId, resolution]),
   );
   const planRows = planHeader
     ? lidarrPlanRows(
@@ -189,17 +178,12 @@ async function ImportWorkflowContent({
       details: result.details ?? undefined,
     })),
   );
-  const matchingComplete = ![
-    "acquired",
-    "ready_to_resolve",
-    "resolving",
-    "review_required",
-  ].includes(imported.workflowState);
-  const finalWorkflowActive = [
-    "waiting_for_downloads",
-    "library_status",
-    "playlist_generated",
-  ].includes(imported.workflowState);
+  const matchingComplete = !["acquired", "ready_to_resolve", "resolving", "review_required"].includes(
+    imported.workflowState,
+  );
+  const finalWorkflowActive = ["waiting_for_downloads", "library_status", "playlist_generated"].includes(
+    imported.workflowState,
+  );
   const finalAvailable = Boolean(planHeader);
   const currentStep = finalWorkflowActive ? 3 : matchingComplete ? 2 : 1;
   const requestedStage = (await searchParams).stage;
@@ -222,9 +206,7 @@ async function ImportWorkflowContent({
           <div className="playlist-meta">
             <span className="badge">{imported.source}</span>
             <span>{entries.length} tracks</span>
-            <span className="badge">
-              {imported.workflowState.replaceAll("_", " ")}
-            </span>
+            <span className="badge">{imported.workflowState.replaceAll("_", " ")}</span>
           </div>
           <h1>{imported.playlistName}</h1>
         </div>
@@ -235,10 +217,7 @@ async function ImportWorkflowContent({
             <button className="secondary">Refresh playlist</button>
           </form>
           {hasMappingSources && (
-            <Link
-              className="button secondary"
-              href={`/imports/${id}/mapping-overrides`}
-            >
+            <Link className="button secondary" href={`/imports/${id}/mapping-overrides`}>
               Reuse mappings
             </Link>
           )}
@@ -259,13 +238,7 @@ async function ImportWorkflowContent({
         </Link>
         {matchingComplete ? (
           <Link
-            className={
-              stage === "lidarr"
-                ? "active"
-                : currentStep > 2
-                  ? "complete"
-                  : undefined
-            }
+            className={stage === "lidarr" ? "active" : currentStep > 2 ? "complete" : undefined}
             href={`/imports/${id}?stage=lidarr`}
             aria-current={stage === "lidarr" ? "step" : undefined}
           >
@@ -294,17 +267,11 @@ async function ImportWorkflowContent({
       <section className="step-actions">
         <div>
           <p className="eyebrow">Current step</p>
-          <h2>
-            {stage === "match"
-              ? "Music match"
-              : stage === "lidarr"
-                ? "Lidarr plan"
-                : "Final"}
-          </h2>
+          <h2>{stage === "match" ? "Music match" : stage === "lidarr" ? "Lidarr plan" : "Final"}</h2>
           {stage === "lidarr" && planHeader && (
             <p>
-              <span className="badge">{planHeader.status}</span>{" "}
-              {planSummary.actions} actions · {planSummary.changes} changes
+              <span className="badge">{planHeader.status}</span> {planSummary.actions} actions · {planSummary.changes}{" "}
+              changes
             </p>
           )}
         </div>
@@ -318,15 +285,10 @@ async function ImportWorkflowContent({
                   <button>Refresh monitored &amp; downloaded</button>
                 </form>
               )}
-              <Link
-                className="button secondary"
-                href={`/imports/${id}/local-additions`}
-              >
+              <Link className="button secondary" href={`/imports/${id}/local-additions`}>
                 Local additions
               </Link>
-              {["library_status", "playlist_generated"].includes(
-                imported.workflowState,
-              ) && (
+              {["library_status", "playlist_generated"].includes(imported.workflowState) && (
                 <form action={queuePlaylistGeneration}>
                   <input type="hidden" name="csrf_token" value={csrf} />
                   <input type="hidden" name="import_id" value={id} />
@@ -335,16 +297,13 @@ async function ImportWorkflowContent({
               )}
             </>
           )}
-          {stage === "match" &&
-            ["ready_to_resolve", "review_required"].includes(
-              imported.workflowState,
-            ) && (
-              <form action={queueResolution}>
-                <input type="hidden" name="csrf_token" value={csrf} />
-                <input type="hidden" name="import_id" value={id} />
-                <button>Resolve tracks</button>
-              </form>
-            )}
+          {stage === "match" && ["ready_to_resolve", "review_required"].includes(imported.workflowState) && (
+            <form action={queueResolution}>
+              <input type="hidden" name="csrf_token" value={csrf} />
+              <input type="hidden" name="import_id" value={id} />
+              <button>Resolve tracks</button>
+            </form>
+          )}
           {stage === "lidarr" && planHeader?.status === "draft" && (
             <form action={approveAndExecutePlan}>
               <input type="hidden" name="csrf_token" value={csrf} />
@@ -362,10 +321,7 @@ async function ImportWorkflowContent({
             </form>
           )}
           {stage === "lidarr" && planHeader && (
-            <Link
-              className="button secondary"
-              href={`/imports/${id}?stage=final`}
-            >
+            <Link className="button secondary" href={`/imports/${id}?stage=final`}>
               Open final
             </Link>
           )}
@@ -376,8 +332,8 @@ async function ImportWorkflowContent({
           <div>
             <strong>Binding changes are queued.</strong>
             <span>
-              This plan is now a stale reference and cannot be applied. Continue
-              changing tracks, then rebuild once when you are finished.
+              This plan is now a stale reference and cannot be applied. Continue changing tracks, then rebuild once when
+              you are finished.
             </span>
           </div>
         </div>
@@ -387,8 +343,8 @@ async function ImportWorkflowContent({
           <div>
             <strong>There are unapplied Lidarr changes.</strong>
             <span>
-              This Final view is provisional. Apply the active Lidarr plan, then
-              refresh monitored and downloaded status.
+              This Final view is provisional. Apply the active Lidarr plan, then refresh monitored and downloaded
+              status.
             </span>
           </div>
           <Link className="button" href={`/imports/${id}?stage=lidarr`}>
@@ -396,21 +352,18 @@ async function ImportWorkflowContent({
           </Link>
         </div>
       )}
-      {stage === "final" &&
-        planHeader?.status === "completed" &&
-        latestExport && (
-          <div className="card playlist-result">
-            <div>
-              <p className="eyebrow">Latest M3U</p>
-              <h2>{latestExport.outputPath}</h2>
-              <p>
-                {latestExport.writtenTracks} exported ·{" "}
-                {latestExport.missingTracks} missing
-              </p>
-            </div>
-            <span className="status ok">Ready</span>
+      {stage === "final" && planHeader?.status === "completed" && latestExport && (
+        <div className="card playlist-result">
+          <div>
+            <p className="eyebrow">Latest M3U</p>
+            <h2>{latestExport.outputPath}</h2>
+            <p>
+              {latestExport.writtenTracks} exported · {latestExport.missingTracks} missing
+            </p>
           </div>
-        )}
+          <span className="status ok">Ready</span>
+        </div>
+      )}
       {stage !== "lidarr" && revisions.length > 0 && (
         <details className="history">
           <summary>Playlist refresh history ({revisions.length})</summary>
@@ -419,8 +372,8 @@ async function ImportWorkflowContent({
               <Link href={`/imports/${id}/revisions/${revision.id}`}>
                 {revision.created_at.slice(0, 16).replace("T", " ")}
               </Link>{" "}
-              · {revision.added} added · {revision.updated} updated ·{" "}
-              {revision.removed} removed · {revision.moved} moved
+              · {revision.added} added · {revision.updated} updated · {revision.removed} removed · {revision.moved}{" "}
+              moved
             </p>
           ))}
         </details>
@@ -457,9 +410,7 @@ async function ImportWorkflowContent({
             </div>
             <div>
               <strong>{planSummary.releases}</strong>
-              <span>
-                Requested releases · {planSummary.represented} represented
-              </span>
+              <span>Requested releases · {planSummary.represented} represented</span>
             </div>
             <div>
               <strong>{planSummary.monitored}</strong>
@@ -467,14 +418,12 @@ async function ImportWorkflowContent({
             </div>
             <div>
               <strong>{planSummary.searches}</strong>
-              <span>
-                Searches queued · {planSummary.attention} need attention
-              </span>
+              <span>Searches queued · {planSummary.attention} need attention</span>
             </div>
           </section>
           <p>
-            Planning is read-only. Approval authorizes exactly these actions;
-            execution revalidates Lidarr immediately before mutation.
+            Planning is read-only. Approval authorizes exactly these actions; execution revalidates Lidarr immediately
+            before mutation.
           </p>
           <LidarrPlanTable
             rows={planRows}
@@ -511,7 +460,5 @@ async function ImportWorkflowContent({
 }
 
 function ImportWorkflowSkeleton() {
-  return (
-    <section className="card skeleton">Loading playlist workflow…</section>
-  );
+  return <section className="card skeleton">Loading playlist workflow…</section>;
 }

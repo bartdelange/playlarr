@@ -36,8 +36,7 @@ export class DurableJobWorker {
     try {
       await handler(
         job,
-        (current, total, item) =>
-          this.jobs.update(job.id, { current, total, currentItem: item }),
+        (current, total, item) => this.jobs.update(job.id, { current, total, currentItem: item }),
         cancelled,
       );
       this.jobs.update(job.id, {

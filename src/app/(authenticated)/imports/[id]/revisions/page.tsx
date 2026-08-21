@@ -3,11 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { PlaylistRevisionRepository } from "../../../../../server/persistence/playlist-revision-repository";
 import { database } from "../../../../../server/runtime";
-export default function RevisionsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+
+export default function RevisionsPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <main>
       <h1>Playlist revisions</h1>
@@ -25,14 +22,9 @@ async function RevisionList({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       {revisions.map((revision) => (
-        <Link
-          className="card"
-          href={`/imports/${id}/revisions/${revision.id}`}
-          key={revision.id}
-        >
+        <Link className="card" href={`/imports/${id}/revisions/${revision.id}`} key={revision.id}>
           <strong>
-            {revision.added} added · {revision.removed} removed ·{" "}
-            {revision.updated} updated
+            {revision.added} added · {revision.removed} removed · {revision.updated} updated
           </strong>
           <small>
             {revision.moved} moved · {revision.unchanged} unchanged

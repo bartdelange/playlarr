@@ -5,12 +5,9 @@ import { afterEach, expect, it } from "vitest";
 import { openDatabase } from "../../server/persistence/database";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { PlaylistRevisionRepository } from "../../server/persistence/playlist-revision-repository";
+
 const directories: string[] = [];
-afterEach(() =>
-  directories
-    .splice(0)
-    .forEach((directory) => rmSync(directory, { recursive: true })),
-);
+afterEach(() => directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true })));
 it("persists update audit snapshots including duplicate source occurrences", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-revision-"));
   directories.push(directory);

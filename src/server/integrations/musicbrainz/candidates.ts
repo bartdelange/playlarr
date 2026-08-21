@@ -1,13 +1,6 @@
 import type { SourceTrack } from "../../domain/playlist";
-import {
-  nameKey,
-  searchTitle,
-  sequenceSimilarity,
-  uniqueValues,
-  versionPreference,
-  words,
-} from "./matching";
-import { resultFromRecordings, type MusicBrainzRecording } from "./resolution";
+import { nameKey, searchTitle, sequenceSimilarity, uniqueValues, versionPreference, words } from "./matching";
+import { type MusicBrainzRecording, resultFromRecordings } from "./resolution";
 
 export interface CandidateRelease {
   id: string;
@@ -43,10 +36,7 @@ export interface ManualValidation {
   errors: string[];
 }
 
-export function candidateFromRecording(
-  track: SourceTrack,
-  recording: MusicBrainzRecording,
-): Candidate | undefined {
+export function candidateFromRecording(track: SourceTrack, recording: MusicBrainzRecording): Candidate | undefined {
   let result = resultFromRecordings([recording], "manual_search", track.album);
   if (!result) return undefined;
   const candidateTitle = recording.title ?? "";
@@ -55,9 +45,7 @@ export function candidateFromRecording(
     searchTitle(candidateTitle).toLowerCase(),
   );
   const sourceArtistKeys = new Set(track.artists.map(nameKey));
-  const artistMatch = (result.artistNames ?? [])
-    .map(nameKey)
-    .some((name) => sourceArtistKeys.has(name));
+  const artistMatch = (result.artistNames ?? []).map(nameKey).some((name) => sourceArtistKeys.has(name));
   const isrcs = uniqueValues(recording.isrcs ?? []);
   const normalizedIsrc = (track.isrc ?? "").replace(/-/g, "").toUpperCase();
   const isrcMatch = Boolean(normalizedIsrc && isrcs.includes(normalizedIsrc));
@@ -70,9 +58,7 @@ export function candidateFromRecording(
     primaryType: release["release-group"]?.["primary-type"] ?? "",
     secondaryTypes: release["release-group"]?.["secondary-types"] ?? [],
   }));
-  const releaseGroupIds = uniqueValues(
-    releases.map((release) => release.releaseGroupId),
-  );
+  const releaseGroupIds = uniqueValues(releases.map((release) => release.releaseGroupId));
   if (releaseGroupIds.length)
     result = {
       ...result,
@@ -80,19 +66,13 @@ export function candidateFromRecording(
       releaseGroupIds,
     };
   const durationDeltaMs =
-    recording.length !== undefined && track.durationMs !== undefined
-      ? recording.length - track.durationMs
-      : undefined;
+    recording.length !== undefined && track.durationMs !== undefined ? recording.length - track.durationMs : undefined;
   return {
     result,
     durationMs: recording.length,
     isrcs,
     releases,
-    score:
-      Number(recording.score ?? 0) +
-      titleSimilarity * 25 +
-      (artistMatch ? 100 : 0) +
-      (isrcMatch ? 1000 : 0),
+    score: Number(recording.score ?? 0) + titleSimilarity * 25 + (artistMatch ? 100 : 0) + (isrcMatch ? 1000 : 0),
     evidence: {
       titleSimilarity: Math.round(titleSimilarity * 10_000) / 10_000,
       artistMatch,
@@ -110,10 +90,7 @@ export function candidateFromRecording(
 function rank(candidate: Candidate): number[] {
   const source = words(candidate.evidence.sourceTitle);
   const target = words(candidate.evidence.candidateTitle);
-  const sameBase =
-    source.size > 0 &&
-    source.size === target.size &&
-    [...source].every((word) => target.has(word));
+  const sameBase = source.size > 0 && source.size === target.size && [...source].every((word) => target.has(word));
   return [
     Number(candidate.evidence.isrcMatch),
     Number(candidate.evidence.artistMatch),
@@ -122,17 +99,13 @@ function rank(candidate: Candidate): number[] {
     candidate.score,
   ];
 }
-export function candidates(
-  track: SourceTrack,
-  recordings: MusicBrainzRecording[],
-): Candidate[] {
+export function candidates(track: SourceTrack, recordings: MusicBrainzRecording[]): Candidate[] {
   return recordings
     .flatMap((recording) => candidateFromRecording(track, recording) ?? [])
     .sort((left, right) => {
       const a = rank(left);
       const b = rank(right);
-      for (let index = 0; index < a.length; index++)
-        if (a[index] !== b[index]) return b[index] - a[index];
+      for (let index = 0; index < a.length; index++) if (a[index] !== b[index]) return b[index] - a[index];
       return 0;
     });
 }
@@ -140,17 +113,11 @@ export function validationWarnings(candidate: Candidate): string[] {
   const warnings: string[] = [];
   if (!candidate.evidence.artistMatch) warnings.push("artist_differs");
   if (candidate.evidence.titleSimilarity < 0.55) warnings.push("title_differs");
-  if (
-    candidate.evidence.durationDeltaMs !== undefined &&
-    Math.abs(candidate.evidence.durationDeltaMs) > 10_000
-  )
+  if (candidate.evidence.durationDeltaMs !== undefined && Math.abs(candidate.evidence.durationDeltaMs) > 10_000)
     warnings.push("duration_differs");
-  if (!candidate.evidence.isrcMatch && candidate.isrcs.length)
-    warnings.push("isrc_differs");
-  if (!candidate.result.releaseGroupIds?.length)
-    warnings.push("release_group_missing");
-  else if (candidate.result.releaseGroupIds.length > 1)
-    warnings.push("release_group_ambiguous");
+  if (!candidate.evidence.isrcMatch && candidate.isrcs.length) warnings.push("isrc_differs");
+  if (!candidate.result.releaseGroupIds?.length) warnings.push("release_group_missing");
+  else if (candidate.result.releaseGroupIds.length > 1) warnings.push("release_group_ambiguous");
   return warnings;
 }
 export function validateCandidate(candidate: Candidate): "valid" | "warning" {

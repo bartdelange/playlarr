@@ -42,19 +42,13 @@ it("analyzes fetched playlist tracks and persists master-equivalent impact count
     () => false,
   );
 
-  expect(savePlaylistAnalysis).toHaveBeenCalledWith(
-    "spotify",
-    "playlist",
-    "Mix",
-    "complete",
-    {
-      tracks: 2,
-      resolved: 1,
-      unresolved: 1,
-      artists_to_add: 1,
-      artist_names: ["New Artist"],
-    },
-  );
+  expect(savePlaylistAnalysis).toHaveBeenCalledWith("spotify", "playlist", "Mix", "complete", {
+    tracks: 2,
+    resolved: 1,
+    unresolved: 1,
+    artists_to_add: 1,
+    artist_names: ["New Artist"],
+  });
   expect(progress).toHaveBeenCalledWith(2, 2, "Artist — Two");
 });
 
@@ -80,13 +74,7 @@ it("persists followed-playlist analysis as skipped without loading tracks", asyn
     () => false,
   );
   expect(getEntries).not.toHaveBeenCalled();
-  expect(savePlaylistAnalysis).toHaveBeenCalledWith(
-    "spotify",
-    "followed",
-    "Followed",
-    "skipped_followed",
-    {},
-  );
+  expect(savePlaylistAnalysis).toHaveBeenCalledWith("spotify", "followed", "Followed", "skipped_followed", {});
 });
 
 function track(title: string) {

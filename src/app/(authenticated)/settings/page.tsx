@@ -12,8 +12,8 @@ import {
 } from "../../actions/workflows";
 import { requestCsrfToken } from "../../../server/security/request";
 import { LidarrClient } from "../../../server/integrations/lidarr/client";
-const secretPlaceholder = (value: unknown) =>
-  value ? "Configured — enter to replace" : "Required";
+
+const secretPlaceholder = (value: unknown) => (value ? "Configured — enter to replace" : "Required");
 export default function SettingsPage({
   searchParams,
 }: {
@@ -30,22 +30,14 @@ export default function SettingsPage({
   );
 }
 
-async function SettingsContent({
-  searchParams,
-}: {
-  searchParams: Promise<{ message?: string; error?: string }>;
-}) {
+async function SettingsContent({ searchParams }: { searchParams: Promise<{ message?: string; error?: string }> }) {
   await connection();
   const query = await searchParams;
   const csrf = await requestCsrfToken();
   const saved = settings.all();
-  const mappings = settings.get<[string, string][]>("path_mappings", [
-    ["/music", "/music"],
-  ]);
+  const mappings = settings.get<[string, string][]>("path_mappings", [["/music", "/music"]]);
   const lidarrUrl = String(saved.lidarr_url ?? config.lidarr.url ?? "");
-  const lidarrApiKey = String(
-    saved.lidarr_api_key ?? config.lidarr.apiKey ?? "",
-  );
+  const lidarrApiKey = String(saved.lidarr_api_key ?? config.lidarr.apiKey ?? "");
   const lidarrConfigured = Boolean(lidarrUrl && lidarrApiKey);
   let rootFolders: { value: string; label: string }[] = [];
   let qualityProfiles: { value: number; label: string }[] = [];
@@ -63,15 +55,9 @@ async function SettingsContent({
       lidarrOptionsError = `Could not load Lidarr options: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
-  const selectedRoot = String(
-    saved.lidarr_root_folder ?? config.lidarr.rootFolder,
-  );
-  const selectedQuality = Number(
-    saved.lidarr_quality_profile_id ?? config.lidarr.qualityProfileId,
-  );
-  const selectedMetadata = Number(
-    saved.lidarr_metadata_profile_id ?? config.lidarr.metadataProfileId,
-  );
+  const selectedRoot = String(saved.lidarr_root_folder ?? config.lidarr.rootFolder);
+  const selectedQuality = Number(saved.lidarr_quality_profile_id ?? config.lidarr.qualityProfileId);
+  const selectedMetadata = Number(saved.lidarr_metadata_profile_id ?? config.lidarr.metadataProfileId);
   const navidromeConfigured = Boolean(
     (saved.navidrome_url ?? config.navidrome.url) &&
     (saved.navidrome_username ?? config.navidrome.username) &&
@@ -79,26 +65,13 @@ async function SettingsContent({
   );
   return (
     <>
-      {(query.message || query.error) && (
-        <p role="alert">{query.message ?? query.error}</p>
-      )}
+      {(query.message || query.error) && <p role="alert">{query.message ?? query.error}</p>}
       <div className="settings-tabs">
-        <input
-          className="settings-tab-control"
-          type="radio"
-          name="settings-tab"
-          id="services-tab"
-          defaultChecked
-        />
+        <input className="settings-tab-control" type="radio" name="settings-tab" id="services-tab" defaultChecked />
         <label className="settings-tab-label" htmlFor="services-tab">
           Services
         </label>
-        <input
-          className="settings-tab-control"
-          type="radio"
-          name="settings-tab"
-          id="data-tab"
-        />
+        <input className="settings-tab-control" type="radio" name="settings-tab" id="data-tab" />
         <label className="settings-tab-label" htmlFor="data-tab">
           Data Settings
         </label>
@@ -106,56 +79,37 @@ async function SettingsContent({
           <ServiceForm title="MusicBrainz" service="musicbrainz" csrf={csrf}>
             <label>
               User-Agent
-              <input
-                name="mb_user_agent"
-                defaultValue={String(
-                  saved.mb_user_agent ?? config.musicBrainz.userAgent,
-                )}
-              />
+              <input name="mb_user_agent" defaultValue={String(saved.mb_user_agent ?? config.musicBrainz.userAgent)} />
             </label>
           </ServiceForm>
           <ServiceForm
             title="Spotify"
             service="spotify"
             csrf={csrf}
-            status={
-              existsSync(config.spotify.tokenCache)
-                ? "Authenticated"
-                : "Not authenticated"
-            }
+            status={existsSync(config.spotify.tokenCache) ? "Authenticated" : "Not authenticated"}
             statusOk={existsSync(config.spotify.tokenCache)}
           >
             <label>
               Client ID
               <input
                 name="spotify_client_id"
-                placeholder={secretPlaceholder(
-                  saved.spotify_client_id ?? config.spotify.clientId,
-                )}
+                placeholder={secretPlaceholder(saved.spotify_client_id ?? config.spotify.clientId)}
               />
             </label>
             <label>
               Redirect URI
               <input
                 name="spotify_redirect_uri"
-                defaultValue={String(
-                  saved.spotify_redirect_uri ?? config.spotify.redirectUri,
-                )}
+                defaultValue={String(saved.spotify_redirect_uri ?? config.spotify.redirectUri)}
               />
             </label>
           </ServiceForm>
           <ServiceForm title="TIDAL" service="tidal" csrf={csrf} save={false}>
-            <p className="muted">
-              Playlist source using TIDAL device authentication.
-            </p>
+            <p className="muted">Playlist source using TIDAL device authentication.</p>
             <p>
               Session:{" "}
-              <span
-                className={`status ${existsSync(config.tidal.sessionFile) ? "ok" : ""}`}
-              >
-                {existsSync(config.tidal.sessionFile)
-                  ? "Authenticated"
-                  : "Not authenticated"}
+              <span className={`status ${existsSync(config.tidal.sessionFile) ? "ok" : ""}`}>
+                {existsSync(config.tidal.sessionFile) ? "Authenticated" : "Not authenticated"}
               </span>
             </p>
           </ServiceForm>
@@ -176,21 +130,15 @@ async function SettingsContent({
               <input
                 type="password"
                 name="lidarr_api_key"
-                placeholder={secretPlaceholder(
-                  saved.lidarr_api_key ?? config.lidarr.apiKey,
-                )}
+                placeholder={secretPlaceholder(saved.lidarr_api_key ?? config.lidarr.apiKey)}
               />
             </label>
             <label>
               Root folder
-              <select
-                name="lidarr_root_folder"
-                defaultValue={selectedRoot}
-                disabled={!lidarrConfigured}
-              >
-                {!rootFolders.some(
-                  (option) => option.value === selectedRoot,
-                ) && <option value={selectedRoot}>{selectedRoot}</option>}
+              <select name="lidarr_root_folder" defaultValue={selectedRoot} disabled={!lidarrConfigured}>
+                {!rootFolders.some((option) => option.value === selectedRoot) && (
+                  <option value={selectedRoot}>{selectedRoot}</option>
+                )}
                 {rootFolders.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -205,12 +153,8 @@ async function SettingsContent({
                 defaultValue={String(selectedQuality)}
                 disabled={!lidarrConfigured}
               >
-                {!qualityProfiles.some(
-                  (option) => option.value === selectedQuality,
-                ) && (
-                  <option value={selectedQuality}>
-                    Profile {selectedQuality}
-                  </option>
+                {!qualityProfiles.some((option) => option.value === selectedQuality) && (
+                  <option value={selectedQuality}>Profile {selectedQuality}</option>
                 )}
                 {qualityProfiles.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -226,12 +170,8 @@ async function SettingsContent({
                 defaultValue={String(selectedMetadata)}
                 disabled={!lidarrConfigured}
               >
-                {!metadataProfiles.some(
-                  (option) => option.value === selectedMetadata,
-                ) && (
-                  <option value={selectedMetadata}>
-                    Profile {selectedMetadata}
-                  </option>
+                {!metadataProfiles.some((option) => option.value === selectedMetadata) && (
+                  <option value={selectedMetadata}>Profile {selectedMetadata}</option>
                 )}
                 {metadataProfiles.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -242,24 +182,10 @@ async function SettingsContent({
             </label>
             {!lidarrConfigured && (
               <>
-                <input
-                  type="hidden"
-                  name="lidarr_root_folder"
-                  value={selectedRoot}
-                />
-                <input
-                  type="hidden"
-                  name="lidarr_quality_profile_id"
-                  value={selectedQuality}
-                />
-                <input
-                  type="hidden"
-                  name="lidarr_metadata_profile_id"
-                  value={selectedMetadata}
-                />
-                <small>
-                  Save a Lidarr URL and API key to load these options.
-                </small>
+                <input type="hidden" name="lidarr_root_folder" value={selectedRoot} />
+                <input type="hidden" name="lidarr_quality_profile_id" value={selectedQuality} />
+                <input type="hidden" name="lidarr_metadata_profile_id" value={selectedMetadata} />
+                <small>Save a Lidarr URL and API key to load these options.</small>
               </>
             )}
             {lidarrOptionsError && <small>{lidarrOptionsError}</small>}
@@ -274,20 +200,13 @@ async function SettingsContent({
           >
             <label>
               URL
-              <input
-                name="navidrome_url"
-                defaultValue={String(
-                  saved.navidrome_url ?? config.navidrome.url ?? "",
-                )}
-              />
+              <input name="navidrome_url" defaultValue={String(saved.navidrome_url ?? config.navidrome.url ?? "")} />
             </label>
             <label>
               Username
               <input
                 name="navidrome_username"
-                placeholder={secretPlaceholder(
-                  saved.navidrome_username ?? config.navidrome.username,
-                )}
+                placeholder={secretPlaceholder(saved.navidrome_username ?? config.navidrome.username)}
               />
             </label>
             <label>
@@ -295,9 +214,7 @@ async function SettingsContent({
               <input
                 type="password"
                 name="navidrome_password"
-                placeholder={secretPlaceholder(
-                  saved.navidrome_password ?? config.navidrome.password,
-                )}
+                placeholder={secretPlaceholder(saved.navidrome_password ?? config.navidrome.password)}
               />
             </label>
           </ServiceForm>
@@ -333,16 +250,8 @@ async function SettingsContent({
               </label>
               {!security.hasPassword && (
                 <>
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="New password"
-                  />
-                  <input
-                    type="password"
-                    name="confirm_password"
-                    placeholder="Confirm password"
-                  />
+                  <input type="password" name="password" placeholder="New password" />
+                  <input type="password" name="confirm_password" placeholder="Confirm password" />
                 </>
               )}
               <button>Save authentication</button>
@@ -351,26 +260,9 @@ async function SettingsContent({
               <form action={changePassword}>
                 <input type="hidden" name="csrf_token" value={csrf} />
                 <h3>Change password</h3>
-                <input
-                  type="password"
-                  name="current_password"
-                  placeholder="Current password"
-                  required
-                />
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="New password"
-                  minLength={12}
-                  required
-                />
-                <input
-                  type="password"
-                  name="confirm_password"
-                  placeholder="Confirm password"
-                  minLength={12}
-                  required
-                />
+                <input type="password" name="current_password" placeholder="Current password" required />
+                <input type="password" name="password" placeholder="New password" minLength={12} required />
+                <input type="password" name="confirm_password" placeholder="Confirm password" minLength={12} required />
                 <button>Change password</button>
               </form>
             )}
@@ -404,11 +296,7 @@ function ServiceForm({
   statusOk?: boolean;
 }) {
   const authenticate =
-    service === "spotify"
-      ? authenticateSpotify
-      : service === "tidal"
-        ? authenticateTidal
-        : undefined;
+    service === "spotify" ? authenticateSpotify : service === "tidal" ? authenticateTidal : undefined;
   return (
     <section className="card">
       <h2>{title}</h2>
@@ -425,11 +313,7 @@ function ServiceForm({
         </form>
       )}
       <div className="settings-block-footer">
-        {status ? (
-          <span className={`status ${statusOk ? "ok" : ""}`}>{status}</span>
-        ) : (
-          <span />
-        )}
+        {status ? <span className={`status ${statusOk ? "ok" : ""}`}>{status}</span> : <span />}
         {test && (
           <form action={testServiceConnection}>
             <input type="hidden" name="csrf_token" value={csrf} />

@@ -3,11 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { security } from "../../server/runtime";
 import { login } from "../actions/security";
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+
+export default function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   return (
     <main className="auth-card">
       <h1>Log in</h1>
@@ -17,11 +14,7 @@ export default function LoginPage({
     </main>
   );
 }
-async function LoginForm({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+async function LoginForm({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await connection();
   if (!security.configured) redirect("/setup");
   const { error } = await searchParams;

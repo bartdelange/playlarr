@@ -19,55 +19,28 @@ type TrackRow = {
 };
 
 const reviewStates = new Set(["unresolved", "ambiguous", "validation_failed"]);
-const downloadedStates = new Set([
-  "represented_locally",
-  "release_downloaded",
-  "recording_match",
-]);
+const downloadedStates = new Set(["represented_locally", "release_downloaded", "recording_match"]);
 
-export function ImportTrackTable({
-  rows,
-  stage = "match",
-}: {
-  rows: TrackRow[];
-  stage?: "match" | "final";
-}) {
+export function ImportTrackTable({ rows, stage = "match" }: { rows: TrackRow[]; stage?: "match" | "final" }) {
   const params = useParams<{ id?: string }>();
   const [filter, setFilter] = useState("all");
   const columnLabels =
     stage === "match"
-      ? [
-          "#",
-          "Status",
-          "Source track",
-          "Matched recording",
-          "Method",
-          "Actions",
-        ]
-      : [
-          "#",
-          "Status",
-          "Source track",
-          "Lidarr matched",
-          "Library state",
-          "Actions",
-        ];
+      ? ["#", "Status", "Source track", "Matched recording", "Method", "Actions"]
+      : ["#", "Status", "Source track", "Lidarr matched", "Library state", "Actions"];
   const [columns, setColumns] = useState(() => columnLabels.map(() => true));
   const visibleRows = useMemo(
     () =>
       rows.filter((row) => {
-        if (filter === "downloaded")
-          return downloadedStates.has(row.libraryClassification ?? "");
-        if (filter === "downloadable")
-          return row.libraryClassification === "release_monitored_missing";
+        if (filter === "downloaded") return downloadedStates.has(row.libraryClassification ?? "");
+        if (filter === "downloadable") return row.libraryClassification === "release_monitored_missing";
         if (filter === "not_downloadable")
           return (
             !downloadedStates.has(row.libraryClassification ?? "") &&
             row.libraryClassification !== "release_monitored_missing"
           );
         if (filter === "review") return reviewStates.has(row.state);
-        if (filter === "automatic")
-          return row.state === "automatically_resolved";
+        if (filter === "automatic") return row.state === "automatically_resolved";
         if (filter === "manual") return row.state === "manually_resolved";
         return true;
       }),
@@ -103,10 +76,7 @@ export function ImportTrackTable({
     <>
       {stage === "match" && params.id && reviewCount > 0 && (
         <div className="actions">
-          <Link
-            className="button secondary"
-            href={`/imports/${params.id}/review`}
-          >
+          <Link className="button secondary" href={`/imports/${params.id}/review`}>
             Review {reviewCount} tracks
           </Link>
         </div>
@@ -132,9 +102,7 @@ export function ImportTrackTable({
                 checked={columns[index]}
                 onChange={(event) =>
                   setColumns((current) =>
-                    current.map((value, currentIndex) =>
-                      currentIndex === index ? event.target.checked : value,
-                    ),
+                    current.map((value, currentIndex) => (currentIndex === index ? event.target.checked : value)),
                   )
                 }
                 type="checkbox"
@@ -144,9 +112,7 @@ export function ImportTrackTable({
           ))}
         </div>
       </details>
-      {visibleRows.length === 0 && (
-        <p className="empty-filter">No tracks in this filter.</p>
-      )}
+      {visibleRows.length === 0 && <p className="empty-filter">No tracks in this filter.</p>}
       <div className="table-wrap import-table-wrap">
         <table>
           <thead>
@@ -174,9 +140,7 @@ export function ImportTrackTable({
                 {columns[0] && <td>{row.position + 1}</td>}
                 {columns[1] && (
                   <td>
-                    <span className="badge">
-                      {row.state.replaceAll("_", " ")}
-                    </span>
+                    <span className="badge">{row.state.replaceAll("_", " ")}</span>
                   </td>
                 )}
                 {columns[2] && (
@@ -204,9 +168,7 @@ export function ImportTrackTable({
                       <td>
                         {row.libraryPath ? (
                           <div className="matched-lidarr-track">
-                            <span className="eyebrow">
-                              Matched Lidarr track
-                            </span>
+                            <span className="eyebrow">Matched Lidarr track</span>
                             <strong>{row.matchedTitle || row.title}</strong>
                             <small>{row.matchedArtists?.join(", ")}</small>
                           </div>
@@ -217,10 +179,7 @@ export function ImportTrackTable({
                     )}
                     {columns[4] && (
                       <td>
-                        <LibraryState
-                          classification={row.libraryClassification}
-                          path={row.libraryPath}
-                        />
+                        <LibraryState classification={row.libraryClassification} path={row.libraryPath} />
                       </td>
                     )}
                   </>
@@ -239,15 +198,8 @@ export function ImportTrackTable({
   );
 }
 
-function LibraryState({
-  classification,
-  path,
-}: {
-  classification?: string;
-  path?: string;
-}) {
-  if (!classification)
-    return <span className="status attention">Not refreshed</span>;
+function LibraryState({ classification, path }: { classification?: string; path?: string }) {
+  if (!classification) return <span className="status attention">Not refreshed</span>;
   if (downloadedStates.has(classification))
     return (
       <>
@@ -259,10 +211,7 @@ function LibraryState({
     return (
       <>
         <span className="status attention">Missing but downloadable</span>
-        <small>
-          Release exists and is monitored, but this recording has not downloaded
-          yet.
-        </small>
+        <small>Release exists and is monitored, but this recording has not downloaded yet.</small>
       </>
     );
   return (

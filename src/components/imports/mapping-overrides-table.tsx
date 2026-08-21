@@ -26,12 +26,8 @@ export function MappingOverridesTable({
   csrf: string;
   action: (form: FormData) => void | Promise<void>;
 }) {
-  const selectable = candidates.filter((candidate) =>
-    ["will_override", "will_map"].includes(candidate.status),
-  );
-  const [selected, setSelected] = useState(
-    () => new Set(selectable.map((candidate) => candidate.target.id)),
-  );
+  const selectable = candidates.filter((candidate) => ["will_override", "will_map"].includes(candidate.status));
+  const [selected, setSelected] = useState(() => new Set(selectable.map((candidate) => candidate.target.id)));
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState("all");
   const [state, setState] = useState("all");
@@ -49,9 +45,7 @@ export function MappingOverridesTable({
           .toLocaleLowerCase();
         return (
           search.includes(query.toLocaleLowerCase()) &&
-          (selection === "all" ||
-            (selection === "accepted" && accepted) ||
-            (selection === "ignored" && !accepted)) &&
+          (selection === "all" || (selection === "accepted" && accepted) || (selection === "ignored" && !accepted)) &&
           (state === "all" || candidate.status === state)
         );
       }),
@@ -79,11 +73,7 @@ export function MappingOverridesTable({
           <option value="accepted">Accepted</option>
           <option value="ignored">Ignored</option>
         </select>
-        <select
-          aria-label="Filter by mapping state"
-          value={state}
-          onChange={(event) => setState(event.target.value)}
-        >
+        <select aria-label="Filter by mapping state" value={state} onChange={(event) => setState(event.target.value)}>
           <option value="all">All mapping states</option>
           <option value="will_override">Overrides existing</option>
           <option value="will_map">Maps unresolved</option>
@@ -107,9 +97,7 @@ export function MappingOverridesTable({
           </thead>
           <tbody>
             {visible.map((candidate) => {
-              const enabled = ["will_override", "will_map"].includes(
-                candidate.status,
-              );
+              const enabled = ["will_override", "will_map"].includes(candidate.status);
               return (
                 <tr key={candidate.target.id}>
                   <td>
@@ -123,8 +111,7 @@ export function MappingOverridesTable({
                       onChange={(event) =>
                         setSelected((current) => {
                           const next = new Set(current);
-                          if (event.target.checked)
-                            next.add(candidate.target.id);
+                          if (event.target.checked) next.add(candidate.target.id);
                           else next.delete(candidate.target.id);
                           return next;
                         })
@@ -134,15 +121,12 @@ export function MappingOverridesTable({
                   <td>
                     <strong>{candidate.target.track.title}</strong>
                     <small>
-                      {candidate.target.track.artists.join(", ")} ·{" "}
-                      {candidate.target.track.isrc}
+                      {candidate.target.track.artists.join(", ")} · {candidate.target.track.isrc}
                     </small>
                   </td>
                   <td>
                     {candidate.targetResult.recordingTitle || "Not mapped"}
-                    <small>
-                      {(candidate.targetResult.recordingIds ?? []).join(", ")}
-                    </small>
+                    <small>{(candidate.targetResult.recordingIds ?? []).join(", ")}</small>
                   </td>
                   <td>
                     <strong>{candidate.sourceResult.recordingTitle}</strong>
@@ -154,10 +138,7 @@ export function MappingOverridesTable({
                   <td>
                     <span className="badge">{labels[candidate.status]}</span>
                     {candidate.status === "conflict" && (
-                      <small>
-                        Source import has different mappings for this ISRC;
-                        resolve it there first.
-                      </small>
+                      <small>Source import has different mappings for this ISRC; resolve it there first.</small>
                     )}
                   </td>
                 </tr>
@@ -168,18 +149,11 @@ export function MappingOverridesTable({
       </div>
       <div className="actions mapping-override-actions">
         <button disabled={!selected.size}>Apply selected overrides</button>
-        <Link
-          className="button secondary"
-          href={`/imports/${importId}?stage=match`}
-        >
+        <Link className="button secondary" href={`/imports/${importId}?stage=match`}>
           Cancel
         </Link>
       </div>
-      {!candidates.length && (
-        <p className="empty">
-          No exact ISRC matches with resolved source mappings were found.
-        </p>
-      )}
+      {!candidates.length && <p className="empty">No exact ISRC matches with resolved source mappings were found.</p>}
     </form>
   );
 }

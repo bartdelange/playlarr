@@ -13,9 +13,8 @@ export class SpotifySource {
   ) {}
   static playlistId(value: string): string {
     return (
-      /(?:open\.spotify\.com\/playlist\/|spotify:playlist:)([A-Za-z0-9]+)/.exec(
-        value,
-      )?.[1] ?? value.trim().split("?", 1)[0].replace(/\/$/, "")
+      /(?:open\.spotify\.com\/playlist\/|spotify:playlist:)([A-Za-z0-9]+)/.exec(value)?.[1] ??
+      value.trim().split("?", 1)[0].replace(/\/$/, "")
     );
   }
   async listPlaylists(): Promise<PlaylistInfo[]> {
@@ -23,27 +22,21 @@ export class SpotifySource {
     for await (const item of this.pages("me/playlists?limit=50")) {
       if (!item.id) continue;
       const owner = item.owner as Record<string, unknown> | undefined;
-      const tracks = (item.items ?? item.tracks) as
-        Record<string, unknown> | undefined;
+      const tracks = (item.items ?? item.tracks) as Record<string, unknown> | undefined;
       playlists.push({
         source: this.name,
         id: String(item.id),
         name: String(item.name || "Untitled"),
         trackCount: numberValue(tracks?.total),
-        isFollowed: Boolean(
-          this.userId && owner?.id !== this.userId && !item.collaborative,
-        ),
+        isFollowed: Boolean(this.userId && owner?.id !== this.userId && !item.collaborative),
         owner: stringValue(owner?.display_name ?? owner?.id),
       });
     }
     return playlists;
   }
   async getPlaylist(value: string): Promise<PlaylistInfo> {
-    const item = await this.get(
-      `playlists/${SpotifySource.playlistId(value)}?fields=id,name,items.total`,
-    );
-    const tracks = (item.items ?? item.tracks) as
-      Record<string, unknown> | undefined;
+    const item = await this.get(`playlists/${SpotifySource.playlistId(value)}?fields=id,name,items.total`);
+    const tracks = (item.items ?? item.tracks) as Record<string, unknown> | undefined;
     return {
       source: this.name,
       id: String(item.id),
@@ -58,41 +51,27 @@ export class SpotifySource {
       `playlists/${playlist.id}/items?limit=50&fields=items(is_local,item(id,uri,type,name,duration_ms,artists(name),album(name),external_ids)),next`,
     )) {
       position++;
-      const track = (entry.item ?? entry.track) as
-        Record<string, unknown> | undefined;
-      const artists = Array.isArray(track?.artists)
-        ? (track.artists as Record<string, unknown>[])
-        : [];
-      const names = artists
-        .map((artist) => stringValue(artist.name))
-        .filter((name): name is string => Boolean(name));
+      const track = (entry.item ?? entry.track) as Record<string, unknown> | undefined;
+      const artists = Array.isArray(track?.artists) ? (track.artists as Record<string, unknown>[]) : [];
+      const names = artists.map((artist) => stringValue(artist.name)).filter((name): name is string => Boolean(name));
       const isLocal = Boolean(entry.is_local);
       let skipReason: string | undefined;
       if (!track) skipReason = "unavailable track";
-      else if (track.type !== "track")
-        skipReason = String(track.type || "non-music item");
+      else if (track.type !== "track") skipReason = String(track.type || "non-music item");
       else if (!isLocal && !track.id) skipReason = "unavailable track";
-      else if (!track.name || !names.length)
-        skipReason = "track has insufficient metadata";
+      else if (!track.name || !names.length) skipReason = "track has insufficient metadata";
       const album = track?.album as Record<string, unknown> | undefined;
       entries.push({
         position: position - 1,
         track: {
           source: this.name,
           sourceTrackId: String(
-            track?.id ??
-              track?.uri ??
-              `${skipReason ? "skipped" : "local"}:${playlist.id}:${position}`,
+            track?.id ?? track?.uri ?? `${skipReason ? "skipped" : "local"}:${playlist.id}:${position}`,
           ),
           title: String(track?.name ?? "Unavailable track"),
           artists: names,
           album: String(album?.name ?? ""),
-          isrc: isLocal
-            ? undefined
-            : stringValue(
-                (track?.external_ids as Record<string, unknown> | undefined)
-                  ?.isrc,
-              ),
+          isrc: isLocal ? undefined : stringValue((track?.external_ids as Record<string, unknown> | undefined)?.isrc),
           durationMs: numberValue(track?.duration_ms),
         },
         skipReason,
@@ -101,32 +80,23 @@ export class SpotifySource {
     return entries;
   }
   async getTracks(playlist: PlaylistInfo) {
-    return (await this.getEntries(playlist))
-      .filter((entry) => !entry.skipReason)
-      .map((entry) => entry.track);
+    return (await this.getEntries(playlist)).filter((entry) => !entry.skipReason).map((entry) => entry.track);
   }
   private async get(path: string): Promise<Record<string, unknown>> {
-    const response = await this.fetcher(
-      path.startsWith("http") ? path : `https://api.spotify.com/v1/${path}`,
-      {
-        headers: { Authorization: `Bearer ${await this.tokens.accessToken()}` },
-      },
-    );
-    if (!response.ok)
-      throw new Error(`Spotify API request failed: ${response.status}`);
+    const response = await this.fetcher(path.startsWith("http") ? path : `https://api.spotify.com/v1/${path}`, {
+      headers: { Authorization: `Bearer ${await this.tokens.accessToken()}` },
+    });
+    if (!response.ok) throw new Error(`Spotify API request failed: ${response.status}`);
     return response.json() as Promise<Record<string, unknown>>;
   }
   private async *pages(path: string): AsyncGenerator<Record<string, unknown>> {
     let next: string | undefined = path;
     while (next) {
       const page = await this.get(next);
-      for (const item of Array.isArray(page.items) ? page.items : [])
-        yield (item ?? {}) as Record<string, unknown>;
+      for (const item of Array.isArray(page.items) ? page.items : []) yield (item ?? {}) as Record<string, unknown>;
       next = stringValue(page.next);
     }
   }
 }
-const stringValue = (value: unknown): string | undefined =>
-  typeof value === "string" && value ? value : undefined;
-const numberValue = (value: unknown): number | undefined =>
-  typeof value === "number" ? value : undefined;
+const stringValue = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
+const numberValue = (value: unknown): number | undefined => (typeof value === "number" ? value : undefined);

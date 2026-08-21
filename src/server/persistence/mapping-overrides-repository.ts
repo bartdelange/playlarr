@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
-import { normalizeMusicBrainzResult } from "../domain/musicbrainz";
 import type { MusicBrainzResult } from "../domain/musicbrainz";
+import { normalizeMusicBrainzResult } from "../domain/musicbrainz";
 import type { StoredEntry } from "../domain/playlist";
 
 interface ResolutionRow {
@@ -18,20 +18,12 @@ export interface MappingOverrideCandidate {
 }
 const now = () => new Date().toISOString();
 const identity = (result: ReturnType<typeof normalizeMusicBrainzResult>) =>
-  JSON.stringify([
-    result.recordingIds ?? [],
-    result.releaseGroupIds ?? [],
-    result.primaryArtistId ?? null,
-  ]);
+  JSON.stringify([result.recordingIds ?? [], result.releaseGroupIds ?? [], result.primaryArtistId ?? null]);
 
 export class MappingOverridesRepository {
   constructor(private readonly database: Database.Database) {}
-  candidates(
-    targetImportId: string,
-    sourceImportId: string,
-  ): MappingOverrideCandidate[] {
-    if (targetImportId === sourceImportId)
-      throw new Error("source and target imports must be different");
+  candidates(targetImportId: string, sourceImportId: string): MappingOverrideCandidate[] {
+    if (targetImportId === sourceImportId) throw new Error("source and target imports must be different");
     const rows = (importId: string) =>
       this.database
         .prepare(
@@ -49,42 +41,26 @@ export class MappingOverridesRepository {
         artists: JSON.parse(String(row.artists_json)) as string[],
         album: String(row.album),
         isrc: row.isrc ? String(row.isrc) : undefined,
-        durationMs:
-          row.duration_ms === null ? undefined : Number(row.duration_ms),
+        durationMs: row.duration_ms === null ? undefined : Number(row.duration_ms),
       },
       resolutionState: String(row.state),
       isManual: Boolean(row.is_manual),
     });
     const sources = new Map<string, Record<string, unknown>[]>();
     for (const row of rows(sourceImportId)) {
-      const result = normalizeMusicBrainzResult(
-        JSON.parse(String(row.result_json)),
-      );
+      const result = normalizeMusicBrainzResult(JSON.parse(String(row.result_json)));
       if (row.isrc && result.resolvedVia)
-        sources.set(String(row.isrc), [
-          ...(sources.get(String(row.isrc)) ?? []),
-          row,
-        ]);
+        sources.set(String(row.isrc), [...(sources.get(String(row.isrc)) ?? []), row]);
     }
     return rows(targetImportId).flatMap((targetRow) => {
-      const matches = targetRow.isrc
-        ? (sources.get(String(targetRow.isrc)) ?? [])
-        : [];
+      const matches = targetRow.isrc ? (sources.get(String(targetRow.isrc)) ?? []) : [];
       if (!matches.length) return [];
       const identities = new Set(
-        matches.map((row) =>
-          identity(
-            normalizeMusicBrainzResult(JSON.parse(String(row.result_json))),
-          ),
-        ),
+        matches.map((row) => identity(normalizeMusicBrainzResult(JSON.parse(String(row.result_json))))),
       );
       const sourceRow = matches[0];
-      const sourceResult = normalizeMusicBrainzResult(
-        JSON.parse(String(sourceRow.result_json)),
-      );
-      const targetResult = normalizeMusicBrainzResult(
-        JSON.parse(String(targetRow.result_json)),
-      );
+      const sourceResult = normalizeMusicBrainzResult(JSON.parse(String(sourceRow.result_json)));
+      const targetResult = normalizeMusicBrainzResult(JSON.parse(String(targetRow.result_json)));
       const status =
         identities.size > 1
           ? "conflict"
@@ -104,15 +80,9 @@ export class MappingOverridesRepository {
       ];
     });
   }
-  apply(
-    targetImportId: string,
-    sourceImportId: string,
-    targetEntryIds: Set<number>,
-  ): number {
+  apply(targetImportId: string, sourceImportId: string, targetEntryIds: Set<number>): number {
     const selected = this.candidates(targetImportId, sourceImportId).filter(
-      (item) =>
-        targetEntryIds.has(item.target.id) &&
-        ["will_override", "will_map"].includes(item.status),
+      (item) => targetEntryIds.has(item.target.id) && ["will_override", "will_map"].includes(item.status),
     );
     const at = now();
     this.database.transaction(() => {
@@ -133,9 +103,7 @@ export class MappingOverridesRepository {
             "UPDATE resolutions SET state = 'manually_resolved', method = 'reused_manual', result_json = ?, evidence_json = ?, is_manual = 1, validation_status = ?, selected_release_group_id = ?, confirmed_at = ?, updated_at = ? WHERE entry_id = ?",
           )
           .run(
-            JSON.stringify(
-              normalizeMusicBrainzResult(JSON.parse(source.result_json)),
-            ),
+            JSON.stringify(normalizeMusicBrainzResult(JSON.parse(source.result_json))),
             JSON.stringify(evidence),
             source.validation_status ?? "valid",
             source.selected_release_group_id,
@@ -143,9 +111,7 @@ export class MappingOverridesRepository {
             at,
             item.target.id,
           );
-        this.database
-          .prepare("DELETE FROM library_status WHERE entry_id = ?")
-          .run(item.target.id);
+        this.database.prepare("DELETE FROM library_status WHERE entry_id = ?").run(item.target.id);
       }
       if (selected.length) {
         this.database
@@ -160,14 +126,8 @@ export class MappingOverridesRepository {
           .pluck()
           .get(targetImportId) as number;
         this.database
-          .prepare(
-            "UPDATE imports SET workflow_state = ?, updated_at = ? WHERE id = ?",
-          )
-          .run(
-            unresolved ? "review_required" : "ready_to_plan",
-            at,
-            targetImportId,
-          );
+          .prepare("UPDATE imports SET workflow_state = ?, updated_at = ? WHERE id = ?")
+          .run(unresolved ? "review_required" : "ready_to_plan", at, targetImportId);
       }
     })();
     return selected.length;

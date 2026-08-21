@@ -5,10 +5,9 @@ import { afterEach, expect, it } from "vitest";
 import { openDatabase } from "../../server/persistence/database";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { LocalAdditionsRepository } from "../../server/persistence/local-additions-repository";
+
 const paths: string[] = [];
-afterEach(() =>
-  paths.splice(0).forEach((value) => rmSync(value, { recursive: true })),
-);
+afterEach(() => paths.splice(0).forEach((value) => rmSync(value, { recursive: true })));
 it("persists ordered local additions and guards import-scoped deletion", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-additions-"));
   paths.push(directory);
@@ -34,12 +33,8 @@ it("persists ordered local additions and guards import-scoped deletion", () => {
     artists: [],
     album: "",
   });
-  expect(additions.list(imported.id).map((item) => item.ordinal)).toEqual([
-    0, 1,
-  ]);
+  expect(additions.list(imported.id).map((item) => item.ordinal)).toEqual([0, 1]);
   expect(() => additions.remove("other", first)).toThrow("does not exist");
   additions.remove(imported.id, first);
-  expect(
-    additions.list(imported.id).map((item) => item.providerTrackId),
-  ).toEqual(["two"]);
+  expect(additions.list(imported.id).map((item) => item.providerTrackId)).toEqual(["two"]);
 });

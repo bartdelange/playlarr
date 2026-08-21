@@ -21,9 +21,7 @@ export function TidalAuthStatus({ enabled }: { enabled: boolean }) {
         };
         if (!active) return;
         if (result.status === "completed") {
-          window.location.assign(
-            "/settings?message=TIDAL%20connection%20successful",
-          );
+          window.location.assign("/settings?message=TIDAL%20connection%20successful");
           return;
         }
         if (result.status === "failed" || result.status === "missing") {

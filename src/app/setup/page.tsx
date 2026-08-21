@@ -3,17 +3,14 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { security } from "../../server/runtime";
 import { setup, skipSetup } from "../actions/security";
-export default function SetupPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+
+export default function SetupPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   return (
     <main className="auth-card">
       <h1>Secure Playlarr</h1>
       <p>
-        Create a password for direct access, or skip built-in authorization only
-        when a trusted gateway protects every route.
+        Create a password for direct access, or skip built-in authorization only when a trusted gateway protects every
+        route.
       </p>
       <Suspense fallback={<p>Preparing secure setup…</p>}>
         <SetupForms searchParams={searchParams} />
@@ -21,11 +18,7 @@ export default function SetupPage({
     </main>
   );
 }
-async function SetupForms({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+async function SetupForms({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await connection();
   if (security.configured) redirect("/login");
   const { error } = await searchParams;
@@ -39,19 +32,12 @@ async function SetupForms({
         </label>
         <label>
           Confirm password
-          <input
-            name="confirm_password"
-            type="password"
-            minLength={12}
-            required
-          />
+          <input name="confirm_password" type="password" minLength={12} required />
         </label>
         <button>Create password</button>
       </form>
       <form action={skipSetup}>
-        <button className="secondary">
-          Skip — protected by my reverse proxy
-        </button>
+        <button className="secondary">Skip — protected by my reverse proxy</button>
       </form>
     </>
   );

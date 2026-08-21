@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  lidarrPlanSummary,
-  lidarrPlanRows,
-  type LidarrPlanEntry,
-} from "../../server/application/lidarr-plan-view";
+import { type LidarrPlanEntry, lidarrPlanRows, lidarrPlanSummary } from "../../server/application/lidarr-plan-view";
 
 function entry(overrides: Partial<LidarrPlanEntry> = {}): LidarrPlanEntry {
   return {
@@ -138,12 +134,7 @@ describe("Lidarr plan table rows", () => {
     ];
     const [row] = lidarrPlanRows([entry()], { actions });
 
-    expect(row.actionNames).toEqual([
-      "create_artist",
-      "create_release",
-      "monitor_release",
-      "queue_search",
-    ]);
+    expect(row.actionNames).toEqual(["create_artist", "create_release", "monitor_release", "queue_search"]);
     expect(row.mutates).toBe(true);
   });
 
@@ -193,12 +184,7 @@ describe("Lidarr plan table rows", () => {
       variousArtistsSkip: true,
       variousArtistsOverride: false,
     });
-    expect(
-      lidarrPlanRows(
-        [entry({ evidence: { allow_various_artists_release: true } })],
-        plan,
-      )[0],
-    ).toMatchObject({
+    expect(lidarrPlanRows([entry({ evidence: { allow_various_artists_release: true } })], plan)[0]).toMatchObject({
       variousArtistsSkip: true,
       variousArtistsOverride: true,
     });

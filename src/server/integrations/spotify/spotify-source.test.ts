@@ -1,10 +1,9 @@
 import { expect, it, vi } from "vitest";
 import { SpotifySource } from "../../../server/integrations/spotify/source";
+
 const tokens = { accessToken: async () => "token" };
 it("parses playlist references and preserves ordered duplicate and skipped occurrences", async () => {
-  expect(
-    SpotifySource.playlistId("https://open.spotify.com/playlist/abc?si=x"),
-  ).toBe("abc");
+  expect(SpotifySource.playlistId("https://open.spotify.com/playlist/abc?si=x")).toBe("abc");
   const fetcher = vi.fn().mockResolvedValue(
     Response.json({
       items: [
@@ -41,10 +40,7 @@ it("parses playlist references and preserves ordered duplicate and skipped occur
   });
   expect(entries.map((entry) => entry.position)).toEqual([0, 1, 2]);
   expect(entries[0].skipReason).toBe("unavailable track");
-  expect(entries.slice(1).map((entry) => entry.track.sourceTrackId)).toEqual([
-    "same",
-    "same",
-  ]);
+  expect(entries.slice(1).map((entry) => entry.track.sourceTrackId)).toEqual(["same", "same"]);
 });
 it("marks followed playlists while retaining collaborative playlists", async () => {
   const fetcher = vi.fn().mockResolvedValue(

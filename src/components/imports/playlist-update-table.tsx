@@ -11,15 +11,9 @@ export function PlaylistUpdateTable({ update }: { update: PlaylistUpdate }) {
       update.changes.filter((change) => {
         const track = change.newTrack ?? change.oldTrack;
         const search = track
-          ? [track.title, ...track.artists, track.album, track.isrc]
-              .filter(Boolean)
-              .join(" ")
-              .toLocaleLowerCase()
+          ? [track.title, ...track.artists, track.album, track.isrc].filter(Boolean).join(" ").toLocaleLowerCase()
           : "";
-        return (
-          (state === "all" || change.state === state) &&
-          search.includes(query.toLocaleLowerCase())
-        );
+        return (state === "all" || change.state === state) && search.includes(query.toLocaleLowerCase());
       }),
     [query, state, update.changes],
   );
@@ -33,11 +27,7 @@ export function PlaylistUpdateTable({ update }: { update: PlaylistUpdate }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <select
-          aria-label="Filter by change state"
-          value={state}
-          onChange={(event) => setState(event.target.value)}
-        >
+        <select aria-label="Filter by change state" value={state} onChange={(event) => setState(event.target.value)}>
           <option value="all">All changes</option>
           <option value="added">Added</option>
           <option value="updated">Updated</option>
@@ -64,17 +54,12 @@ export function PlaylistUpdateTable({ update }: { update: PlaylistUpdate }) {
               return (
                 <tr key={`${change.state}-${index}`}>
                   <td>
-                    <span className="badge">
-                      {change.state === "unchanged"
-                        ? "no change"
-                        : change.state}
-                    </span>
+                    <span className="badge">{change.state === "unchanged" ? "no change" : change.state}</span>
                   </td>
                   <td>{position(change.oldPosition, change.newPosition)}</td>
                   <td>
                     <strong>
-                      {change.state === "updated" &&
-                      change.oldTrack?.title !== change.newTrack?.title ? (
+                      {change.state === "updated" && change.oldTrack?.title !== change.newTrack?.title ? (
                         <>
                           <del>{change.oldTrack?.title}</del>
                           <br />
@@ -90,10 +75,7 @@ export function PlaylistUpdateTable({ update }: { update: PlaylistUpdate }) {
                     {track?.album}
                     <small>{track?.isrc ?? "No ISRC"}</small>
                   </td>
-                  <td>
-                    {change.changedFields.join(", ") ||
-                      (change.state === "moved" ? "position changed" : "—")}
-                  </td>
+                  <td>{change.changedFields.join(", ") || (change.state === "moved" ? "position changed" : "—")}</td>
                 </tr>
               );
             })}
@@ -105,11 +87,7 @@ export function PlaylistUpdateTable({ update }: { update: PlaylistUpdate }) {
 }
 
 function position(oldPosition?: number, newPosition?: number): string {
-  if (
-    oldPosition !== undefined &&
-    newPosition !== undefined &&
-    oldPosition !== newPosition
-  )
+  if (oldPosition !== undefined && newPosition !== undefined && oldPosition !== newPosition)
     return `${oldPosition + 1} → ${newPosition + 1}`;
   const value = newPosition ?? oldPosition;
   return value === undefined ? "—" : String(value + 1);

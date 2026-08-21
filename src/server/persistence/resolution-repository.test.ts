@@ -5,12 +5,9 @@ import { afterEach, expect, it } from "vitest";
 import { openDatabase } from "../../server/persistence/database";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { ResolutionRepository } from "../../server/persistence/resolution-repository";
+
 const directories: string[] = [];
-afterEach(() =>
-  directories
-    .splice(0)
-    .forEach((directory) => rmSync(directory, { recursive: true })),
-);
+afterEach(() => directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true })));
 it("keeps manual mappings durable and supersedes draft plans when safety-relevant evidence changes", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-resolution-"));
   directories.push(directory);
@@ -32,30 +29,15 @@ it("keeps manual mappings durable and supersedes draft plans when safety-relevan
   ]);
   const entry = imports.entries(imported.id)[0];
   database
-    .prepare(
-      "INSERT INTO lidarr_plans (id, import_id, status, created_at) VALUES ('draft', ?, 'draft', ?)",
-    )
+    .prepare("INSERT INTO lidarr_plans (id, import_id, status, created_at) VALUES ('draft', ?, 'draft', ?)")
     .run(imported.id, new Date().toISOString());
   const resolutions = new ResolutionRepository(database);
-  resolutions.saveManual(
-    entry.id,
-    { resolvedVia: "manual_mbid", recordingIds: ["recording"] },
-    "manual_mbid",
-    "valid",
-  );
-  expect(
-    database
-      .prepare("SELECT status FROM lidarr_plans WHERE id = 'draft'")
-      .pluck()
-      .get(),
-  ).toBe("superseded");
+  resolutions.saveManual(entry.id, { resolvedVia: "manual_mbid", recordingIds: ["recording"] }, "manual_mbid", "valid");
+  expect(database.prepare("SELECT status FROM lidarr_plans WHERE id = 'draft'").pluck().get()).toBe("superseded");
   resolutions.setVariousArtistsOverride(entry.id, true);
-  expect(
-    database
-      .prepare("SELECT evidence_json FROM resolutions WHERE entry_id = ?")
-      .pluck()
-      .get(entry.id),
-  ).toContain("allow_various_artists_release");
+  expect(database.prepare("SELECT evidence_json FROM resolutions WHERE entry_id = ?").pluck().get(entry.id)).toContain(
+    "allow_various_artists_release",
+  );
   database.close();
 });
 it("does not let automation replace a manual mapping and replaces candidate snapshots", () => {
@@ -87,20 +69,10 @@ it("does not let automation replace a manual mapping and replaces candidate snap
   ).toBe(true);
   resolutions.saveCandidates(entry.id, [{ score: 0.4 }, { score: 0.9 }]);
   resolutions.saveCandidates(entry.id, [{ score: 1 }]);
-  expect(
-    database
-      .prepare("SELECT count(*) FROM resolution_candidates WHERE entry_id = ?")
-      .pluck()
-      .get(entry.id),
-  ).toBe(1);
-  resolutions.saveManual(
-    entry.id,
-    { resolvedVia: "manual_mbid" },
-    "manual_mbid",
-    "valid",
+  expect(database.prepare("SELECT count(*) FROM resolution_candidates WHERE entry_id = ?").pluck().get(entry.id)).toBe(
+    1,
   );
-  expect(resolutions.saveAutomatic(entry.id, { resolvedVia: "search" })).toBe(
-    false,
-  );
+  resolutions.saveManual(entry.id, { resolvedVia: "manual_mbid" }, "manual_mbid", "valid");
+  expect(resolutions.saveAutomatic(entry.id, { resolvedVia: "search" })).toBe(false);
   database.close();
 });

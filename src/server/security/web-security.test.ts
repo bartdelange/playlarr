@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { WebSecurity } from "../../server/security/web-security";
+
 const settings = () => {
   const values = new Map<string, unknown>();
   return {
@@ -16,9 +17,7 @@ it("stores compatible Argon2 hashes and rotates sessions on password changes", a
   const store = settings();
   const security = new WebSecurity(store, () => 1000);
   await security.setPassword("long-test-password");
-  expect(String(store.values.get("web_auth_password_hash"))).toMatch(
-    /^\$argon2/,
-  );
+  expect(String(store.values.get("web_auth_password_hash"))).toMatch(/^\$argon2/);
   expect(await security.verifyPassword("long-test-password")).toBe(true);
   const session = security.createSession();
   expect(security.validSession(session)).toBe(true);
@@ -32,13 +31,7 @@ it("retains CSRF protection in gateway-managed mode", () => {
   const session = security.createSession();
   expect(security.mode).toBe("disabled");
   expect(security.validCsrf(session, security.csrfToken(session))).toBe(true);
-  expect(
-    security.sameOrigin(
-      "http://playlarr/settings",
-      "https://attacker.invalid",
-      "playlarr",
-    ),
-  ).toBe(false);
+  expect(security.sameOrigin("http://playlarr/settings", "https://attacker.invalid", "playlarr")).toBe(false);
 });
 it("throttles five failed logins within five minutes and expires the window", () => {
   const store = settings();

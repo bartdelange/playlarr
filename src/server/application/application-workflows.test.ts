@@ -1,13 +1,13 @@
 import { expect, it, vi } from "vitest";
 import { PersistentAcquisitionService } from "../../server/application/acquisition";
 import { resolveImport } from "../../server/application/resolution";
+
 it("acquires source tracks into ordered durable entries", async () => {
   const calls: string[] = [];
   const repository = {
     createImport: () => ({ id: "import" }),
     updatePlaylist: () => calls.push("update"),
-    replaceAcquiredTracks: (_id: string, entries: unknown[]) =>
-      calls.push(`entries:${entries.length}`),
+    replaceAcquiredTracks: (_id: string, entries: unknown[]) => calls.push(`entries:${entries.length}`),
     setWorkflowState: () => {},
     getImport: () => ({ id: "import", workflowState: "ready_to_resolve" }),
   };
@@ -34,8 +34,7 @@ it("retains the acquisition placeholder and records provider failure", async () 
   const repository = {
     updatePlaylist: (...values: unknown[]) => calls.push(["update", ...values]),
     replaceAcquiredTracks: vi.fn(),
-    setWorkflowState: (...values: unknown[]) =>
-      calls.push(["state", ...values]),
+    setWorkflowState: (...values: unknown[]) => calls.push(["state", ...values]),
   };
   await expect(
     new PersistentAcquisitionService(repository as never).acquireInto(
@@ -49,12 +48,7 @@ it("retains the acquisition placeholder and records provider failure", async () 
     ),
   ).rejects.toThrow("provider unavailable");
   expect(calls).toEqual([
-    [
-      "update",
-      "placeholder",
-      expect.objectContaining({ name: "Fetched name" }),
-      expect.any(Object),
-    ],
+    ["update", "placeholder", expect.objectContaining({ name: "Fetched name" }), expect.any(Object)],
     ["state", "placeholder", "acquisition_failed", "provider unavailable"],
   ]);
 });

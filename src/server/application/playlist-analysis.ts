@@ -42,46 +42,29 @@ export async function analyzePlaylist(
   progress(0, 0, "Fetching playlist metadata");
   const playlist = await source.getPlaylist(reference);
   if (playlist.isFollowed) {
-    store.savePlaylistAnalysis(
-      sourceName,
-      reference,
-      playlist.name,
-      "skipped_followed",
-      {},
-    );
+    store.savePlaylistAnalysis(sourceName, reference, playlist.name, "skipped_followed", {});
     progress(1, 1, "Analysis skipped");
     return;
   }
-  const tracks = (await source.getEntries(playlist))
-    .filter((entry) => !entry.skipReason)
-    .map((entry) => entry.track);
+  const tracks = (await source.getEntries(playlist)).filter((entry) => !entry.skipReason).map((entry) => entry.track);
   const results: MusicBrainzResult[] = [];
   for (const [index, track] of tracks.entries()) {
     if (cancelled()) return;
     results.push(await resolver.resolve(track));
-    progress(
-      index + 1,
-      tracks.length,
-      `${track.artists.join(", ")} — ${track.title}`,
-    );
+    progress(index + 1, tracks.length, `${track.artists.join(", ")} — ${track.title}`);
   }
   const statuses = await refreshLibraryStatus(results, lidarr);
   const additions = new Map<string, string>();
   statuses.forEach((status, index) => {
     const result = results[index];
     if (status.classification === "artist_missing" && result.primaryArtistId)
-      additions.set(
-        result.primaryArtistId,
-        result.artistNames?.[0] ?? result.primaryArtistId,
-      );
+      additions.set(result.primaryArtistId, result.artistNames?.[0] ?? result.primaryArtistId);
   });
   store.savePlaylistAnalysis(sourceName, reference, playlist.name, "complete", {
     tracks: tracks.length,
     resolved: results.filter((result) => result.resolvedVia).length,
     unresolved: results.filter((result) => !result.resolvedVia).length,
     artists_to_add: additions.size,
-    artist_names: [...additions.values()].sort((left, right) =>
-      left.localeCompare(right),
-    ),
+    artist_names: [...additions.values()].sort((left, right) => left.localeCompare(right)),
   });
 }

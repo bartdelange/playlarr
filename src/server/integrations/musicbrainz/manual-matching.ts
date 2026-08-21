@@ -1,27 +1,15 @@
 import type { SourceTrack } from "../../domain/playlist";
-import {
-  candidates,
-  validationWarnings,
-  type Candidate,
-  type ManualValidation,
-} from "./candidates";
+import { type Candidate, candidates, type ManualValidation, validationWarnings } from "./candidates";
 import type { MusicBrainzQuery } from "./orchestrator";
 import type { MusicBrainzRecording } from "./resolution";
 
-const mbidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const mbidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class ManualMusicBrainzMatcher {
   constructor(private readonly client: MusicBrainzQuery) {}
 
-  async search(
-    track: SourceTrack,
-    query?: string,
-    limit = 10,
-  ): Promise<Candidate[]> {
-    const title =
-      query?.trim() ||
-      track.title.replace(/\s*[([](?:feat|ft)\.?[^)\]]*[)\]]/gi, "").trim();
+  async search(track: SourceTrack, query?: string, limit = 10): Promise<Candidate[]> {
+    const title = query?.trim() || track.title.replace(/\s*[([](?:feat|ft)\.?[^)\]]*[)\]]/gi, "").trim();
     const searchQuery = `recording:"${title}"${!query && track.artists[0] ? ` AND artist:"${track.artists[0]}"` : ""}`;
     const data = await this.client.get("recording", {
       query: searchQuery,
@@ -29,18 +17,10 @@ export class ManualMusicBrainzMatcher {
       limit: String(Math.max(1, Math.min(limit, 50))),
       fmt: "json",
     });
-    return candidates(
-      track,
-      Array.isArray(data.recordings)
-        ? (data.recordings as MusicBrainzRecording[])
-        : [],
-    );
+    return candidates(track, Array.isArray(data.recordings) ? (data.recordings as MusicBrainzRecording[]) : []);
   }
 
-  async validateRecordingMbid(
-    mbid: string,
-    track: SourceTrack,
-  ): Promise<ManualValidation> {
+  async validateRecordingMbid(mbid: string, track: SourceTrack): Promise<ManualValidation> {
     const normalized = mbid.trim().toLowerCase();
     if (!mbidPattern.test(normalized))
       return {

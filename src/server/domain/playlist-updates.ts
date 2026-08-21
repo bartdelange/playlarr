@@ -1,4 +1,5 @@
 import type { AcquiredTrack, StoredEntry } from "./playlist";
+
 export interface PlaylistChange {
   state: "added" | "removed" | "updated" | "moved" | "unchanged";
   oldPosition?: number;
@@ -23,14 +24,9 @@ function changed(old: StoredEntry, next: AcquiredTrack): string[] {
     ["ISRC", old.track.isrc, next.track.isrc],
     ["duration", old.track.durationMs, next.track.durationMs],
   ];
-  return fields
-    .filter(([, a, b]) => JSON.stringify(a) !== JSON.stringify(b))
-    .map(([name]) => name);
+  return fields.filter(([, a, b]) => JSON.stringify(a) !== JSON.stringify(b)).map(([name]) => name);
 }
-export function previewPlaylistUpdate(
-  previous: StoredEntry[],
-  current: AcquiredTrack[],
-): PlaylistUpdate {
+export function previewPlaylistUpdate(previous: StoredEntry[], current: AcquiredTrack[]): PlaylistUpdate {
   const unmatched = new Map(previous.map((entry) => [entry.id, entry]));
   const matched = new Map<number, StoredEntry>();
   for (const field of ["sourceTrackId", "isrc"] as const) {
@@ -61,11 +57,7 @@ export function previewPlaylistUpdate(
       };
     const changedFields = changed(old, entry);
     return {
-      state: changedFields.length
-        ? "updated"
-        : old.position !== entry.position
-          ? "moved"
-          : "unchanged",
+      state: changedFields.length ? "updated" : old.position !== entry.position ? "moved" : "unchanged",
       oldPosition: old.position,
       newPosition: entry.position,
       changedFields,
@@ -86,10 +78,6 @@ export function previewPlaylistUpdate(
   });
   return {
     ...counts,
-    changes: changes.sort(
-      (a, b) =>
-        (a.newPosition ?? a.oldPosition ?? 0) -
-        (b.newPosition ?? b.oldPosition ?? 0),
-    ),
+    changes: changes.sort((a, b) => (a.newPosition ?? a.oldPosition ?? 0) - (b.newPosition ?? b.oldPosition ?? 0)),
   };
 }

@@ -6,12 +6,9 @@ import { openDatabase } from "../../server/persistence/database";
 import { planLidarr } from "../../server/application/lidarr-planning";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { LidarrPlanRepository } from "../../server/persistence/lidarr-plan-repository";
+
 const directories: string[] = [];
-afterEach(() =>
-  directories
-    .splice(0)
-    .forEach((directory) => rmSync(directory, { recursive: true })),
-);
+afterEach(() => directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true })));
 it("requires explicit approval and supersedes an earlier draft plan", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-plan-"));
   directories.push(directory);
@@ -50,16 +47,11 @@ it("records execution only after approval and marks failures visibly", () => {
   const id = plans.save(imported.id, { actions: [] });
   expect(() => plans.recordExecution(id, [])).toThrow("only an approved");
   plans.approve(id);
-  plans.recordExecution(id, [
-    { outcome: "failed", details: "Lidarr unavailable" },
-  ]);
+  plans.recordExecution(id, [{ outcome: "failed", details: "Lidarr unavailable" }]);
   expect(plans.get(id).status).toBe("failed");
-  expect(
-    database
-      .prepare("SELECT workflow_state FROM imports WHERE id = ?")
-      .pluck()
-      .get(imported.id),
-  ).toBe("execution_failed");
+  expect(database.prepare("SELECT workflow_state FROM imports WHERE id = ?").pluck().get(imported.id)).toBe(
+    "execution_failed",
+  );
   database.close();
 });
 it("projects schema-v8 resolution MBIDs into Lidarr planning without making skipped rows eligible", async () => {
@@ -121,9 +113,7 @@ it("projects schema-v8 resolution MBIDs into Lidarr planning without making skip
   update.run("unresolved", null, "{}", 0, entries[2].id);
   update.run("skipped", "manual_skip", "{}", 1, entries[3].id);
 
-  const resolutions = new LidarrPlanRepository(database).planningResolutions(
-    imported.id,
-  );
+  const resolutions = new LidarrPlanRepository(database).planningResolutions(imported.id);
   expect(resolutions.map((resolution) => resolution.result)).toEqual([
     expect.objectContaining({
       resolvedVia: "manual_mbid",
@@ -160,17 +150,12 @@ it("projects schema-v8 resolution MBIDs into Lidarr planning without making skip
       lookup: async () => undefined,
     },
   );
-  expect(
-    plan.actions.filter((action) => action.action === "create_artist"),
-  ).toEqual([
+  expect(plan.actions.filter((action) => action.action === "create_artist")).toEqual([
     expect.objectContaining({ artistMbid: "manual-artist" }),
     expect.objectContaining({ artistMbid: "automatic-artist" }),
   ]);
   expect(
-    plan.actions.filter(
-      (action) =>
-        action.action === "skip" && action.reason === "musicbrainz_unresolved",
-    ),
+    plan.actions.filter((action) => action.action === "skip" && action.reason === "musicbrainz_unresolved"),
   ).toHaveLength(2);
   database.close();
 });
@@ -186,22 +171,18 @@ it("restores schema-v8 persisted plan action fields without changing superseded 
   });
   const plans = new LidarrPlanRepository(database);
   const first = plans.save(imported.id, { actions: [] });
-  database
-    .prepare(
-      "INSERT INTO lidarr_plan_actions (plan_id, position, action_json) VALUES (?, 0, ?)",
-    )
-    .run(
-      first,
-      JSON.stringify({
-        action: "monitor_release",
-        artist_mbid: "artist",
-        artist_name: "Artist",
-        release_group_id: "group",
-        album_title: "Album",
-        reason: "requested_track_missing",
-        payload: { requested_recording_ids: ["recording"] },
-      }),
-    );
+  database.prepare("INSERT INTO lidarr_plan_actions (plan_id, position, action_json) VALUES (?, 0, ?)").run(
+    first,
+    JSON.stringify({
+      action: "monitor_release",
+      artist_mbid: "artist",
+      artist_name: "Artist",
+      release_group_id: "group",
+      album_title: "Album",
+      reason: "requested_track_missing",
+      payload: { requested_recording_ids: ["recording"] },
+    }),
+  );
   plans.save(imported.id, { actions: [] });
 
   expect(plans.get(first)).toMatchObject({

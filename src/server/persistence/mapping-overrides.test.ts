@@ -58,16 +58,10 @@ it("reuses only selected exact-ISRC mappings and marks them manual", () => {
       "valid",
     );
     const overrides = new MappingOverridesRepository(database);
-    expect(overrides.candidates(target.id, source.id)[0].status).toBe(
-      "will_map",
-    );
-    expect(
-      overrides.apply(target.id, source.id, new Set([targetEntry.id])),
-    ).toBe(1);
+    expect(overrides.candidates(target.id, source.id)[0].status).toBe("will_map");
+    expect(overrides.apply(target.id, source.id, new Set([targetEntry.id]))).toBe(1);
     const saved = database
-      .prepare(
-        "SELECT is_manual, method, result_json, evidence_json FROM resolutions WHERE entry_id = ?",
-      )
+      .prepare("SELECT is_manual, method, result_json, evidence_json FROM resolutions WHERE entry_id = ?")
       .get(targetEntry.id) as {
       is_manual: number;
       method: string;
@@ -140,12 +134,7 @@ it("normalizes legacy schema-v8 mappings before comparison and persistence", () 
     });
     overrides.apply(target.id, source.id, new Set([targetEntry.id]));
     const persisted = JSON.parse(
-      String(
-        database
-          .prepare("SELECT result_json FROM resolutions WHERE entry_id = ?")
-          .pluck()
-          .get(targetEntry.id),
-      ),
+      String(database.prepare("SELECT result_json FROM resolutions WHERE entry_id = ?").pluck().get(targetEntry.id)),
     );
     expect(persisted).toMatchObject({
       resolvedVia: "manual_mbid",

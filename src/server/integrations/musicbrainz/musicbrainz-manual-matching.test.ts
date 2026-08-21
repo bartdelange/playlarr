@@ -13,9 +13,7 @@ const track = {
 it("rejects malformed recording MBIDs without making a request", async () => {
   const get = vi.fn();
   const matcher = new ManualMusicBrainzMatcher({ get });
-  await expect(
-    matcher.validateRecordingMbid("invalid", track),
-  ).resolves.toMatchObject({
+  await expect(matcher.validateRecordingMbid("invalid", track)).resolves.toMatchObject({
     status: "invalid",
     errors: ["invalid_recording_mbid_format"],
   });
@@ -60,8 +58,5 @@ it("returns legacy warning reasons and complete release evidence", async () => {
       "release_group_ambiguous",
     ]),
   );
-  expect(validation.candidate?.result.releaseIds).toEqual([
-    "release-a",
-    "release-b",
-  ]);
+  expect(validation.candidate?.result.releaseIds).toEqual(["release-a", "release-b"]);
 });

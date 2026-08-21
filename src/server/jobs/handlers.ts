@@ -1,9 +1,6 @@
 import type Database from "better-sqlite3";
 import { executeApprovedPlan } from "../application/lidarr-execution";
-import {
-  appendLocalAdditions,
-  buildPlaylistExport,
-} from "../application/playlist-export";
+import { appendLocalAdditions, buildPlaylistExport } from "../application/playlist-export";
 import { planLidarr } from "../application/lidarr-planning";
 import type { AppConfig } from "../config/environment";
 import { LidarrClient } from "../integrations/lidarr/client";
@@ -39,15 +36,9 @@ export function productionJobHandlers(
     if (!job.importId) throw new Error("resolution job has no import");
     const imports = new ImportRepository(database);
     const allEntries = imports.entries(job.importId);
-    const retryEntryId =
-      job.kind === "resolution_retry"
-        ? Number(job.payload?.entryId)
-        : undefined;
-    const entries = retryEntryId
-      ? allEntries.filter((entry) => entry.id === retryEntryId)
-      : allEntries;
-    if (retryEntryId && entries.length !== 1)
-      throw new Error("retry entry does not belong to this import");
+    const retryEntryId = job.kind === "resolution_retry" ? Number(job.payload?.entryId) : undefined;
+    const entries = retryEntryId ? allEntries.filter((entry) => entry.id === retryEntryId) : allEntries;
+    if (retryEntryId && entries.length !== 1) throw new Error("retry entry does not belong to this import");
     let unresolved = false;
     const resolver = new MusicBrainzResolver(
       new MusicBrainzClient({
@@ -76,19 +67,10 @@ export function productionJobHandlers(
         ? imports
             .entries(job.importId)
             .some((entry) =>
-              [
-                "pending",
-                "resolving",
-                "unresolved",
-                "ambiguous",
-                "validation_failed",
-              ].includes(entry.resolutionState),
+              ["pending", "resolving", "unresolved", "ambiguous", "validation_failed"].includes(entry.resolutionState),
             )
         : unresolved;
-    imports.setWorkflowState(
-      job.importId,
-      requiresReview ? "review_required" : "ready_to_plan",
-    );
+    imports.setWorkflowState(job.importId, requiresReview ? "review_required" : "ready_to_plan");
     const imported = imports.getImport(job.importId);
     const playlist = {
       source: imported.source,
@@ -98,9 +80,7 @@ export function productionJobHandlers(
     };
     const rows = imports
       .entries(job.importId)
-      .map((entry) =>
-        mappingRow(playlist, entry.track, resolutions.get(entry.id).result),
-      );
+      .map((entry) => mappingRow(playlist, entry.track, resolutions.get(entry.id).result));
     await writeMappingReports(config.outputDir, playlist, rows);
   };
   const lidarrExecution: JobHandler = async (job) => {
@@ -110,20 +90,10 @@ export function productionJobHandlers(
       url: value("lidarr_url", config.lidarr.url ?? ""),
       apiKey: value("lidarr_api_key", config.lidarr.apiKey ?? ""),
       rootFolder: value("lidarr_root_folder", config.lidarr.rootFolder),
-      qualityProfileId: value(
-        "lidarr_quality_profile_id",
-        config.lidarr.qualityProfileId,
-      ),
-      metadataProfileId: value(
-        "lidarr_metadata_profile_id",
-        config.lidarr.metadataProfileId,
-      ),
+      qualityProfileId: value("lidarr_quality_profile_id", config.lidarr.qualityProfileId),
+      metadataProfileId: value("lidarr_metadata_profile_id", config.lidarr.metadataProfileId),
     });
-    await executeApprovedPlan(
-      new LidarrPlanRepository(database),
-      client,
-      planId,
-    );
+    await executeApprovedPlan(new LidarrPlanRepository(database), client, planId);
   };
   const lidarrPlanning: JobHandler = async (job, progress) => {
     if (!job.importId) throw new Error("Lidarr planning job has no import");
@@ -134,14 +104,8 @@ export function productionJobHandlers(
       url: value("lidarr_url", config.lidarr.url ?? ""),
       apiKey: value("lidarr_api_key", config.lidarr.apiKey ?? ""),
       rootFolder: value("lidarr_root_folder", config.lidarr.rootFolder),
-      qualityProfileId: value(
-        "lidarr_quality_profile_id",
-        config.lidarr.qualityProfileId,
-      ),
-      metadataProfileId: value(
-        "lidarr_metadata_profile_id",
-        config.lidarr.metadataProfileId,
-      ),
+      qualityProfileId: value("lidarr_quality_profile_id", config.lidarr.qualityProfileId),
+      metadataProfileId: value("lidarr_metadata_profile_id", config.lidarr.metadataProfileId),
     });
     progress(0, results.length || 1, "Comparing downloaded Lidarr files");
     const library = new LibraryRepository(database);
@@ -149,17 +113,14 @@ export function productionJobHandlers(
     library.saveStatus(job.importId, statuses);
     const allowed = new Set(
       resolutionInputs.flatMap((row, index) =>
-        row.evidence.allow_various_artists_release
-          ? (results[index].recordingIds ?? [])
-          : [],
+        row.evidence.allow_various_artists_release ? (results[index].recordingIds ?? []) : [],
       ),
     );
     const plan = await planLidarr(results, client, allowed, progress);
     plans.save(job.importId, plan);
   };
   const acquisition: JobHandler = async (job, progress, cancelled) => {
-    if (!job.importId)
-      throw new Error("playlist acquisition has no import placeholder");
+    if (!job.importId) throw new Error("playlist acquisition has no import placeholder");
     const sourceName = String(job.payload?.source ?? "");
     const reference = String(job.payload?.reference ?? "");
     const source =
@@ -175,13 +136,8 @@ export function productionJobHandlers(
       const playlist = await source.getPlaylist(reference);
       if (cancelled()) return;
       progress(1, playlist.trackCount ?? 2, `Importing ${playlist.name}`);
-      await new PersistentAcquisitionService(imports).acquireInto(
-        job.importId,
-        source,
-        playlist,
-      );
-      const completed =
-        (playlist.trackCount ?? imports.entries(job.importId).length) || 1;
+      await new PersistentAcquisitionService(imports).acquireInto(job.importId, source, playlist);
+      const completed = (playlist.trackCount ?? imports.entries(job.importId).length) || 1;
       progress(completed, completed, `Imported ${playlist.name}`);
     } catch (error) {
       imports.setWorkflowState(
@@ -243,11 +199,7 @@ export function productionJobHandlers(
       source: sourceName,
       playlists,
     });
-    progress(
-      playlists.length,
-      playlists.length,
-      `Loaded ${playlists.length} playlists`,
-    );
+    progress(playlists.length, playlists.length, `Loaded ${playlists.length} playlists`);
   };
   const updatePreview: JobHandler = async (job, progress, cancelled) => {
     if (!job.importId) throw new Error("playlist update preview has no import");
@@ -258,8 +210,7 @@ export function productionJobHandlers(
         : imported.source === "tidal"
           ? tidalProvider(config).source
           : undefined;
-    if (!source)
-      throw new Error(`unsupported playlist source: ${imported.source}`);
+    if (!source) throw new Error(`unsupported playlist source: ${imported.source}`);
     progress(0, 2, "Fetching the current source playlist");
     const playlist = await source.getPlaylist(imported.sourcePlaylistId);
     const entries = await source.getEntries(playlist);
@@ -286,18 +237,11 @@ export function productionJobHandlers(
     const playlist = preview.payload.playlist as PlaylistInfo;
     const entries = preview.payload.entries as AcquiredTrack[];
     const currentToken = playlistSnapshotToken(entries);
-    if (
-      !approvedToken ||
-      approvedToken !== currentToken ||
-      preview.payload.snapshotToken !== currentToken
-    )
+    if (!approvedToken || approvedToken !== currentToken || preview.payload.snapshotToken !== currentToken)
       throw new Error("the source playlist changed; preview the update again");
     progress(1, 2, "Applying the approved playlist update");
     const imports = new ImportRepository(database);
-    const update = previewPlaylistUpdate(
-      imports.entries(job.importId),
-      entries,
-    );
+    const update = previewPlaylistUpdate(imports.entries(job.importId), entries);
     if (update.added || update.removed || update.updated || update.moved)
       imports.applyPlaylistUpdate(job.importId, playlist, entries);
     new JobRepository(database).setPayload(job.id, {
@@ -311,9 +255,7 @@ export function productionJobHandlers(
     if (!job.importId) throw new Error("playlist generation job has no import");
     const imports = new ImportRepository(database);
     const imported = imports.getImport(job.importId);
-    if (
-      !["library_status", "playlist_generated"].includes(imported.workflowState)
-    )
+    if (!["library_status", "playlist_generated"].includes(imported.workflowState))
       throw new Error("refresh download status before generating a playlist");
     const entries = imports.entries(job.importId);
     const rows = database
@@ -325,20 +267,12 @@ export function productionJobHandlers(
       result_json: string;
       file_path: string | null;
     }[];
-    const mappings = value<[string, string][]>("path_mappings", [
-      ["/music", "/music"],
-    ]);
+    const mappings = value<[string, string][]>("path_mappings", [["/music", "/music"]]);
     progress(0, 2, "Building ordered playlist");
     let exported = buildPlaylistExport(
       entries.map((entry) => entry.track),
-      rows.map((row) =>
-        normalizeMusicBrainzResult(JSON.parse(row.result_json)),
-      ),
-      new Map(
-        rows
-          .filter((row) => row.file_path)
-          .map((row) => [row.position, row.file_path!]),
-      ),
+      rows.map((row) => normalizeMusicBrainzResult(JSON.parse(row.result_json))),
+      new Map(rows.filter((row) => row.file_path).map((row) => [row.position, row.file_path!])),
       mappings,
     );
     const additions = new LocalAdditionsRepository(database).list(job.importId);
@@ -351,9 +285,7 @@ export function productionJobHandlers(
       exported = appendLocalAdditions(
         exported,
         additions,
-        await navidrome.paths(
-          additions.map((addition) => addition.providerTrackId),
-        ),
+        await navidrome.paths(additions.map((addition) => addition.providerTrackId)),
         mappings,
         entries.length,
       );
@@ -371,13 +303,7 @@ export function productionJobHandlers(
   const libraryStatus: JobHandler = async (job, progress) => {
     if (!job.importId) throw new Error("library status job has no import");
     const imported = new ImportRepository(database).getImport(job.importId);
-    if (
-      ![
-        "waiting_for_downloads",
-        "library_status",
-        "playlist_generated",
-      ].includes(imported.workflowState)
-    )
+    if (!["waiting_for_downloads", "library_status", "playlist_generated"].includes(imported.workflowState))
       throw new Error("apply a Lidarr plan before refreshing downloads");
     const results = (
       database
@@ -386,16 +312,12 @@ export function productionJobHandlers(
         )
         .all(job.importId) as { result_json: string }[]
     ).map((row) => normalizeMusicBrainzResult(JSON.parse(row.result_json)));
-    if (!results.some((result) => result.resolvedVia))
-      throw new Error("there are no resolved tracks to check");
+    if (!results.some((result) => result.resolvedVia)) throw new Error("there are no resolved tracks to check");
     const client = new LidarrClient({
       url: value("lidarr_url", config.lidarr.url ?? ""),
       apiKey: value("lidarr_api_key", config.lidarr.apiKey ?? ""),
     });
-    new LibraryRepository(database).saveStatus(
-      job.importId,
-      await refreshLibraryStatus(results, client, progress),
-    );
+    new LibraryRepository(database).saveStatus(job.importId, await refreshLibraryStatus(results, client, progress));
   };
   return {
     playlist_catalogue: catalogue,

@@ -1,17 +1,10 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { expect, it } from "vitest";
-import {
-  appendLocalAdditions,
-  buildPlaylistExport,
-  translatePath,
-} from "../../server/application/playlist-export";
-import {
-  mappingRow,
-  serializeCsv,
-  writeMappingReports,
-} from "../../server/exports/mapping-report";
+import { appendLocalAdditions, buildPlaylistExport, translatePath } from "../../server/application/playlist-export";
+import { mappingRow, serializeCsv, writeMappingReports } from "../../server/exports/mapping-report";
 import { serializeM3u } from "../../server/exports/m3u";
+
 const track = {
   source: "spotify",
   sourceTrackId: "one",
@@ -21,11 +14,7 @@ const track = {
   isrc: "US-ABC-12-34567",
 };
 it("preserves ordered duplicates and writes extended M3U paths", () => {
-  const tracks = [
-    track,
-    { ...track, sourceTrackId: "missing", title: "Missing" },
-    track,
-  ];
+  const tracks = [track, { ...track, sourceTrackId: "missing", title: "Missing" }, track];
   const results = tracks.map(() => ({ resolvedVia: "isrc" }));
   const exported = buildPlaylistExport(
     tracks,
@@ -43,9 +32,7 @@ it("preserves ordered duplicates and writes extended M3U paths", () => {
   expect(m3u.match(/\/media\/music\/First.flac/g)).toHaveLength(2);
 });
 it("uses boundary-safe path translation and appends local additions", () => {
-  expect(translatePath("/musical/a.flac", [["/music", "/media"]])).toBe(
-    "/musical/a.flac",
-  );
+  expect(translatePath("/musical/a.flac", [["/music", "/media"]])).toBe("/musical/a.flac");
   const exported = appendLocalAdditions(
     { entries: [], missing: [] },
     [
@@ -87,11 +74,7 @@ it("writes complete and unresolved mapping reports", async () => {
     const playlist = { source: "spotify", id: "list", name: "List" };
     const rows = [
       mappingRow(playlist, track, { resolvedVia: "isrc" }),
-      mappingRow(
-        playlist,
-        { ...track, sourceTrackId: "two" },
-        { failureReason: "none" },
-      ),
+      mappingRow(playlist, { ...track, sourceTrackId: "two" }, { failureReason: "none" }),
     ];
     const paths = await writeMappingReports(directory, playlist, rows);
     expect(readFileSync(paths.mapping, "utf8")).toContain("track_title");

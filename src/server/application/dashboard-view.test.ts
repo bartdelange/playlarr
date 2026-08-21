@@ -8,11 +8,7 @@ it("derives dashboard resolution, review, action, and active-job context", () =>
   const database = openDatabase(":memory:");
   const imports = new ImportRepository(database);
   const importId = "00000000-0000-4000-8000-000000000001";
-  const imported = imports.createImport(
-    { source: "spotify", id: "list", name: "List" },
-    {},
-    importId,
-  );
+  const imported = imports.createImport({ source: "spotify", id: "list", name: "List" }, {}, importId);
   imports.replaceTracks(importId, [
     {
       source: "spotify",
@@ -30,33 +26,19 @@ it("derives dashboard resolution, review, action, and active-job context", () =>
     },
   ]);
   database
-    .prepare(
-      "UPDATE resolutions SET state = 'manually_resolved', result_json = ? WHERE entry_id = 1",
-    )
-    .run(
-      JSON.stringify({ resolved_via: "manual_mbid", recording_ids: ["mbid"] }),
-    );
-  database
-    .prepare("UPDATE resolutions SET state = 'ambiguous' WHERE entry_id = 2")
-    .run();
-  database
-    .prepare(
-      "UPDATE imports SET workflow_state = 'review_required' WHERE id = ?",
-    )
-    .run(importId);
+    .prepare("UPDATE resolutions SET state = 'manually_resolved', result_json = ? WHERE entry_id = 1")
+    .run(JSON.stringify({ resolved_via: "manual_mbid", recording_ids: ["mbid"] }));
+  database.prepare("UPDATE resolutions SET state = 'ambiguous' WHERE entry_id = 2").run();
+  database.prepare("UPDATE imports SET workflow_state = 'review_required' WHERE id = ?").run(importId);
   const active = new JobRepository(database).create("resolution", importId, 2);
 
-  expect(
-    dashboardImportRows(
-      database,
-      [{ ...imported, workflowState: "review_required" }],
-      [active],
-    )[0],
-  ).toMatchObject({
-    tracks: 2,
-    resolved: 1,
-    review: 1,
-    nextAction: "Review 1 tracks",
-    job: { id: active.id },
-  });
+  expect(dashboardImportRows(database, [{ ...imported, workflowState: "review_required" }], [active])[0]).toMatchObject(
+    {
+      tracks: 2,
+      resolved: 1,
+      review: 1,
+      nextAction: "Review 1 tracks",
+      job: { id: active.id },
+    },
+  );
 });

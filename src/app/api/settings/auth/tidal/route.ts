@@ -6,7 +6,6 @@ import { sessionCookie } from "../../../../../server/security/web-security";
 
 export async function GET() {
   const session = (await cookies()).get(sessionCookie)?.value;
-  if (!security.validSession(session))
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!security.validSession(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json(await tidal().auth.authorizationStatus());
 }

@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlaylistExportResult } from "../application/playlist-export";
+
 export function safeFilename(value: string): string {
   return (
     value
@@ -10,10 +11,7 @@ export function safeFilename(value: string): string {
       .slice(0, 80) || "playlist"
   );
 }
-export function playlistOutputPath(
-  outputDirectory: string,
-  playlistName: string,
-): string {
+export function playlistOutputPath(outputDirectory: string, playlistName: string): string {
   return path.join(outputDirectory, `${safeFilename(playlistName)}.m3u8`);
 }
 export function serializeM3u(exported: PlaylistExportResult): string {
@@ -29,10 +27,7 @@ export function serializeM3u(exported: PlaylistExportResult): string {
     "",
   ].join("\n");
 }
-export async function writeM3u(
-  outputPath: string,
-  exported: PlaylistExportResult,
-): Promise<void> {
+export async function writeM3u(outputPath: string, exported: PlaylistExportResult): Promise<void> {
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, serializeM3u(exported), "utf8");
 }

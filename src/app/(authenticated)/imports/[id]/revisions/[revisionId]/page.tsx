@@ -4,11 +4,8 @@ import { PlaylistRevisionRepository } from "../../../../../../server/persistence
 import { database } from "../../../../../../server/runtime";
 import { ImportRepository } from "../../../../../../server/persistence/import-repository";
 import Link from "next/link";
-export default function RevisionPage({
-  params,
-}: {
-  params: Promise<{ id: string; revisionId: string }>;
-}) {
+
+export default function RevisionPage({ params }: { params: Promise<{ id: string; revisionId: string }> }) {
   return (
     <main>
       <p className="eyebrow">Playlist update audit</p>
@@ -19,11 +16,7 @@ export default function RevisionPage({
   );
 }
 
-async function RevisionDetails({
-  params,
-}: {
-  params: Promise<{ id: string; revisionId: string }>;
-}) {
+async function RevisionDetails({ params }: { params: Promise<{ id: string; revisionId: string }> }) {
   await connection();
   const { id, revisionId } = await params;
   const revision = new PlaylistRevisionRepository(database).get(id, revisionId);
@@ -33,9 +26,8 @@ async function RevisionDetails({
       <h1>{imported.playlistName}</h1>
       <section className="card">
         <p>
-          <strong>{revision.createdAt}</strong> · {revision.added} added ·{" "}
-          {revision.updated} updated · {revision.removed} removed ·{" "}
-          {revision.moved} moved · {revision.unchanged} unchanged
+          <strong>{revision.createdAt}</strong> · {revision.added} added · {revision.updated} updated ·{" "}
+          {revision.removed} removed · {revision.moved} moved · {revision.unchanged} unchanged
         </p>
         <Link className="button secondary" href={`/imports/${id}`}>
           Back to playlist

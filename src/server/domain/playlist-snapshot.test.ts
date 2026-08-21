@@ -15,15 +15,9 @@ const snapshot = [
 ];
 
 it("binds playlist update approval to the exact ordered source snapshot", () => {
-  expect(playlistSnapshotToken(snapshot)).toBe(
-    playlistSnapshotToken(structuredClone(snapshot)),
-  );
+  expect(playlistSnapshotToken(snapshot)).toBe(playlistSnapshotToken(structuredClone(snapshot)));
+  expect(playlistSnapshotToken(snapshot)).not.toBe(playlistSnapshotToken([{ ...snapshot[0], position: 1 }]));
   expect(playlistSnapshotToken(snapshot)).not.toBe(
-    playlistSnapshotToken([{ ...snapshot[0], position: 1 }]),
-  );
-  expect(playlistSnapshotToken(snapshot)).not.toBe(
-    playlistSnapshotToken([
-      { ...snapshot[0], track: { ...snapshot[0].track, title: "Changed" } },
-    ]),
+    playlistSnapshotToken([{ ...snapshot[0], track: { ...snapshot[0].track, title: "Changed" } }]),
   );
 });

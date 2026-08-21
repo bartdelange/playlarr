@@ -8,10 +8,7 @@ import {
   reusePreviousResolution,
   reviewDecisionDestination,
 } from "../../server/application/manual-review";
-import type {
-  Candidate,
-  ManualValidation,
-} from "../../server/integrations/musicbrainz/candidates";
+import type { Candidate, ManualValidation } from "../../server/integrations/musicbrainz/candidates";
 import { openDatabase } from "../../server/persistence/database";
 import { ImportRepository } from "../../server/persistence/import-repository";
 import { JobRepository } from "../../server/persistence/job-repository";
@@ -19,9 +16,7 @@ import { LidarrPlanRepository } from "../../server/persistence/lidarr-plan-repos
 import { ResolutionRepository } from "../../server/persistence/resolution-repository";
 
 const paths: string[] = [];
-afterEach(() =>
-  paths.splice(0).forEach((value) => rmSync(value, { recursive: true })),
-);
+afterEach(() => paths.splice(0).forEach((value) => rmSync(value, { recursive: true })));
 
 function setup() {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-review-"));
@@ -57,10 +52,7 @@ function setup() {
   return { database, imports, imported, entries, resolutions };
 }
 
-function validation(
-  status: "valid" | "warning" = "valid",
-  groups = ["group"],
-): ManualValidation {
+function validation(status: "valid" | "warning" = "valid", groups = ["group"]): ManualValidation {
   const candidate: Candidate = {
     result: {
       resolvedVia: "manual_search",
@@ -104,20 +96,8 @@ function validation(
 
 it("preserves manual search and manual MBID persistence methods", () => {
   const { database, entries, resolutions } = setup();
-  confirmManualResolution(
-    resolutions,
-    entries[0].id,
-    validation(),
-    "manual_search",
-    false,
-  );
-  confirmManualResolution(
-    resolutions,
-    entries[1].id,
-    validation(),
-    "manual_mbid",
-    false,
-  );
+  confirmManualResolution(resolutions, entries[0].id, validation(), "manual_search", false);
+  confirmManualResolution(resolutions, entries[1].id, validation(), "manual_mbid", false);
 
   expect(resolutions.get(entries[0].id)).toMatchObject({
     state: "manually_resolved",
@@ -135,22 +115,10 @@ it("preserves manual search and manual MBID persistence methods", () => {
 it("requires warning acknowledgement and an explicit ambiguous release group", () => {
   const { database, entries, resolutions } = setup();
   expect(() =>
-    confirmManualResolution(
-      resolutions,
-      entries[0].id,
-      validation("warning", ["one", "two"]),
-      "manual_mbid",
-      false,
-    ),
+    confirmManualResolution(resolutions, entries[0].id, validation("warning", ["one", "two"]), "manual_mbid", false),
   ).toThrow("explicit confirmation");
   expect(() =>
-    confirmManualResolution(
-      resolutions,
-      entries[0].id,
-      validation("warning", ["one", "two"]),
-      "manual_mbid",
-      true,
-    ),
+    confirmManualResolution(resolutions, entries[0].id, validation("warning", ["one", "two"]), "manual_mbid", true),
   ).toThrow("select a release group");
 
   confirmManualResolution(
@@ -172,9 +140,7 @@ it("requires warning acknowledgement and an explicit ambiguous release group", (
 
 it("supports session navigation, skip, and clear override", () => {
   const { database, imported, entries, resolutions } = setup();
-  expect(resolutions.reviewQueue(imported.id).map((entry) => entry.id)).toEqual(
-    entries.map((entry) => entry.id),
-  );
+  expect(resolutions.reviewQueue(imported.id).map((entry) => entry.id)).toEqual(entries.map((entry) => entry.id));
   resolutions.markSkipped(entries[0].id);
   resolutions.updateReviewWorkflow(imported.id);
   expect(reviewDecisionDestination(resolutions, entries[0].id, true)).toBe(
@@ -210,12 +176,7 @@ it("reuses only a persisted previous manual mapping", () => {
     },
   ]);
   const sourceEntry = imports.entries(source.id)[0];
-  resolutions.saveManual(
-    sourceEntry.id,
-    validation().candidate!.result,
-    "manual_mbid",
-    "valid",
-  );
+  resolutions.saveManual(sourceEntry.id, validation().candidate!.result, "manual_mbid", "valid");
 
   expect(resolutions.manualMatchSuggestions(entries[0].id)[0]).toMatchObject({
     entryId: sourceEntry.id,
@@ -235,24 +196,13 @@ it("returns planned edits to Lidarr, supersedes the draft, and prepares retry", 
   const { database, imported, entries, resolutions } = setup();
   const plans = new LidarrPlanRepository(database);
   const planId = plans.save(imported.id, { actions: [] });
-  confirmManualResolution(
-    resolutions,
-    entries[0].id,
-    validation(),
-    "manual_mbid",
-    false,
-  );
+  confirmManualResolution(resolutions, entries[0].id, validation(), "manual_mbid", false);
   expect(plans.get(planId).status).toBe("superseded");
-  expect(
-    reviewDecisionDestination(resolutions, entries[0].id, false, planId),
-  ).toBe(`/imports/${imported.id}?stage=lidarr`);
-
-  const retry = prepareAutomaticRetry(
-    resolutions,
-    new JobRepository(database),
-    entries[0].id,
-    planId,
+  expect(reviewDecisionDestination(resolutions, entries[0].id, false, planId)).toBe(
+    `/imports/${imported.id}?stage=lidarr`,
   );
+
+  const retry = prepareAutomaticRetry(resolutions, new JobRepository(database), entries[0].id, planId);
   expect(retry).toMatchObject({
     kind: "resolution_retry",
     importId: imported.id,

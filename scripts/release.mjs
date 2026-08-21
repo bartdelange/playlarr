@@ -9,41 +9,26 @@ const run = (executable, args, capture = false) => {
     encoding: "utf8",
     stdio: capture ? "pipe" : "inherit",
   });
-  if (result.error || result.status !== 0)
-    throw new Error(`command failed: ${executable} ${args.join(" ")}`);
+  if (result.error || result.status !== 0) throw new Error(`command failed: ${executable} ${args.join(" ")}`);
   return result.stdout?.trim() ?? "";
 };
 const output = (executable, ...args) => run(executable, args, true);
 const version = () => {
   const value = JSON.parse(readFileSync("package.json", "utf8")).version;
-  if (!/^\d+\.\d+\.\d+$/.test(value))
-    throw new Error(`invalid package version: ${value}`);
+  if (!/^\d+\.\d+\.\d+$/.test(value)) throw new Error(`invalid package version: ${value}`);
   return value;
 };
 const requireCleanMaster = () => {
-  if (output("git", "status", "--porcelain"))
-    throw new Error("working tree must be clean before releasing");
-  if (output("git", "branch", "--show-current") !== "master")
-    throw new Error("release commands must start on master");
+  if (output("git", "status", "--porcelain")) throw new Error("working tree must be clean before releasing");
+  if (output("git", "branch", "--show-current") !== "master") throw new Error("release commands must start on master");
   run("git", ["fetch", "origin"]);
-  if (
-    output("git", "rev-parse", "HEAD") !==
-    output("git", "rev-parse", "origin/master")
-  )
+  if (output("git", "rev-parse", "HEAD") !== output("git", "rev-parse", "origin/master"))
     throw new Error("local master must exactly match origin/master");
 };
 const requireUnusedTag = (tag) => {
-  if (output("git", "tag", "--list", tag))
-    throw new Error(`tag already exists: ${tag}`);
-  const remote = spawnSync("git", [
-    "ls-remote",
-    "--exit-code",
-    "--tags",
-    "origin",
-    `refs/tags/${tag}`,
-  ]);
-  if (remote.status === 0)
-    throw new Error(`tag already exists on origin: ${tag}`);
+  if (output("git", "tag", "--list", tag)) throw new Error(`tag already exists: ${tag}`);
+  const remote = spawnSync("git", ["ls-remote", "--exit-code", "--tags", "origin", `refs/tags/${tag}`]);
+  if (remote.status === 0) throw new Error(`tag already exists on origin: ${tag}`);
   if (remote.status !== 2) throw new Error(`could not verify tag ${tag}`);
 };
 try {
@@ -87,8 +72,6 @@ try {
     run("git", ["push", "origin", tag]);
   } else throw new Error("usage: npm run release -- <prepare|publish>");
 } catch (error) {
-  console.error(
-    `release aborted: ${error instanceof Error ? error.message : String(error)}`,
-  );
+  console.error(`release aborted: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 }

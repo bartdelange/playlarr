@@ -9,11 +9,8 @@ import { jobCompletionUrl } from "../../../../server/application/job-presentatio
 import { requestCsrfToken } from "../../../../server/security/request";
 import { cancelJob } from "../../../actions/workflows";
 import Link from "next/link";
-export default function JobPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+
+export default function JobPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <main>
       <p className="eyebrow">Background work</p>
@@ -32,9 +29,7 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
   } catch {
     notFound();
   }
-  const imported = job.importId
-    ? new ImportRepository(database).getImport(job.importId)
-    : undefined;
+  const imported = job.importId ? new ImportRepository(database).getImport(job.importId) : undefined;
   const csrf = await requestCsrfToken();
   return (
     <>
@@ -48,12 +43,7 @@ async function JobDetails({ params }: { params: Promise<{ id: string }> }) {
       <p>
         <Link href="/jobs">← All background jobs</Link>
       </p>
-      <JobProgress
-        initial={job}
-        completionUrl={jobCompletionUrl(job)}
-        csrfToken={csrf}
-        cancelAction={cancelJob}
-      />
+      <JobProgress initial={job} completionUrl={jobCompletionUrl(job)} csrfToken={csrf} cancelAction={cancelJob} />
     </>
   );
 }

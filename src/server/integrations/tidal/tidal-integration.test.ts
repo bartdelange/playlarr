@@ -10,13 +10,10 @@ import {
   type TidalSessionStore,
 } from "../../../server/integrations/tidal/session";
 import { TidalSource } from "../../../server/integrations/tidal/source";
+
 const directories: string[] = [];
 afterEach(async () => {
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true })),
-  );
+  await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));
 });
 const memoryStore = (
   initial?: TidalSession,
@@ -103,9 +100,7 @@ it("runs device authorization, polls at the supplied interval, and persists toke
         interval: 2,
       }),
     )
-    .mockResolvedValueOnce(
-      Response.json({ error: "authorization_pending" }, { status: 400 }),
-    )
+    .mockResolvedValueOnce(Response.json({ error: "authorization_pending" }, { status: 400 }))
     .mockResolvedValueOnce(
       Response.json({
         access_token: "access",
@@ -114,28 +109,14 @@ it("runs device authorization, polls at the supplied interval, and persists toke
         token_type: "Bearer",
       }),
     )
-    .mockResolvedValueOnce(
-      Response.json({ sessionId: "session", userId: 1, countryCode: "NL" }),
-    );
-  const auth = new TidalAuthenticator(
-    store,
-    fetcher,
-    () => now,
-    "https://device.test",
-    "https://token.test",
-  );
+    .mockResolvedValueOnce(Response.json({ sessionId: "session", userId: 1, countryCode: "NL" }));
+  const auth = new TidalAuthenticator(store, fetcher, () => now, "https://device.test", "https://token.test");
   await expect(auth.beginDeviceAuthorization()).resolves.toEqual({
     verificationUrl: "https://link.tidal.com/USER-CODE",
     userCode: "USER-CODE",
     expiresIn: 300,
   });
-  const poller = new TidalAuthenticator(
-    store,
-    fetcher,
-    () => now,
-    "https://device.test",
-    "https://token.test",
-  );
+  const poller = new TidalAuthenticator(store, fetcher, () => now, "https://device.test", "https://token.test");
   await expect(poller.authorizationStatus()).resolves.toEqual({
     status: "pending",
   });
@@ -156,9 +137,7 @@ it("runs device authorization, polls at the supplied interval, and persists toke
   const deviceBody = fetcher.mock.calls[0][1].body as URLSearchParams;
   expect(deviceBody.get("scope")).toBe("r_usr w_usr w_sub");
   const tokenBody = fetcher.mock.calls[2][1].body as URLSearchParams;
-  expect(tokenBody.get("grant_type")).toBe(
-    "urn:ietf:params:oauth:grant-type:device_code",
-  );
+  expect(tokenBody.get("grant_type")).toBe("urn:ietf:params:oauth:grant-type:device_code");
   expect(tokenBody.get("device_code")).toBe("device-code");
   expect(fetcher.mock.calls[3][1].headers).toEqual({
     Authorization: "Bearer access",
@@ -177,16 +156,8 @@ it("reports denied device authorization without persisting credentials", async (
         interval: 1,
       }),
     )
-    .mockResolvedValueOnce(
-      Response.json({ error: "access_denied" }, { status: 400 }),
-    );
-  const auth = new TidalAuthenticator(
-    store,
-    fetcher,
-    () => 1_000,
-    "https://device.test",
-    "https://token.test",
-  );
+    .mockResolvedValueOnce(Response.json({ error: "access_denied" }, { status: 400 }));
+  const auth = new TidalAuthenticator(store, fetcher, () => 1_000, "https://device.test", "https://token.test");
   await auth.beginDeviceAuthorization();
   await expect(auth.authorizationStatus()).resolves.toEqual({
     status: "failed",
@@ -200,11 +171,7 @@ it("refreshes once and preserves ordered duplicate playlist tracks", async () =>
     refreshToken: "refresh",
     expiresAt: Date.now() + 60_000,
   });
-  const tokenFetch = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({ access_token: "new", expires_in: 3600 }),
-    );
+  const tokenFetch = vi.fn().mockResolvedValue(Response.json({ access_token: "new", expires_in: 3600 }));
   const auth = new TidalAuthenticator(store, tokenFetch);
   let calls = 0;
   const api = vi.fn(async (input: string | URL | Request) => {
@@ -268,8 +235,6 @@ it("attaches verified folder paths and omits unavailable relationship items", as
   });
   expect((await source.listPlaylists())[0].path).toBe("Folder/Subfolder");
   expect(
-    (await source.getTracks({ source: "tidal", id: "one", name: "Mix" })).map(
-      (track) => track.sourceTrackId,
-    ),
+    (await source.getTracks({ source: "tidal", id: "one", name: "Mix" })).map((track) => track.sourceTrackId),
   ).toEqual(["track"]);
 });

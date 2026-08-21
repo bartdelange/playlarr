@@ -1,5 +1,6 @@
 import type { MusicBrainzResult } from "../domain/musicbrainz";
 import type { SourceTrack, StoredEntry } from "../domain/playlist";
+
 export interface TrackResolver {
   resolve(track: SourceTrack): Promise<MusicBrainzResult>;
 }
@@ -34,21 +35,13 @@ export async function resolveImport(
       repository.setWorkflowState(importId, "resolution_interrupted");
       return summary;
     }
-    if (
-      entry.resolutionState === "skipped" ||
-      entry.isManual ||
-      !repository.markResolving(entry.id)
-    )
-      continue;
+    if (entry.resolutionState === "skipped" || entry.isManual || !repository.markResolving(entry.id)) continue;
     const result = await resolver.resolve(entry.track);
     repository.saveAutomatic(entry.id, result);
     if (result.resolvedVia === "isrc") summary.resolvedByIsrc++;
     else if (result.resolvedVia) summary.resolvedBySearch++;
     else summary.unresolved++;
   }
-  repository.setWorkflowState(
-    importId,
-    summary.unresolved ? "review_required" : "ready_to_plan",
-  );
+  repository.setWorkflowState(importId, summary.unresolved ? "review_required" : "ready_to_plan");
   return summary;
 }

@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { MusicBrainzClient } from "../../../server/integrations/musicbrainz/client";
+
 it("retries transient MusicBrainz failures and preserves query parameters", async () => {
   const fetcher = vi
     .fn()
@@ -17,9 +18,7 @@ it("retries transient MusicBrainz failures and preserves query parameters", asyn
     fetcher,
     sleep,
   );
-  await expect(
-    client.get("recording", { query: "isrc:ABC", fmt: "json" }),
-  ).resolves.toEqual({ recordings: [] });
+  await expect(client.get("recording", { query: "isrc:ABC", fmt: "json" })).resolves.toEqual({ recordings: [] });
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(String(fetcher.mock.calls[0][0])).toContain("query=isrc%3AABC");
   expect(sleep).toHaveBeenCalledWith(250);

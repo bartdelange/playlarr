@@ -15,10 +15,7 @@ export class WebSecurity {
     private readonly monotonicClock = () => performance.now(),
   ) {}
   get mode(): "password" | "disabled" | undefined {
-    const mode = this.settings.get<string | undefined>(
-      "web_auth_mode",
-      undefined,
-    );
+    const mode = this.settings.get<string | undefined>("web_auth_mode", undefined);
     if (mode === "password" || mode === "disabled") return mode;
     return this.hasPassword ? "password" : undefined;
   }
@@ -49,16 +46,12 @@ export class WebSecurity {
     this.rotateSessions();
   }
   enableAuthorization() {
-    if (!this.hasPassword)
-      throw new Error("create a password before enabling authorization");
+    if (!this.hasPassword) throw new Error("create a password before enabling authorization");
     this.settings.set("web_auth_mode", "password");
     this.rotateSessions();
   }
   rotateSessions() {
-    this.settings.set(
-      "web_auth_session_secret",
-      randomBytes(48).toString("base64url"),
-    );
+    this.settings.set("web_auth_session_secret", randomBytes(48).toString("base64url"));
   }
   createSession(): string {
     const payload = `${Math.floor(this.wallClock() / 1000) + sessionLifetimeSeconds}.${randomBytes(24).toString("base64url")}`;
@@ -69,10 +62,7 @@ export class WebSecurity {
     const parts = token.split(".");
     if (parts.length !== 3) return false;
     const payload = `${parts[0]}.${parts[1]}`;
-    return (
-      Number(parts[0]) > this.wallClock() / 1000 &&
-      safeEqual(parts[2], this.sign(payload))
-    );
+    return Number(parts[0]) > this.wallClock() / 1000 && safeEqual(parts[2], this.sign(payload));
   }
   csrfToken(session: string): string {
     return this.sign(`csrf.${session}`);
@@ -80,19 +70,12 @@ export class WebSecurity {
   validCsrf(session: string, supplied?: string): boolean {
     return Boolean(supplied && safeEqual(supplied, this.csrfToken(session)));
   }
-  sameOrigin(
-    requestUrl: string,
-    origin?: string | null,
-    host?: string | null,
-  ): boolean {
+  sameOrigin(requestUrl: string, origin?: string | null, host?: string | null): boolean {
     if (!origin) return true;
     try {
       const parsed = new URL(origin);
       const expected = host ?? new URL(requestUrl).host;
-      return (
-        (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-        parsed.host === expected
-      );
+      return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.host === expected;
     } catch {
       return false;
     }

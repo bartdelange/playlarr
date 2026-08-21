@@ -4,16 +4,13 @@ import path from "node:path";
 import { afterEach, expect, it } from "vitest";
 import { openDatabase } from "../../server/persistence/database";
 import { JobRepository } from "../../server/persistence/job-repository";
+
 const paths: string[] = [];
-afterEach(() =>
-  paths.splice(0).forEach((value) => rmSync(value, { recursive: true })),
-);
+afterEach(() => paths.splice(0).forEach((value) => rmSync(value, { recursive: true })));
 it("cancels queued work and retains cancellation requests for running work", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-jobs-"));
   paths.push(directory);
-  const jobs = new JobRepository(
-    openDatabase(path.join(directory, "music-importer.db")),
-  );
+  const jobs = new JobRepository(openDatabase(path.join(directory, "music-importer.db")));
   const queued = jobs.create("resolve");
   jobs.requestCancel(queued.id);
   expect(jobs.get(queued.id)).toMatchObject({
@@ -32,9 +29,7 @@ it("cancels queued work and retains cancellation requests for running work", () 
 it("claims queued work once in creation order", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-jobs-"));
   paths.push(directory);
-  const jobs = new JobRepository(
-    openDatabase(path.join(directory, "music-importer.db")),
-  );
+  const jobs = new JobRepository(openDatabase(path.join(directory, "music-importer.db")));
   const first = jobs.create("first");
   jobs.create("second");
   expect(jobs.claimNext()?.id).toBe(first.id);

@@ -4,11 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ResolutionRepository } from "../../../../../server/persistence/resolution-repository";
 import { database } from "../../../../../server/runtime";
 
-export default function StartReviewSession({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function StartReviewSession({ params }: { params: Promise<{ id: string }> }) {
   return (
     <Suspense
       fallback={
@@ -22,17 +18,10 @@ export default function StartReviewSession({
   );
 }
 
-async function ReviewSessionRedirect({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+async function ReviewSessionRedirect({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const importId = (await params).id;
-  if (!database.prepare("SELECT 1 FROM imports WHERE id = ?").get(importId))
-    notFound();
+  if (!database.prepare("SELECT 1 FROM imports WHERE id = ?").get(importId)) notFound();
   const first = new ResolutionRepository(database).reviewQueue(importId)[0];
-  return redirect(
-    first ? `/entries/${first.id}/review?session=true` : `/imports/${importId}`,
-  );
+  return redirect(first ? `/entries/${first.id}/review?session=true` : `/imports/${importId}`);
 }

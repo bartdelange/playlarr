@@ -1,21 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { normalizeMusicBrainzResult } from "../domain/musicbrainz";
-import type {
-  AcquiredTrack,
-  PlaylistInfo,
-  SourceTrack,
-  StoredEntry,
-  StoredImport,
-} from "../domain/playlist";
-import {
-  previewPlaylistUpdate,
-  type PlaylistUpdate,
-} from "../domain/playlist-updates";
+import type { AcquiredTrack, PlaylistInfo, SourceTrack, StoredEntry, StoredImport } from "../domain/playlist";
+import { type PlaylistUpdate, previewPlaylistUpdate } from "../domain/playlist-updates";
 
 const timestamp = () => new Date().toISOString();
-const optional = (value: unknown): string | undefined =>
-  typeof value === "string" ? value : undefined;
+const optional = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
 
 export interface PersistedMatchedRecording {
   title?: string;
@@ -26,11 +16,7 @@ export interface PersistedMatchedRecording {
 export class ImportRepository {
   constructor(private readonly database: Database.Database) {}
 
-  createImport(
-    playlist: PlaylistInfo,
-    metadata: object = {},
-    importId = randomUUID(),
-  ): StoredImport {
+  createImport(playlist: PlaylistInfo, metadata: object = {}, importId = randomUUID()): StoredImport {
     const now = timestamp();
     this.database
       .prepare(
@@ -50,9 +36,8 @@ export class ImportRepository {
   }
 
   getImport(importId: string): StoredImport {
-    const row = this.database
-      .prepare("SELECT * FROM imports WHERE id = ?")
-      .get(importId) as Record<string, unknown> | undefined;
+    const row = this.database.prepare("SELECT * FROM imports WHERE id = ?").get(importId) as
+      Record<string, unknown> | undefined;
     if (!row) throw new Error(`unknown import: ${importId}`);
     return {
       id: row.id as string,
@@ -69,19 +54,12 @@ export class ImportRepository {
 
   listImports(limit = 100): StoredImport[] {
     return (
-      this.database
-        .prepare("SELECT id FROM imports ORDER BY updated_at DESC LIMIT ?")
-        .all(limit) as { id: string }[]
+      this.database.prepare("SELECT id FROM imports ORDER BY updated_at DESC LIMIT ?").all(limit) as { id: string }[]
     ).map((row) => this.getImport(row.id));
   }
-  findImport(
-    source: string,
-    sourcePlaylistId: string,
-  ): StoredImport | undefined {
+  findImport(source: string, sourcePlaylistId: string): StoredImport | undefined {
     const row = this.database
-      .prepare(
-        "SELECT id FROM imports WHERE source = ? AND source_playlist_id = ? ORDER BY updated_at DESC LIMIT 1",
-      )
+      .prepare("SELECT id FROM imports WHERE source = ? AND source_playlist_id = ? ORDER BY updated_at DESC LIMIT 1")
       .get(source, sourcePlaylistId) as { id: string } | undefined;
     return row ? this.getImport(row.id) : undefined;
   }
@@ -116,9 +94,7 @@ export class ImportRepository {
     }));
   }
 
-  musicMatchRecordings(
-    importId: string,
-  ): Map<number, PersistedMatchedRecording> {
+  musicMatchRecordings(importId: string): Map<number, PersistedMatchedRecording> {
     const rows = this.database
       .prepare(
         `SELECT entries.id, resolutions.result_json
@@ -131,9 +107,7 @@ export class ImportRepository {
 
     return new Map(
       rows.map((row) => {
-        const result = normalizeMusicBrainzResult(
-          JSON.parse(row.result_json || "{}"),
-        );
+        const result = normalizeMusicBrainzResult(JSON.parse(row.result_json || "{}"));
 
         return [
           row.id,
@@ -156,9 +130,7 @@ export class ImportRepository {
 
   replaceAcquiredTracks(importId: string, entries: AcquiredTrack[]): void {
     const replace = this.database.transaction(() => {
-      this.database
-        .prepare("DELETE FROM playlist_entries WHERE import_id = ?")
-        .run(importId);
+      this.database.prepare("DELETE FROM playlist_entries WHERE import_id = ?").run(importId);
       const add = this.database.prepare(
         `INSERT INTO playlist_entries (import_id, position, source_track_id, title, artists_json, album, isrc, duration_ms, acquisition_status, skip_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       );
@@ -182,68 +154,40 @@ export class ImportRepository {
           result.lastInsertRowid,
           entry.skipReason ? "skipped" : "pending",
           entry.skipReason ? "source_skip" : null,
-          entry.skipReason
-            ? JSON.stringify({ skip_reason: entry.skipReason })
-            : "{}",
+          entry.skipReason ? JSON.stringify({ skip_reason: entry.skipReason }) : "{}",
           timestamp(),
         );
       }
       this.database
-        .prepare(
-          "UPDATE imports SET workflow_state = 'ready_to_resolve', updated_at = ? WHERE id = ?",
-        )
+        .prepare("UPDATE imports SET workflow_state = 'ready_to_resolve', updated_at = ? WHERE id = ?")
         .run(timestamp(), importId);
     });
     replace();
   }
 
   deleteImport(importId: string): void {
-    if (
-      !this.database.prepare("SELECT 1 FROM imports WHERE id = ?").get(importId)
-    )
+    if (!this.database.prepare("SELECT 1 FROM imports WHERE id = ?").get(importId))
       throw new Error(`unknown import: ${importId}`);
     if (
-      this.database
-        .prepare(
-          "SELECT 1 FROM jobs WHERE import_id = ? AND status IN ('queued', 'running')",
-        )
-        .get(importId)
+      this.database.prepare("SELECT 1 FROM jobs WHERE import_id = ? AND status IN ('queued', 'running')").get(importId)
     )
-      throw new Error(
-        "cancel or wait for the active job before deleting this import",
-      );
+      throw new Error("cancel or wait for the active job before deleting this import");
     this.database.prepare("DELETE FROM imports WHERE id = ?").run(importId);
   }
 
   setWorkflowState(importId: string, state: string, error?: string): void {
     this.database
-      .prepare(
-        "UPDATE imports SET workflow_state = ?, last_error = ?, updated_at = ? WHERE id = ?",
-      )
+      .prepare("UPDATE imports SET workflow_state = ?, last_error = ?, updated_at = ? WHERE id = ?")
       .run(state, error ?? null, timestamp(), importId);
   }
-  updatePlaylist(
-    importId: string,
-    playlist: PlaylistInfo,
-    metadata: object = {},
-  ): void {
+  updatePlaylist(importId: string, playlist: PlaylistInfo, metadata: object = {}): void {
     this.database
       .prepare(
         "UPDATE imports SET playlist_name = ?, playlist_path = ?, playlist_metadata_json = ?, updated_at = ? WHERE id = ?",
       )
-      .run(
-        playlist.name,
-        playlist.path ?? null,
-        JSON.stringify(metadata),
-        timestamp(),
-        importId,
-      );
+      .run(playlist.name, playlist.path ?? null, JSON.stringify(metadata), timestamp(), importId);
   }
-  applyPlaylistUpdate(
-    importId: string,
-    playlist: PlaylistInfo,
-    current: AcquiredTrack[],
-  ): PlaylistUpdate {
+  applyPlaylistUpdate(importId: string, playlist: PlaylistInfo, current: AcquiredTrack[]): PlaylistUpdate {
     const before = this.entries(importId);
     const update = previewPlaylistUpdate(before, current);
     const unmatched = new Map(before.map((entry) => [entry.id, entry]));
@@ -266,11 +210,7 @@ export class ImportRepository {
     }
     const at = timestamp();
     this.database.transaction(() => {
-      this.database
-        .prepare(
-          "UPDATE playlist_entries SET position = -position - 1 WHERE import_id = ?",
-        )
-        .run(importId);
+      this.database.prepare("UPDATE playlist_entries SET position = -position - 1 WHERE import_id = ?").run(importId);
       const add = this.database.prepare(
         "INSERT INTO playlist_entries (import_id, position, source_track_id, title, artists_json, album, isrc, duration_ms, acquisition_status, skip_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       );
@@ -300,39 +240,25 @@ export class ImportRepository {
             inserted.lastInsertRowid,
             entry.skipReason ? "skipped" : "pending",
             entry.skipReason ? "source_skip" : null,
-            entry.skipReason
-              ? JSON.stringify({ skip_reason: entry.skipReason })
-              : "{}",
+            entry.skipReason ? JSON.stringify({ skip_reason: entry.skipReason }) : "{}",
             at,
           );
         }
       });
-      unmatched.forEach((entry) =>
-        this.database
-          .prepare("DELETE FROM playlist_entries WHERE id = ?")
-          .run(entry.id),
-      );
+      unmatched.forEach((entry) => this.database.prepare("DELETE FROM playlist_entries WHERE id = ?").run(entry.id));
       this.database
         .prepare(
           "UPDATE lidarr_plans SET status = 'superseded' WHERE import_id = ? AND status IN ('draft', 'approved')",
         )
         .run(importId);
       this.database
-        .prepare(
-          "DELETE FROM library_status WHERE entry_id IN (SELECT id FROM playlist_entries WHERE import_id = ?)",
-        )
+        .prepare("DELETE FROM library_status WHERE entry_id IN (SELECT id FROM playlist_entries WHERE import_id = ?)")
         .run(importId);
       this.database
         .prepare(
           "UPDATE imports SET playlist_name = ?, playlist_path = ?, workflow_state = ?, updated_at = ? WHERE id = ?",
         )
-        .run(
-          playlist.name,
-          playlist.path ?? null,
-          update.added ? "ready_to_resolve" : "ready_to_plan",
-          at,
-          importId,
-        );
+        .run(playlist.name, playlist.path ?? null, update.added ? "ready_to_resolve" : "ready_to_plan", at, importId);
       this.database
         .prepare(
           "INSERT INTO playlist_revisions (id, import_id, created_at, before_json, after_json, added, removed, updated, moved, unchanged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

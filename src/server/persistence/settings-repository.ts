@@ -10,9 +10,8 @@ export class SettingsRepository {
       .run(key, JSON.stringify(value), now());
   }
   get<T>(key: string, fallback: T): T {
-    const row = this.database
-      .prepare("SELECT value_json FROM settings WHERE key = ?")
-      .get(key) as { value_json: string } | undefined;
+    const row = this.database.prepare("SELECT value_json FROM settings WHERE key = ?").get(key) as
+      { value_json: string } | undefined;
     return row ? (JSON.parse(row.value_json) as T) : fallback;
   }
   all(): Record<string, unknown> {

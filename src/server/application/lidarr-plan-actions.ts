@@ -26,21 +26,13 @@ export function changePlannedRelease(
   return owner;
 }
 
-export function allowVariousArtistsRelease(
-  database: Database.Database,
-  planId: string,
-  entryId: number,
-): string {
+export function allowVariousArtistsRelease(database: Database.Database, planId: string, entryId: number): string {
   const owner = validatePlanEntry(database, planId, entryId, false);
   new ResolutionRepository(database).setVariousArtistsOverride(entryId, true);
   return owner;
 }
 
-export function preparePlanEntryRetry(
-  database: Database.Database,
-  planId: string,
-  entryId: number,
-): string {
+export function preparePlanEntryRetry(database: Database.Database, planId: string, entryId: number): string {
   const owner = validatePlanEntry(database, planId, entryId, true);
   const resolutions = new ResolutionRepository(database);
   if (resolutions.get(entryId).isManual) resolutions.clearManual(entryId);
@@ -57,9 +49,8 @@ function validatePlanEntry(
   if (requireEditable && !["draft", "superseded"].includes(plan.status))
     throw new Error("only a draft or superseded plan can be edited");
 
-  const entry = database
-    .prepare("SELECT import_id FROM playlist_entries WHERE id = ?")
-    .get(entryId) as { import_id: string } | undefined;
+  const entry = database.prepare("SELECT import_id FROM playlist_entries WHERE id = ?").get(entryId) as
+    { import_id: string } | undefined;
   if (!entry || entry.import_id !== plan.importId)
     throw new Error("playlist entry does not belong to this Lidarr plan");
   return plan.importId;

@@ -7,15 +7,11 @@ import { ImportRepository } from "../../server/persistence/import-repository";
 import { ResolutionRepository } from "../../server/persistence/resolution-repository";
 
 const paths: string[] = [];
-afterEach(() =>
-  paths.splice(0).forEach((value) => rmSync(value, { recursive: true })),
-);
+afterEach(() => paths.splice(0).forEach((value) => rmSync(value, { recursive: true })));
 function repository() {
   const directory = mkdtempSync(path.join(tmpdir(), "playlarr-imports-"));
   paths.push(directory);
-  return new ImportRepository(
-    openDatabase(path.join(directory, "music-importer.db")),
-  );
+  return new ImportRepository(openDatabase(path.join(directory, "music-importer.db")));
 }
 
 describe("import repository", () => {
@@ -42,17 +38,11 @@ describe("import repository", () => {
         album: "Album",
       },
     ]);
-    expect(
-      imports
-        .entries(imported.id)
-        .map((entry) => [entry.position, entry.track.sourceTrackId]),
-    ).toEqual([
+    expect(imports.entries(imported.id).map((entry) => [entry.position, entry.track.sourceTrackId])).toEqual([
       [0, "same"],
       [1, "same"],
     ]);
-    expect(imports.getImport(imported.id).workflowState).toBe(
-      "ready_to_resolve",
-    );
+    expect(imports.getImport(imported.id).workflowState).toBe("ready_to_resolve");
   });
 
   it("records source skips without discarding the source occurrence", () => {
@@ -98,9 +88,7 @@ describe("import repository", () => {
       })),
     );
     const entries = imports.entries(imported.id);
-    const database = (
-      imports as unknown as { database: import("better-sqlite3").Database }
-    ).database;
+    const database = (imports as unknown as { database: import("better-sqlite3").Database }).database;
     const resolutions = new ResolutionRepository(database);
 
     resolutions.saveAutomatic(entries[1].id, {});
@@ -126,9 +114,7 @@ describe("import repository", () => {
       )
       .run(entries[4].id);
 
-    expect(
-      imports.entries(imported.id).map((entry) => entry.resolutionState),
-    ).toEqual([
+    expect(imports.entries(imported.id).map((entry) => entry.resolutionState)).toEqual([
       "pending",
       "unresolved",
       "automatically_resolved",
@@ -145,20 +131,16 @@ describe("import repository", () => {
     });
     imports.replaceTracks(
       imported.id,
-      ["pending", "manual-search", "manual-mbid", "isrc", "skipped"].map(
-        (id) => ({
-          source: "spotify",
-          sourceTrackId: id,
-          title: `Source ${id}`,
-          artists: ["Source Artist"],
-          album: "Source Album",
-        }),
-      ),
+      ["pending", "manual-search", "manual-mbid", "isrc", "skipped"].map((id) => ({
+        source: "spotify",
+        sourceTrackId: id,
+        title: `Source ${id}`,
+        artists: ["Source Artist"],
+        album: "Source Album",
+      })),
     );
     const entries = imports.entries(imported.id);
-    const database = (
-      imports as unknown as { database: import("better-sqlite3").Database }
-    ).database;
+    const database = (imports as unknown as { database: import("better-sqlite3").Database }).database;
     const update = database.prepare(
       `UPDATE resolutions
        SET state = ?, method = ?, result_json = ?, is_manual = ?
@@ -203,11 +185,7 @@ describe("import repository", () => {
     );
     update.run("skipped", "manual_skip", "{}", 1, entries[4].id);
 
-    expect(
-      entries.map((entry) =>
-        imports.musicMatchRecordings(imported.id).get(entry.id),
-      ),
-    ).toEqual([
+    expect(entries.map((entry) => imports.musicMatchRecordings(imported.id).get(entry.id))).toEqual([
       { title: undefined, artists: [], recordingIds: [] },
       {
         title: "Manual Search Recording",
@@ -251,47 +229,34 @@ describe("import repository", () => {
       },
     ]);
     const kept = imports.entries(imported.id)[0];
-    const database = (
-      imports as unknown as { database: import("better-sqlite3").Database }
-    ).database;
+    const database = (imports as unknown as { database: import("better-sqlite3").Database }).database;
     database
-      .prepare(
-        "INSERT INTO lidarr_plans (id, import_id, status, created_at) VALUES ('approved', ?, 'approved', ?)",
-      )
+      .prepare("INSERT INTO lidarr_plans (id, import_id, status, created_at) VALUES ('approved', ?, 'approved', ?)")
       .run(imported.id, new Date().toISOString());
-    const update = imports.applyPlaylistUpdate(
-      imported.id,
-      { source: "spotify", id: "mix", name: "New" },
-      [
-        {
-          position: 0,
-          track: {
-            source: "spotify",
-            sourceTrackId: "new",
-            title: "New",
-            artists: [],
-            album: "",
-          },
+    const update = imports.applyPlaylistUpdate(imported.id, { source: "spotify", id: "mix", name: "New" }, [
+      {
+        position: 0,
+        track: {
+          source: "spotify",
+          sourceTrackId: "new",
+          title: "New",
+          artists: [],
+          album: "",
         },
-        {
-          position: 1,
-          track: {
-            source: "spotify",
-            sourceTrackId: "keep",
-            title: "Keep",
-            artists: ["Artist"],
-            album: "Album",
-          },
+      },
+      {
+        position: 1,
+        track: {
+          source: "spotify",
+          sourceTrackId: "keep",
+          title: "Keep",
+          artists: ["Artist"],
+          album: "Album",
         },
-      ],
-    );
+      },
+    ]);
     expect(update).toMatchObject({ added: 1, removed: 1 });
     expect(imports.entries(imported.id)[1].id).toBe(kept.id);
-    expect(
-      database
-        .prepare("SELECT status FROM lidarr_plans WHERE id = 'approved'")
-        .pluck()
-        .get(),
-    ).toBe("superseded");
+    expect(database.prepare("SELECT status FROM lidarr_plans WHERE id = 'approved'").pluck().get()).toBe("superseded");
   });
 });

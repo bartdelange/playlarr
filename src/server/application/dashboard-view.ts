@@ -18,11 +18,7 @@ export function dashboardImportRows(
   jobs: StoredJob[],
 ): DashboardImportRow[] {
   const activeJobs = new Map(
-    jobs
-      .filter(
-        (job) => job.importId && ["queued", "running"].includes(job.status),
-      )
-      .map((job) => [job.importId!, job]),
+    jobs.filter((job) => job.importId && ["queued", "running"].includes(job.status)).map((job) => [job.importId!, job]),
   );
 
   return imports.map((imported) => {
@@ -38,10 +34,7 @@ export function dashboardImportRows(
       ["unresolved", "ambiguous", "validation_failed"].includes(row.state),
     ).length;
     const resolved = resolutions.filter((row) =>
-      Boolean(
-        normalizeMusicBrainzResult(JSON.parse(row.result_json || "{}"))
-          .resolvedVia,
-      ),
+      Boolean(normalizeMusicBrainzResult(JSON.parse(row.result_json || "{}")).resolvedVia),
     ).length;
 
     return {
@@ -56,11 +49,9 @@ export function dashboardImportRows(
 }
 
 export function dashboardNextAction(state: string, review: number): string {
-  if (["acquiring", "ready_to_resolve", "resolving"].includes(state))
-    return "Resolve tracks";
+  if (["acquiring", "ready_to_resolve", "resolving"].includes(state)) return "Resolve tracks";
   if (state === "review_required") return `Review ${review} tracks`;
-  if (["ready_to_plan", "plan_ready"].includes(state))
-    return "Review Lidarr mapping";
+  if (["ready_to_plan", "plan_ready"].includes(state)) return "Review Lidarr mapping";
   if (state === "waiting_for_downloads") return "Check downloads";
   if (state === "library_status") return "Generate playlist";
   if (state === "playlist_generated") return "Playlist ready";

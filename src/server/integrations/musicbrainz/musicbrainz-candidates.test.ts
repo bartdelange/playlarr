@@ -1,8 +1,6 @@
 import { expect, it } from "vitest";
-import {
-  candidates,
-  validateCandidate,
-} from "../../../server/integrations/musicbrainz/candidates";
+import { candidates, validateCandidate } from "../../../server/integrations/musicbrainz/candidates";
+
 it("ranks an ISRC candidate first and marks weak manual candidates as warnings", () => {
   const track = {
     source: "spotify",

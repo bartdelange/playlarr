@@ -1,8 +1,12 @@
-root = true
-
 [*]
 indent_style = space
 indent_size = 2
 charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
+
+[{*.ats,*.cts,*.mts,*.ts}]
+ij_typescript_blank_lines_after_imports = 2
+
+[{*.ajs,*.cjs,*.mjs,*.js}]
+ij_javascript_blank_lines_after_imports = 2

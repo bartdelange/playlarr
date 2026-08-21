@@ -1,21 +1,10 @@
 import type { MusicBrainzResult } from "../../domain/musicbrainz";
 import type { SourceTrack } from "../../domain/playlist";
-import {
-  isrcPattern,
-  marked,
-  nameKey,
-  searchTitle,
-  sequenceSimilarity,
-  versionPreference,
-  words,
-} from "./matching";
-import { resultFromRecordings, type MusicBrainzRecording } from "./resolution";
+import { isrcPattern, marked, nameKey, searchTitle, sequenceSimilarity, versionPreference, words } from "./matching";
+import { type MusicBrainzRecording, resultFromRecordings } from "./resolution";
 
 export interface MusicBrainzQuery {
-  get(
-    path: string,
-    parameters: Record<string, string>,
-  ): Promise<Record<string, unknown>>;
+  get(path: string, parameters: Record<string, string>): Promise<Record<string, unknown>>;
 }
 
 const setsEqual = (left: Set<string>, right: Set<string>) =>
@@ -28,11 +17,7 @@ export class MusicBrainzResolver {
     const isrc = (track.isrc ?? "").replace(/-/g, "").trim().toUpperCase();
     const reasons: string[] = [];
     if (isrcPattern.test(isrc)) {
-      const result = resultFromRecordings(
-        await this.recordings(`isrc:${isrc}`, 100),
-        "isrc",
-        track.album,
-      );
+      const result = resultFromRecordings(await this.recordings(`isrc:${isrc}`, 100), "isrc", track.album);
       if (result) return result;
       reasons.push("isrc_lookup_empty");
     } else reasons.push(isrc ? "invalid_isrc" : "no_isrc");
@@ -49,21 +34,11 @@ export class MusicBrainzResolver {
         const terms = words(title);
         const overlap =
           sourceTerms.size && terms.size
-            ? [...sourceTerms].filter((word) => terms.has(word)).length /
-              new Set([...sourceTerms, ...terms]).size
+            ? [...sourceTerms].filter((word) => terms.has(word)).length / new Set([...sourceTerms, ...terms]).size
             : 0;
-        const similarity = sequenceSimilarity(
-          searchTitle(track.title).toLowerCase(),
-          searchTitle(title).toLowerCase(),
-        );
-        const artists = new Set(
-          (recording["artist-credit"] ?? []).map((credit) =>
-            nameKey(credit.artist?.name ?? ""),
-          ),
-        );
-        const artistMatch =
-          !sourceArtists.size ||
-          [...sourceArtists].some((artist) => artists.has(artist));
+        const similarity = sequenceSimilarity(searchTitle(track.title).toLowerCase(), searchTitle(title).toLowerCase());
+        const artists = new Set((recording["artist-credit"] ?? []).map((credit) => nameKey(credit.artist?.name ?? "")));
+        const artistMatch = !sourceArtists.size || [...sourceArtists].some((artist) => artists.has(artist));
         return {
           recording,
           terms,
@@ -80,33 +55,23 @@ export class MusicBrainzResolver {
           (similarity >= 0.55 || setsEqual(terms, sourceTerms)) &&
           (!marked(track.title) || marked(recording.title ?? "")),
       );
-    const exact = candidates.filter(({ terms }) =>
-      setsEqual(terms, sourceTerms),
-    );
+    const exact = candidates.filter(({ terms }) => setsEqual(terms, sourceTerms));
     const selected = (exact.length ? exact : candidates).sort(
       (left, right) =>
-        versionPreference(right.recording.title ?? "") -
-          versionPreference(left.recording.title ?? "") ||
+        versionPreference(right.recording.title ?? "") - versionPreference(left.recording.title ?? "") ||
         right.score - left.score,
     )[0];
-    const result = selected
-      ? resultFromRecordings([selected.recording], "search", track.album)
-      : undefined;
+    const result = selected ? resultFromRecordings([selected.recording], "search", track.album) : undefined;
     return result ?? { failureReason: [...reasons, "search_empty"].join(";") };
   }
 
-  private async recordings(
-    query: string,
-    limit: number,
-  ): Promise<MusicBrainzRecording[]> {
+  private async recordings(query: string, limit: number): Promise<MusicBrainzRecording[]> {
     const data = await this.client.get("recording", {
       query,
       inc: "artist-credits+releases+release-groups",
       limit: String(limit),
       fmt: "json",
     });
-    return Array.isArray(data.recordings)
-      ? (data.recordings as MusicBrainzRecording[])
-      : [];
+    return Array.isArray(data.recordings) ? (data.recordings as MusicBrainzRecording[]) : [];
   }
 }

@@ -26,9 +26,7 @@ export class FileSpotifyTokenStore implements SpotifyTokenStore {
   constructor(private readonly tokenPath: string) {}
   async load() {
     try {
-      return normalizeTokens(
-        JSON.parse(await readFile(this.tokenPath, "utf8")),
-      );
+      return normalizeTokens(JSON.parse(await readFile(this.tokenPath, "utf8")));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw error;
@@ -60,9 +58,7 @@ export class FileSpotifyPendingAuthorizationStore implements SpotifyPendingAutho
       throw error;
     }
     try {
-      return JSON.parse(
-        await readFile(claimed, "utf8"),
-      ) as SpotifyPendingAuthorization;
+      return JSON.parse(await readFile(claimed, "utf8")) as SpotifyPendingAuthorization;
     } finally {
       await unlink(claimed).catch((error: NodeJS.ErrnoException) => {
         if (error.code !== "ENOENT") throw error;
@@ -117,9 +113,7 @@ export class SpotifyAuthenticator {
       pending.createdAt > this.now() + 30_000 ||
       !safeEqual(state, pending.state)
     )
-      throw new Error(
-        "Spotify authentication state is missing or invalid; try again",
-      );
+      throw new Error("Spotify authentication state is missing or invalid; try again");
     await this.exchange({
       grant_type: "authorization_code",
       code,
@@ -132,43 +126,27 @@ export class SpotifyAuthenticator {
     const tokens = await this.store.load();
     if (!tokens) throw new Error("authenticate Spotify in Settings first");
     if (tokens.expiresAt > this.now() + 30_000) return tokens.accessToken;
-    if (!tokens.refreshToken)
-      throw new Error(
-        "Spotify session expired; authenticate again in Settings",
-      );
+    if (!tokens.refreshToken) throw new Error("Spotify session expired; authenticate again in Settings");
     return (
-      await this.exchange(
-        { grant_type: "refresh_token", refresh_token: tokens.refreshToken },
-        tokens.refreshToken,
-      )
+      await this.exchange({ grant_type: "refresh_token", refresh_token: tokens.refreshToken }, tokens.refreshToken)
     ).accessToken;
   }
 
-  private async exchange(
-    parameters: Record<string, string>,
-    previousRefreshToken?: string,
-  ): Promise<SpotifyTokens> {
+  private async exchange(parameters: Record<string, string>, previousRefreshToken?: string): Promise<SpotifyTokens> {
     const body = new URLSearchParams({
       client_id: this.clientId,
       ...parameters,
     });
-    const response = await this.fetcher(
-      "https://accounts.spotify.com/api/token",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-      },
-    );
-    if (!response.ok)
-      throw new Error(`Spotify token exchange failed: ${response.status}`);
+    const response = await this.fetcher("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!response.ok) throw new Error(`Spotify token exchange failed: ${response.status}`);
     const payload = (await response.json()) as Record<string, unknown>;
     const tokens = {
       accessToken: String(payload.access_token),
-      refreshToken:
-        typeof payload.refresh_token === "string"
-          ? payload.refresh_token
-          : previousRefreshToken,
+      refreshToken: typeof payload.refresh_token === "string" ? payload.refresh_token : previousRefreshToken,
       expiresAt: this.now() + Number(payload.expires_in ?? 3600) * 1000,
     };
     await this.store.save(tokens);
@@ -188,8 +166,7 @@ function normalizeTokens(value: unknown): SpotifyTokens {
       : typeof legacyExpiry === "number"
         ? legacyExpiry * 1000
         : Number.NaN;
-  if (typeof accessToken !== "string" || !Number.isFinite(expiresAt))
-    throw new Error("Spotify token cache is invalid");
+  if (typeof accessToken !== "string" || !Number.isFinite(expiresAt)) throw new Error("Spotify token cache is invalid");
   return {
     accessToken,
     refreshToken: typeof refreshToken === "string" ? refreshToken : undefined,

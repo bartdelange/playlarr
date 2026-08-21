@@ -9,6 +9,7 @@ import {
   type SpotifyPendingAuthorization,
   type SpotifyTokens,
 } from "../../../server/integrations/spotify/auth";
+
 const memoryStore = (initial?: SpotifyTokens) => {
   let value = initial;
   return {
@@ -32,18 +33,10 @@ const pendingStore = () => {
   };
 };
 const paths: string[] = [];
-afterEach(() =>
-  paths.splice(0).forEach((value) => rmSync(value, { recursive: true })),
-);
+afterEach(() => paths.splice(0).forEach((value) => rmSync(value, { recursive: true })));
 it("uses PKCE and rejects a callback with the wrong state", async () => {
   const fetcher = vi.fn();
-  const auth = new SpotifyAuthenticator(
-    "client",
-    "http://localhost/callback",
-    memoryStore(),
-    pendingStore(),
-    fetcher,
-  );
+  const auth = new SpotifyAuthenticator("client", "http://localhost/callback", memoryStore(), pendingStore(), fetcher);
   const url = new URL(await auth.authorizationUrl());
   expect(url.searchParams.get("code_challenge_method")).toBe("S256");
   await expect(auth.complete("code", "wrong")).rejects.toThrow("state");
@@ -60,9 +53,7 @@ it("exchanges a matching callback and refreshes an expired persisted session", a
         expires_in: 0,
       }),
     )
-    .mockResolvedValueOnce(
-      Response.json({ access_token: "second", expires_in: 3600 }),
-    );
+    .mockResolvedValueOnce(Response.json({ access_token: "second", expires_in: 3600 }));
   const auth = new SpotifyAuthenticator(
     "client",
     "http://localhost/callback",
@@ -71,9 +62,7 @@ it("exchanges a matching callback and refreshes an expired persisted session", a
     fetcher,
     () => 1000,
   );
-  const state = new URL(await auth.authorizationUrl()).searchParams.get(
-    "state",
-  )!;
+  const state = new URL(await auth.authorizationUrl()).searchParams.get("state")!;
   await auth.complete("code", state);
   await expect(auth.accessToken()).resolves.toBe("second");
   const refreshBody = fetcher.mock.calls[1][1].body as URLSearchParams;
@@ -84,53 +73,35 @@ it.each([
   "http://127.0.0.1:8787/callback",
   "http://127.0.0.1:8765/callback",
   "https://playlarr.example.test/oauth/spotify/callback",
-])(
-  "passes the configured redirect URI through authorization and exchange: %s",
-  async (configuredRedirectUri) => {
-    const fetcher = vi.fn().mockResolvedValue(
-      Response.json({
-        access_token: "access",
-        refresh_token: "refresh",
-        expires_in: 3600,
-      }),
-    );
-    const auth = new SpotifyAuthenticator(
-      "client",
-      configuredRedirectUri,
-      memoryStore(),
-      pendingStore(),
-      fetcher,
-    );
+])("passes the configured redirect URI through authorization and exchange: %s", async (configuredRedirectUri) => {
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      access_token: "access",
+      refresh_token: "refresh",
+      expires_in: 3600,
+    }),
+  );
+  const auth = new SpotifyAuthenticator("client", configuredRedirectUri, memoryStore(), pendingStore(), fetcher);
 
-    const authorization = new URL(await auth.authorizationUrl());
-    await auth.complete("code", authorization.searchParams.get("state")!);
+  const authorization = new URL(await auth.authorizationUrl());
+  await auth.complete("code", authorization.searchParams.get("state")!);
 
-    expect(authorization.searchParams.get("redirect_uri")).toBe(
-      configuredRedirectUri,
-    );
-    const exchangeBody = fetcher.mock.calls[0][1].body as URLSearchParams;
-    expect(exchangeBody.get("redirect_uri")).toBe(configuredRedirectUri);
-    expect(exchangeBody.get("code_verifier")).toBeTruthy();
-  },
-);
+  expect(authorization.searchParams.get("redirect_uri")).toBe(configuredRedirectUri);
+  const exchangeBody = fetcher.mock.calls[0][1].body as URLSearchParams;
+  expect(exchangeBody.get("redirect_uri")).toBe(configuredRedirectUri);
+  expect(exchangeBody.get("code_verifier")).toBeTruthy();
+});
 it("does not let a browser request origin override the configured redirect URI", async () => {
   const configuredRedirectUri = "http://127.0.0.1:8787/callback";
   const browserRequestOrigin = "https://playlarr.example.test";
-  const auth = new SpotifyAuthenticator(
-    "client",
-    configuredRedirectUri,
-    memoryStore(),
-    pendingStore(),
-  );
+  const auth = new SpotifyAuthenticator("client", configuredRedirectUri, memoryStore(), pendingStore());
 
   const authorization = new URL(
     // @ts-expect-error The authorization API intentionally accepts no request origin.
     await auth.authorizationUrl(browserRequestOrigin),
   );
 
-  expect(authorization.searchParams.get("redirect_uri")).toBe(
-    configuredRedirectUri,
-  );
+  expect(authorization.searchParams.get("redirect_uri")).toBe(configuredRedirectUri);
 });
 
 it("completes a persisted PKCE authorization in a fresh runtime instance", async () => {
@@ -138,11 +109,7 @@ it("completes a persisted PKCE authorization in a fresh runtime instance", async
   paths.push(directory);
   const pendingPath = path.join(directory, "spotify-token.json.pending");
   const tokens = memoryStore();
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({ access_token: "access", expires_in: 3600 }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ access_token: "access", expires_in: 3600 }));
   const started = new SpotifyAuthenticator(
     "client",
     "https://playlarr.example.test/callback",
@@ -164,9 +131,7 @@ it("completes a persisted PKCE authorization in a fresh runtime instance", async
   await completed.complete("code", authorization.searchParams.get("state")!);
 
   const body = fetcher.mock.calls[0][1].body as URLSearchParams;
-  expect(body.get("redirect_uri")).toBe(
-    "https://playlarr.example.test/callback",
-  );
+  expect(body.get("redirect_uri")).toBe("https://playlarr.example.test/callback");
   await expect(completed.complete("code", "replay")).rejects.toThrow("state");
 });
 
@@ -211,10 +176,6 @@ it("rejects and consumes expired persisted authorization state", async () => {
     () => 10 * 60 * 1000 + 1_001,
   );
 
-  await expect(
-    completed.complete("code", authorization.searchParams.get("state")!),
-  ).rejects.toThrow("state");
-  await expect(
-    completed.complete("code", authorization.searchParams.get("state")!),
-  ).rejects.toThrow("state");
+  await expect(completed.complete("code", authorization.searchParams.get("state")!)).rejects.toThrow("state");
+  await expect(completed.complete("code", authorization.searchParams.get("state")!)).rejects.toThrow("state");
 });

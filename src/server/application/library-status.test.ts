@@ -3,15 +3,9 @@ import { refreshLibraryStatus } from "../../server/application/library-status";
 
 it("finds downloaded paths by recording ID and classifies missing releases", async () => {
   const client = {
-    artists: vi.fn(async () => [
-      { id: 7, foreignArtistId: "artist", path: "/music/Artist" },
-    ]),
-    trackFilesByArtistId: vi.fn(async () => [
-      { id: 9, relativePath: "Album/Song.flac" },
-    ]),
-    tracksByArtistId: vi.fn(async () => [
-      { foreignRecordingId: "recording", hasFile: true, trackFileId: 9 },
-    ]),
+    artists: vi.fn(async () => [{ id: 7, foreignArtistId: "artist", path: "/music/Artist" }]),
+    trackFilesByArtistId: vi.fn(async () => [{ id: 9, relativePath: "Album/Song.flac" }]),
+    tracksByArtistId: vi.fn(async () => [{ foreignRecordingId: "recording", hasFile: true, trackFileId: 9 }]),
     albumsByForeignId: vi.fn(async () => []),
     tracksByAlbumId: vi.fn(async () => []),
   };
@@ -48,8 +42,7 @@ it("finds downloaded paths by recording ID and classifies missing releases", asy
 it("recognizes files on globally owned and Various Artists albums without authorizing mutation", async () => {
   const client = {
     artists: async () => [{ id: 7, foreignArtistId: "artist" }],
-    trackFilesByArtistId: async (id: number) =>
-      id === 99 ? [{ id: 3, path: "/music/Compilation/Song.flac" }] : [],
+    trackFilesByArtistId: async (id: number) => (id === 99 ? [{ id: 3, path: "/music/Compilation/Song.flac" }] : []),
     tracksByArtistId: async () => [],
     albumsByForeignId: async () => [
       {
@@ -62,9 +55,7 @@ it("recognizes files on globally owned and Various Artists albums without author
         },
       },
     ],
-    tracksByAlbumId: async () => [
-      { foreignRecordingId: "recording", hasFile: true, trackFileId: 3 },
-    ],
+    tracksByAlbumId: async () => [{ foreignRecordingId: "recording", hasFile: true, trackFileId: 3 }],
   };
   const [status] = await refreshLibraryStatus(
     [

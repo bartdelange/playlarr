@@ -10,10 +10,7 @@ export function importMappingCsv(
   resolutions: ResolutionRepository,
 ) {
   const rows = parseCsv(csv);
-  if (!rows.length)
-    throw new Error(
-      "cannot infer source playlist metadata from an empty mapping CSV",
-    );
+  if (!rows.length) throw new Error("cannot infer source playlist metadata from an empty mapping CSV");
   const source = rows[0].source?.trim() || "unknown";
   const playlistId = rows[0].source_playlist_id?.trim();
   if (!playlistId) throw new Error("mapping CSV has no source playlist ID");
@@ -30,31 +27,20 @@ export function importMappingCsv(
     artists: split(row.artists, ";"),
     album: row.album || "",
     isrc: row.isrc || undefined,
-    durationMs: /^\d+$/.test(row.duration_ms || "")
-      ? Number(row.duration_ms)
-      : undefined,
+    durationMs: /^\d+$/.test(row.duration_ms || "") ? Number(row.duration_ms) : undefined,
   }));
   imports.replaceTracks(imported.id, tracks);
   const results = rows.map(mappingResult);
-  imports
-    .entries(imported.id)
-    .forEach((entry, index) =>
-      resolutions.saveImported(entry.id, results[index]),
-    );
+  imports.entries(imported.id).forEach((entry, index) => resolutions.saveImported(entry.id, results[index]));
   imports.setWorkflowState(
     imported.id,
-    results.some((result) => !result.resolvedVia)
-      ? "review_required"
-      : "ready_to_plan",
+    results.some((result) => !result.resolvedVia) ? "review_required" : "ready_to_plan",
   );
   return imports.getImport(imported.id);
 }
 
 function mappingResult(row: Record<string, string>): MusicBrainzResult {
-  const resolvedVia =
-    row.resolved_via && row.resolved_via !== "none"
-      ? row.resolved_via
-      : undefined;
+  const resolvedVia = row.resolved_via && row.resolved_via !== "none" ? row.resolved_via : undefined;
   return {
     resolvedVia,
     recordingTitle: row.mb_recording_title || undefined,
@@ -103,9 +89,5 @@ export function parseCsv(csv: string): Record<string, string>[] {
     records.push(record);
   }
   const [headers = [], ...rows] = records;
-  return rows.map((values) =>
-    Object.fromEntries(
-      headers.map((header, index) => [header, values[index] ?? ""]),
-    ),
-  );
+  return rows.map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""])));
 }

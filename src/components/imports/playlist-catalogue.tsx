@@ -26,16 +26,10 @@ export function PlaylistCatalogue({
 
   return (
     <section>
-      <h2>
-        {playlists[0]?.source === "tidal" ? "TIDAL" : "Spotify"} playlists
-      </h2>
+      <h2>{playlists[0]?.source === "tidal" ? "TIDAL" : "Spotify"} playlists</h2>
       <label className="playlist-filter">
         <span className="sr-only">Filter playlists</span>
-        <input
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          placeholder="Filter playlists…"
-        />
+        <input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter playlists…" />
       </label>
       <div className="playlist-catalogue">
         {visible.map((playlist) => (
@@ -49,19 +43,14 @@ export function PlaylistCatalogue({
               </small>
               {analyses[playlist.id] && (
                 <small className="analysis">
-                  Analysis: {Number(analyses[playlist.id].resolved ?? 0)}/
-                  {String(analyses[playlist.id].tracks ?? "?")} resolved ·{" "}
-                  {Number(analyses[playlist.id].artists_to_add ?? 0)} new
-                  artists
+                  Analysis: {Number(analyses[playlist.id].resolved ?? 0)}/{String(analyses[playlist.id].tracks ?? "?")}{" "}
+                  resolved · {Number(analyses[playlist.id].artists_to_add ?? 0)} new artists
                 </small>
               )}
             </div>
             <div className="playlist-buttons">
               {existingImports[playlist.id] ? (
-                <Link
-                  className="button"
-                  href={`/imports/${existingImports[playlist.id]}`}
-                >
+                <Link className="button" href={`/imports/${existingImports[playlist.id]}`}>
                   Open import
                 </Link>
               ) : (
@@ -83,9 +72,7 @@ export function PlaylistCatalogue({
             </div>
           </article>
         ))}
-        {!visible.length && (
-          <p className="empty-state">No playlists match this filter.</p>
-        )}
+        {!visible.length && <p className="empty-state">No playlists match this filter.</p>}
       </div>
     </section>
   );

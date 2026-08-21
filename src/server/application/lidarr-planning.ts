@@ -1,9 +1,6 @@
 import type { LidarrPlan, LidarrPlanAction } from "../domain/lidarr";
 import type { MusicBrainzResult } from "../domain/musicbrainz";
-import {
-  isVariousArtistsAlbum,
-  pinSelectedRelease,
-} from "../integrations/lidarr/client";
+import { isVariousArtistsAlbum, pinSelectedRelease } from "../integrations/lidarr/client";
 
 const variousArtistsMbid = "89ad4ac3-39f7-470e-963a-56509c546377";
 const versionQualifier =
@@ -15,11 +12,7 @@ export interface LidarrPlanningClient {
   albumsByForeignId(id: string): Promise<Record<string, unknown>[]>;
   tracksByArtistId(id: number): Promise<Record<string, unknown>[]>;
   tracksByAlbumId(id: number): Promise<Record<string, unknown>[]>;
-  lookup(
-    path: "artist" | "album",
-    foreignId: string,
-    idField: string,
-  ): Promise<Record<string, unknown> | undefined>;
+  lookup(path: "artist" | "album", foreignId: string, idField: string): Promise<Record<string, unknown> | undefined>;
 }
 
 export async function planLidarr(
@@ -31,22 +24,16 @@ export async function planLidarr(
   const actions: LidarrPlanAction[] = [];
   const overrideGroups = new Set(
     results.flatMap((result) =>
-      (result.recordingIds ?? []).some((id) =>
-        allowedVariousArtistsRecordings.has(id),
-      )
+      (result.recordingIds ?? []).some((id) => allowedVariousArtistsRecordings.has(id))
         ? (result.releaseGroupIds ?? [])
         : [],
     ),
   );
   const requestedReleaseIds = new Map<string, Set<string>>();
   for (const result of results)
-    for (const group of result.releaseGroupIds ?? [])
-      appendValues(requestedReleaseIds, group, result.releaseIds ?? []);
+    for (const group of result.releaseGroupIds ?? []) appendValues(requestedReleaseIds, group, result.releaseIds ?? []);
 
-  const actionPayload = (
-    group: string,
-    values: Record<string, unknown> = {},
-  ) => {
+  const actionPayload = (group: string, values: Record<string, unknown> = {}) => {
     const payload = { ...values };
     const releases = [...(requestedReleaseIds.get(group) ?? [])].sort();
     if (releases.length) payload.requested_release_ids = releases;
@@ -72,9 +59,7 @@ export async function planLidarr(
     }
     if (
       artist === variousArtistsMbid ||
-      result.artistNames?.some(
-        (name) => name.toLocaleLowerCase() === "various artists",
-      )
+      result.artistNames?.some((name) => name.toLocaleLowerCase() === "various artists")
     ) {
       actions.push({
         action: "skip",
@@ -89,21 +74,14 @@ export async function planLidarr(
 
   const total = grouped.size + 1;
   progress?.(0, total, "Loading artists from Lidarr");
-  const existingArtists = new Map(
-    (await client.artists()).map((artist) => [
-      text(artist.foreignArtistId),
-      artist,
-    ]),
-  );
+  const existingArtists = new Map((await client.artists()).map((artist) => [text(artist.foreignArtistId), artist]));
   progress?.(1, total, "Loaded Lidarr artists");
   const globalAlbums = new Map<string, Record<string, unknown> | undefined>();
   const tracksByAlbum = new Map<number, Record<string, unknown>[]>();
 
   const globalAlbum = async (group: string) => {
     if (!globalAlbums.has(group)) {
-      const album = (await client.albumsByForeignId(group)).find(
-        (candidate) => candidate.foreignAlbumId === group,
-      );
+      const album = (await client.albumsByForeignId(group)).find((candidate) => candidate.foreignAlbumId === group);
       globalAlbums.set(group, album);
     }
     return globalAlbums.get(group);
@@ -113,13 +91,9 @@ export async function planLidarr(
   for (const [artistMbid, artistResults] of grouped) {
     artistNumber += 1;
     const artist = existingArtists.get(artistMbid);
-    let artistName =
-      artistResults.flatMap((result) => result.artistNames ?? [])[0] ??
-      artistMbid;
+    let artistName = artistResults.flatMap((result) => result.artistNames ?? [])[0] ?? artistMbid;
     progress?.(artistNumber, total, `Inspecting ${artistName}`);
-    const requestedGroups = new Set(
-      artistResults.flatMap((result) => result.releaseGroupIds ?? []),
-    );
+    const requestedGroups = new Set(artistResults.flatMap((result) => result.releaseGroupIds ?? []));
 
     if (!artist) {
       actions.push({
@@ -131,24 +105,9 @@ export async function planLidarr(
       });
       for (const group of [...requestedGroups].sort()) {
         const existingAlbum = await globalAlbum(group);
-        const lookup =
-          existingAlbum ??
-          (await client.lookup("album", group, "foreignAlbumId"));
-        if (
-          lookup &&
-          isVariousArtistsAlbum(lookup) &&
-          !overrideGroups.has(group)
-        ) {
-          actions.push(
-            releaseAction(
-              "skip",
-              artistMbid,
-              artistName,
-              group,
-              lookup,
-              "various_artists_album",
-            ),
-          );
+        const lookup = existingAlbum ?? (await client.lookup("album", group, "foreignAlbumId"));
+        if (lookup && isVariousArtistsAlbum(lookup) && !overrideGroups.has(group)) {
+          actions.push(releaseAction("skip", artistMbid, artistName, group, lookup, "various_artists_album"));
           continue;
         }
         if (existingAlbum)
@@ -177,10 +136,7 @@ export async function planLidarr(
         const releaseNeedsPinning = Boolean(
           existingAlbum &&
           requestedReleaseIds.get(group)?.size &&
-          pinSelectedRelease(
-            cloneAlbum(existingAlbum),
-            requestedReleaseIds.get(group)!,
-          ),
+          pinSelectedRelease(cloneAlbum(existingAlbum), requestedReleaseIds.get(group)!),
         );
         if (!existingAlbum || !existingAlbum.monitored || releaseNeedsPinning)
           actions.push(
@@ -220,14 +176,10 @@ export async function planLidarr(
     const tracks = await client.tracksByArtistId(artistId);
     const albums = await client.albumsByArtistId(artistId);
     const albumsByGroup = new Map(
-      albums
-        .filter((album) => text(album.foreignAlbumId))
-        .map((album) => [text(album.foreignAlbumId), album]),
+      albums.filter((album) => text(album.foreignAlbumId)).map((album) => [text(album.foreignAlbumId), album]),
     );
     const albumsById = new Map(
-      albums
-        .filter((album) => album.id !== undefined)
-        .map((album) => [number(album.id), album]),
+      albums.filter((album) => album.id !== undefined).map((album) => [number(album.id), album]),
     );
     const downloadedKeys = downloadedTrackKeys(tracks);
     const effectiveGroups = new Set<string>();
@@ -240,19 +192,10 @@ export async function planLidarr(
         for (const group of result.releaseGroupIds ?? []) {
           if (albumsByGroup.has(group)) continue;
           const album = await globalAlbum(group);
-          if (
-            !album ||
-            (isVariousArtistsAlbum(album) && !overrideGroups.has(group))
-          )
-            continue;
+          if (!album || (isVariousArtistsAlbum(album) && !overrideGroups.has(group))) continue;
           const albumId = number(album.id);
-          if (!tracksByAlbum.has(albumId))
-            tracksByAlbum.set(albumId, await client.tracksByAlbumId(albumId));
-          const candidate = downloadedAlbumMatch(
-            result,
-            tracksByAlbum.get(albumId)!,
-            new Map([[albumId, album]]),
-          );
+          if (!tracksByAlbum.has(albumId)) tracksByAlbum.set(albumId, await client.tracksByAlbumId(albumId));
+          const candidate = downloadedAlbumMatch(result, tracksByAlbum.get(albumId)!, new Map([[albumId, album]]));
           if (candidate.group) {
             match = candidate;
             break;
@@ -261,8 +204,7 @@ export async function planLidarr(
 
       if (match.group) {
         effectiveGroups.add(match.group);
-        const album =
-          albumsByGroup.get(match.group) ?? globalAlbums.get(match.group);
+        const album = albumsByGroup.get(match.group) ?? globalAlbums.get(match.group);
         const payload = {
           lidarr_album_id: album?.id,
           requested_recording_ids: result.recordingIds ?? [],
@@ -296,8 +238,7 @@ export async function planLidarr(
             ),
           );
       } else {
-        for (const group of result.releaseGroupIds ?? [])
-          effectiveGroups.add(group);
+        for (const group of result.releaseGroupIds ?? []) effectiveGroups.add(group);
         if (!representedByDownload(result, downloadedKeys))
           for (const group of result.releaseGroupIds ?? []) {
             groupsNeedingSearch.add(group);
@@ -306,41 +247,18 @@ export async function planLidarr(
       }
     }
 
-    for (const album of albums)
-      globalAlbums.set(text(album.foreignAlbumId), album);
+    for (const album of albums) globalAlbums.set(text(album.foreignAlbumId), album);
     for (const group of [...effectiveGroups].sort()) {
       let album = albumsByGroup.get(group) ?? globalAlbums.get(group);
       if (!album) album = await globalAlbum(group);
       if (album && isVariousArtistsAlbum(album) && !overrideGroups.has(group)) {
-        actions.push(
-          releaseAction(
-            "skip",
-            artistMbid,
-            artistName,
-            group,
-            album,
-            "various_artists_album",
-          ),
-        );
+        actions.push(releaseAction("skip", artistMbid, artistName, group, album, "various_artists_album"));
         continue;
       }
       if (!album) {
         const lookup = await client.lookup("album", group, "foreignAlbumId");
-        if (
-          lookup &&
-          isVariousArtistsAlbum(lookup) &&
-          !overrideGroups.has(group)
-        ) {
-          actions.push(
-            releaseAction(
-              "skip",
-              artistMbid,
-              artistName,
-              group,
-              lookup,
-              "various_artists_album",
-            ),
-          );
+        if (lookup && isVariousArtistsAlbum(lookup) && !overrideGroups.has(group)) {
+          actions.push(releaseAction("skip", artistMbid, artistName, group, lookup, "various_artists_album"));
           continue;
         }
         actions.push(
@@ -361,10 +279,7 @@ export async function planLidarr(
         const releaseNeedsPinning = Boolean(
           album &&
           requestedReleaseIds.get(group)?.size &&
-          pinSelectedRelease(
-            cloneAlbum(album),
-            requestedReleaseIds.get(group)!,
-          ),
+          pinSelectedRelease(cloneAlbum(album), requestedReleaseIds.get(group)!),
         );
         if (!album || !album.monitored || releaseNeedsPinning)
           actions.push(
@@ -378,17 +293,7 @@ export async function planLidarr(
               actionPayload(group, { requested_recording_ids: recordings }),
             ),
           );
-        else
-          actions.push(
-            releaseAction(
-              "unchanged",
-              artistMbid,
-              artistName,
-              group,
-              album,
-              "already_monitored",
-            ),
-          );
+        else actions.push(releaseAction("unchanged", artistMbid, artistName, group, album, "already_monitored"));
         actions.push(
           releaseAction(
             "queue_search",
@@ -400,47 +305,25 @@ export async function planLidarr(
             actionPayload(group, { requested_recording_ids: recordings }),
           ),
         );
-      } else if (
-        !actions.some(
-          (action) =>
-            action.artistMbid === artistMbid && action.releaseGroupId === group,
-        )
-      )
+      } else if (!actions.some((action) => action.artistMbid === artistMbid && action.releaseGroupId === group))
         actions.push(
-          releaseAction(
-            "unchanged",
-            artistMbid,
-            artistName,
-            group,
-            album,
-            "requested_recording_downloaded",
-          ),
+          releaseAction("unchanged", artistMbid, artistName, group, album, "requested_recording_downloaded"),
         );
     }
 
     const needsAcquisition = actions.some(
       (action) =>
         action.artistMbid === artistMbid &&
-        ["create_release", "monitor_release", "queue_search"].includes(
-          action.action,
-        ),
+        ["create_release", "monitor_release", "queue_search"].includes(action.action),
     );
-    if (
-      needsAcquisition &&
-      (!artist.monitored || artist.monitorNewItems !== "none")
-    )
+    if (needsAcquisition && (!artist.monitored || artist.monitorNewItems !== "none"))
       actions.push({
         action: "monitor_artist",
         artistMbid,
         artistName,
         reason: "monitored_with_new_items_disabled",
       });
-    if (
-      !actions.some(
-        (action) =>
-          action.artistMbid === artistMbid && action.action !== "unchanged",
-      )
-    )
+    if (!actions.some((action) => action.artistMbid === artistMbid && action.action !== "unchanged"))
       actions.push({
         action: "unchanged",
         artistMbid,
@@ -477,28 +360,16 @@ function downloadedTrackKeys(tracks: Record<string, unknown>[]) {
   const downloaded = tracks.filter((track) => track.hasFile);
   return {
     recordingIds: new Set(
-      downloaded.flatMap((track) =>
-        [text(track.foreignRecordingId), text(track.foreignTrackId)].filter(
-          Boolean,
-        ),
-      ),
+      downloaded.flatMap((track) => [text(track.foreignRecordingId), text(track.foreignTrackId)].filter(Boolean)),
     ),
     titles: downloaded.map((track) => text(track.title)),
   };
 }
 
-function representedByDownload(
-  result: MusicBrainzResult,
-  keys: ReturnType<typeof downloadedTrackKeys>,
-) {
+function representedByDownload(result: MusicBrainzResult, keys: ReturnType<typeof downloadedTrackKeys>) {
   return (
     (result.recordingIds ?? []).some((id) => keys.recordingIds.has(id)) ||
-    Boolean(
-      result.recordingTitle &&
-      keys.titles.some((title) =>
-        titleFallbackMatches(result.recordingTitle!, title),
-      ),
-    )
+    Boolean(result.recordingTitle && keys.titles.some((title) => titleFallbackMatches(result.recordingTitle!, title)))
   );
 }
 
@@ -515,9 +386,7 @@ function downloadedAlbumMatch(
   );
   let method = "recording_id";
   if (!track && result.recordingTitle) {
-    track = downloaded.find((candidate) =>
-      titleFallbackMatches(result.recordingTitle!, text(candidate.title)),
-    );
+    track = downloaded.find((candidate) => titleFallbackMatches(result.recordingTitle!, text(candidate.title)));
     method = "normalized_title";
   }
   const album = track ? albumsById.get(number(track.albumId)) : undefined;
@@ -529,12 +398,8 @@ function downloadedAlbumMatch(
 }
 
 export function titleFallbackMatches(requested: string, downloaded: string) {
-  const comparableRequested = normalizedTitle(
-    requested.replace(versionQualifier, ""),
-  );
-  const comparableDownloaded = normalizedTitle(
-    downloaded.replace(versionQualifier, ""),
-  );
+  const comparableRequested = normalizedTitle(requested.replace(versionQualifier, ""));
+  const comparableDownloaded = normalizedTitle(downloaded.replace(versionQualifier, ""));
   if (!requested || comparableRequested !== comparableDownloaded) return false;
   return (
     !versionQualifier.test(requested) ||
@@ -550,27 +415,19 @@ function normalizedTitle(value: string) {
     .replace(/[^\p{L}\p{N}]/gu, "");
 }
 
-function matchedTrackPayload(
-  track: Record<string, unknown>,
-  matchMethod: string,
-) {
+function matchedTrackPayload(track: Record<string, unknown>, matchMethod: string) {
   return {
     id: track.id,
     title: text(track.title),
     track_number: track.trackNumber ?? track.absoluteTrackNumber,
-    foreign_recording_id:
-      text(track.foreignRecordingId) || text(track.foreignTrackId),
+    foreign_recording_id: text(track.foreignRecordingId) || text(track.foreignTrackId),
     track_file_id: track.trackFileId,
     has_file: Boolean(track.hasFile),
     match_method: matchMethod,
   };
 }
 
-function appendValues(
-  target: Map<string, Set<string>>,
-  key: string,
-  values: string[],
-) {
+function appendValues(target: Map<string, Set<string>>, key: string, values: string[]) {
   const existing = target.get(key) ?? new Set<string>();
   for (const value of values) existing.add(value);
   target.set(key, existing);
@@ -579,9 +436,7 @@ function appendValues(
 function cloneAlbum(album: Record<string, unknown>) {
   return {
     ...album,
-    releases: ((album.releases ?? []) as Record<string, unknown>[]).map(
-      (release) => ({ ...release }),
-    ),
+    releases: ((album.releases ?? []) as Record<string, unknown>[]).map((release) => ({ ...release })),
   };
 }
 

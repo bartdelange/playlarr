@@ -21,8 +21,7 @@ export class NavidromeClient {
     private readonly fetcher: FetchLike = fetch,
     private readonly saltFactory = () => randomBytes(8).toString("hex"),
   ) {
-    if (!config.url || !config.username || !config.password)
-      throw new Error("Navidrome is not configured");
+    if (!config.url || !config.username || !config.password) throw new Error("Navidrome is not configured");
   }
 
   async searchSongs(query: string, limit = 50): Promise<NavidromeSong[]> {
@@ -56,17 +55,10 @@ export class NavidromeClient {
     return paths;
   }
 
-  private async request(
-    method: string,
-    parameters: Record<string, string>,
-  ): Promise<Record<string, unknown>> {
+  private async request(method: string, parameters: Record<string, string>): Promise<Record<string, unknown>> {
     const salt = this.saltFactory();
-    const token = createHash("md5")
-      .update(`${this.config.password}${salt}`)
-      .digest("hex");
-    const url = new URL(
-      `${this.config.url.replace(/\/$/, "")}/rest/${method}.view`,
-    );
+    const token = createHash("md5").update(`${this.config.password}${salt}`).digest("hex");
+    const url = new URL(`${this.config.url.replace(/\/$/, "")}/rest/${method}.view`);
     Object.entries({
       u: this.config.username,
       t: token,
@@ -79,11 +71,9 @@ export class NavidromeClient {
     const response = await this.fetcher(url, {
       signal: AbortSignal.timeout(this.config.timeoutMs ?? 30_000),
     });
-    if (!response.ok)
-      throw new Error(`Navidrome ${method} failed: ${response.status}`);
-    const wrapper = ((await response.json()) as Record<string, unknown>)[
-      "subsonic-response"
-    ] as Record<string, unknown> | undefined;
+    if (!response.ok) throw new Error(`Navidrome ${method} failed: ${response.status}`);
+    const wrapper = ((await response.json()) as Record<string, unknown>)["subsonic-response"] as
+      Record<string, unknown> | undefined;
     if (wrapper?.status !== "ok") {
       const error = wrapper?.error as Record<string, unknown> | undefined;
       throw new Error(String(error?.message ?? "Navidrome request failed"));

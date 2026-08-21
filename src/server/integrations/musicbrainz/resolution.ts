@@ -1,9 +1,6 @@
 import type { MusicBrainzResult } from "../../domain/musicbrainz";
-import {
-  releaseScore,
-  uniqueValues,
-  type MusicBrainzRelease,
-} from "./matching";
+import { type MusicBrainzRelease, releaseScore, uniqueValues } from "./matching";
+
 type Credit = { artist?: { id?: string; name?: string } };
 export interface MusicBrainzRecording {
   id?: string;
@@ -51,9 +48,7 @@ export function resultFromRecordings(
   if (!recordingIds.length) return undefined;
   if (releases.length) {
     const selected = releases.reduce((best, release) =>
-      releaseScore(release, sourceAlbum) > releaseScore(best, sourceAlbum)
-        ? release
-        : best,
+      releaseScore(release, sourceAlbum) > releaseScore(best, sourceAlbum) ? release : best,
     );
     const selectedGroup = selected["release-group"]?.id;
     if (selectedGroup) {
@@ -69,9 +64,7 @@ export function resultFromRecordings(
   return {
     resolvedVia,
     recordingTitle: first.title ?? "",
-    artistNames: uniqueValues(
-      (first["artist-credit"] ?? []).map((credit) => credit.artist?.name),
-    ),
+    artistNames: uniqueValues((first["artist-credit"] ?? []).map((credit) => credit.artist?.name)),
     recordingIds: uniqueValues(recordingIds),
     releaseIds: uniqueValues(releaseIds),
     releaseGroupIds: uniqueValues(releaseGroupIds),

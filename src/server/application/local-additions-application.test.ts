@@ -8,9 +8,7 @@ import { ImportRepository } from "../../server/persistence/import-repository";
 import { LocalAdditionsRepository } from "../../server/persistence/local-additions-repository";
 
 it("reloads authoritative Navidrome metadata from only the submitted song identity", async () => {
-  const directory = mkdtempSync(
-    path.join(tmpdir(), "playlarr-local-addition-"),
-  );
+  const directory = mkdtempSync(path.join(tmpdir(), "playlarr-local-addition-"));
   try {
     const database = openDatabase(path.join(directory, "state.db"));
     const imported = new ImportRepository(database).createImport({

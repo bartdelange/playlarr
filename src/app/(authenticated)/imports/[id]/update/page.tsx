@@ -67,17 +67,13 @@ async function PlaylistUpdateContent({
       <section className="card">
         <h2>Proposed update</h2>
         <p>
-          <strong>{update.added}</strong> added ·{" "}
-          <strong>{update.updated}</strong> updated ·{" "}
-          <strong>{update.removed}</strong> removed ·{" "}
-          <strong>{update.moved}</strong> moved ·{" "}
+          <strong>{update.added}</strong> added · <strong>{update.updated}</strong> updated ·{" "}
+          <strong>{update.removed}</strong> removed · <strong>{update.moved}</strong> moved ·{" "}
           <strong>{update.unchanged}</strong> unchanged
         </p>
         <p>
-          Existing matches and manual corrections are retained for tracks
-          matched by source track ID or ISRC. Added tracks will wait for
-          resolution. Removed tracks remain available in the update audit
-          snapshot.
+          Existing matches and manual corrections are retained for tracks matched by source track ID or ISRC. Added
+          tracks will wait for resolution. Removed tracks remain available in the update audit snapshot.
         </p>
         <div className="actions">
           {update.added || update.removed || update.updated || update.moved ? (
@@ -85,11 +81,7 @@ async function PlaylistUpdateContent({
               <input type="hidden" name="csrf_token" value={csrf} />
               <input type="hidden" name="import_id" value={id} />
               <input type="hidden" name="preview_job" value={preview.id} />
-              <input
-                type="hidden"
-                name="snapshot_token"
-                value={snapshotToken}
-              />
+              <input type="hidden" name="snapshot_token" value={snapshotToken} />
               <button>Apply update</button>
             </form>
           ) : (

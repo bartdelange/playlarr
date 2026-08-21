@@ -57,16 +57,8 @@ it("revalidates and safely creates a release through lookup-backed transport", a
     },
     "plan",
   );
-  expect(results.map((result) => result.outcome)).toEqual([
-    "created",
-    "updated",
-    "queued",
-  ]);
-  expect(createAlbum).toHaveBeenCalledWith(
-    expect.objectContaining({ id: 7 }),
-    "group",
-    ["edition"],
-  );
+  expect(results.map((result) => result.outcome)).toEqual(["created", "updated", "queued"]);
+  expect(createAlbum).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }), "group", ["edition"]);
   expect(mutate).toHaveBeenLastCalledWith("POST", "command", {
     name: "AlbumSearch",
     albumIds: [11],
@@ -85,14 +77,10 @@ it("pins a selected edition and does not replay a satisfied search", async () =>
     ],
   };
   let sentBody: unknown;
-  const mutate = vi.fn(
-    async (_method: string, _path: string, body?: unknown) => {
-      sentBody = body;
-    },
-  );
-  const downloaded = vi
-    .fn()
-    .mockResolvedValue([{ foreignRecordingId: "recording", hasFile: true }]);
+  const mutate = vi.fn(async (_method: string, _path: string, body?: unknown) => {
+    sentBody = body;
+  });
+  const downloaded = vi.fn().mockResolvedValue([{ foreignRecordingId: "recording", hasFile: true }]);
   const results = await executeApprovedPlan(
     repository([
       {
@@ -128,10 +116,7 @@ it("pins a selected edition and does not replay a satisfied search", async () =>
   ]);
   const payload = sentBody as typeof album;
   expect(payload.anyReleaseOk).toBe(false);
-  expect(payload.releases.map((release) => release.monitored)).toEqual([
-    false,
-    true,
-  ]);
+  expect(payload.releases.map((release) => release.monitored)).toEqual([false, true]);
 });
 
 it("refuses Various Artists release mutations unless the approved action carries an override", async () => {
@@ -157,8 +142,6 @@ it("refuses Various Artists release mutations unless the approved action carries
     },
     "plan",
   );
-  expect(results).toEqual([
-    { outcome: "skipped", details: "various_artists_album" },
-  ]);
+  expect(results).toEqual([{ outcome: "skipped", details: "various_artists_album" }]);
   expect(mutate).not.toHaveBeenCalled();
 });

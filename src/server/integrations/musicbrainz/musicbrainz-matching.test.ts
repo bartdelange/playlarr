@@ -9,6 +9,7 @@ import {
   versionPreference,
   words,
 } from "../../../server/integrations/musicbrainz/matching";
+
 it("normalizes MusicBrainz search inputs without discarding version safety signals", () => {
   expect(isrcPattern.test("USABC1234567")).toBe(true);
   expect(searchTitle("Song (feat. Guest)")).toBe("Song");
@@ -16,9 +17,7 @@ it("normalizes MusicBrainz search inputs without discarding version safety signa
   expect(nameKey("Beyoncé & Co.")).toBe("beyoncco");
   expect(uniqueValues(["a", "a", undefined, "b"])).toEqual(["a", "b"]);
   expect(marked("Song (Extended Mix)")).toBe(true);
-  expect(versionPreference("Song (Extended Mix)")).toBeGreaterThan(
-    versionPreference("Song (Radio Edit)"),
-  );
+  expect(versionPreference("Song (Extended Mix)")).toBeGreaterThan(versionPreference("Song (Radio Edit)"));
 });
 it("prefers exact album releases over unrelated compilations", () => {
   const exact = releaseScore(
