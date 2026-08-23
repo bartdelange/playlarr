@@ -1,6 +1,9 @@
 packages:
-  - "apps/*"
-
+  - 'apps/*'
+  - 'libs/components/*'
+  - 'libs/features/*'
+  - 'libs/lib/*'
+  - 'libs/server/*'
 autoInstallPeers: true
 onlyBuiltDependencies:
-  - nx
+  - 'nx'

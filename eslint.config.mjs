@@ -8,7 +8,8 @@ export default [
       "ignores": [
         "**/dist",
         "**/out-tsc",
-        "**/test-output"
+        "**/test-output",
+        "**/vitest.config.*.timestamp*"
       ]
     },
     {
@@ -19,23 +20,67 @@ export default [
             "**/*.jsx"
         ],
         rules: {
-            "@nx/enforce-module-boundaries": [
-                "error",
+          '@nx/enforce-module-boundaries': [
+            'error',
+            {
+              enforceBuildableLibDependency: true,
+              allow: [],
+              depConstraints: [
                 {
-                    enforceBuildableLibDependency: true,
-                    allow: [
-                        "^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$"
-                    ],
-                    depConstraints: [
-                        {
-                            sourceTag: "*",
-                            onlyDependOnLibsWithTags: [
-                                "*"
-                            ]
-                        }
-                    ]
-                }
-            ]
+                  sourceTag: 'type:domain',
+                  onlyDependOnLibsWithTags: ['type:domain'],
+                },
+                {
+                  sourceTag: 'type:ui',
+                  onlyDependOnLibsWithTags: ['type:ui', 'type:domain'],
+                },
+                {
+                  sourceTag: 'type:provider',
+                  onlyDependOnLibsWithTags: ['type:provider', 'type:domain'],
+                },
+                {
+                  sourceTag: 'type:persistence',
+                  onlyDependOnLibsWithTags: ['type:persistence', 'type:domain'],
+                },
+                {
+                  sourceTag: 'type:command',
+                  onlyDependOnLibsWithTags: [
+                    'type:command',
+                    'type:domain',
+                    'type:provider',
+                    'type:persistence',
+                  ],
+                },
+                {
+                  sourceTag: 'type:runtime',
+                  onlyDependOnLibsWithTags: [
+                    'type:runtime',
+                    'type:command',
+                    'type:domain',
+                    'type:provider',
+                    'type:persistence',
+                  ],
+                },
+                {
+                  sourceTag: 'type:feature',
+                  onlyDependOnLibsWithTags: [
+                    'type:feature',
+                    'type:ui',
+                    'type:domain',
+                  ],
+                },
+                {
+                  sourceTag: 'type:app',
+                  onlyDependOnLibsWithTags: [
+                    'type:feature',
+                    'type:ui',
+                    'type:domain',
+                    'type:runtime',
+                  ],
+                },
+              ],
+            },
+          ],
         }
     },
     {

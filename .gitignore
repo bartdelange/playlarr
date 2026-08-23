@@ -49,3 +49,5 @@ Thumbs.db
 out
 
 test-output
+
+vitest.config.*.timestamp*
