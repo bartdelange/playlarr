@@ -11,8 +11,11 @@
       "!{projectRoot}/tsconfig.spec.json"
     ],
     "sharedGlobals": [
-      "{workspaceRoot}/.github/workflows/ci.yml",
-      "{workspaceRoot}/.github/workflows/ci.yml"
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/pnpm-workspace.yaml",
+      "{workspaceRoot}/tsconfig.base.json"
     ]
   },
   "plugins": [
@@ -74,8 +77,21 @@
     }
   },
   "targetDefaults": {
+    "actionlint": {
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/.github/actions/**/*",
+        "{workspaceRoot}/.github/workflows/**/*",
+        "{workspaceRoot}/package.json",
+        "{workspaceRoot}/pnpm-lock.yaml"
+      ]
+    },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/test-output/vitest"]
     }
+  },
+  "affected": {
+    "defaultBase": "master"
   }
 }

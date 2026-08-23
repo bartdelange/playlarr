@@ -5,5 +5,10 @@ packages:
   - 'libs/lib/*'
   - 'libs/server/*'
 autoInstallPeers: true
-onlyBuiltDependencies:
-  - 'nx'
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  less: true
+  nx: true
+  sharp: true
+  unrs-resolver: true

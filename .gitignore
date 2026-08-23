@@ -28,11 +28,18 @@ node_modules
 /.sass-cache
 /connect.lock
 /coverage
+/reports
 /libpeerconnection.log
 npm-debug.log
+pnpm-debug.log*
 yarn-error.log
 testem.log
 /typings
+
+# environment (examples remain tracked)
+.env
+.env.*
+!.env.example
 
 # System Files
 .DS_Store

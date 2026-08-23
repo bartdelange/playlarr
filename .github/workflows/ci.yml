@@ -47,6 +47,12 @@ jobs:
       - name: Determine Nx affected SHAs
         uses: nrwl/nx-set-shas@v5
 
+      - name: Validate GitHub Actions
+        run: pnpm exec nx run @playlarr/source:actionlint
+
+      - name: Check formatting
+        run: pnpm exec nx format:check
+
       - name: Validate affected projects
         run: pnpm exec nx affected -t lint test build typecheck e2e
 
