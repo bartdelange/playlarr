@@ -1,0 +1,6 @@
+packages:
+  - "apps/*"
+
+autoInstallPeers: true
+onlyBuiltDependencies:
+  - nx
