@@ -33,7 +33,7 @@ async function createTestDatabase(): Promise<TestDatabase> {
           'migrate',
           'deploy',
           '--config',
-          resolve(process.cwd(), 'libs/server/persistence/prisma.config.ts'),
+          resolve(process.cwd(), 'prisma.config.ts'),
         ],
         {
           cwd: process.cwd(),
@@ -101,9 +101,9 @@ describe('database integration', () => {
       Array<{ timeout: number }>
     >('PRAGMA busy_timeout');
 
-    expect(foreignKeys[0]?.foreign_keys).toBe(1);
+    expect(foreignKeys[0]?.foreign_keys).toBe(1n);
     expect(journalMode[0]?.journal_mode).toBe('wal');
-    expect(busyTimeout[0]?.timeout).toBe(5000);
+    expect(busyTimeout[0]?.timeout).toBe(5000n);
 
     await database.close();
   });

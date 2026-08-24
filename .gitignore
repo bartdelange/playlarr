@@ -64,3 +64,5 @@ vitest.config.*.timestamp*
 *.db
 *.db-shm
 *.db-wal
+
+.nx/polygraph
