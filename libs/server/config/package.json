@@ -15,7 +15,7 @@
   },
   "nx": {
     "tags": [
-      "type:domain"
+      "type:config"
     ]
   },
   "dependencies": {}
