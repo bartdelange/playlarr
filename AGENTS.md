@@ -35,15 +35,15 @@ libs/
 
 The intended ownership is:
 
-* `apps/playlarr` — Next.js routing, layouts, framework-specific entrypoints, and application composition
-* `apps/playlarr-e2e` — Playwright end-to-end tests
-* `libs/components/ui` — generic reusable React UI
-* `libs/features/*` — user-facing feature implementation and feature-specific presentation logic
-* `libs/lib/domain` — framework-independent Playlarr domain models and business rules
-* `libs/server/providers` — external-service adapters and normalized provider behavior
-* `libs/server/persistence` — SQLite repositories, migrations, transactions, and persistence-specific concerns
-* `libs/server/commands` — durable asynchronous command state and execution semantics
-* `libs/server/runtime` — application composition root and process/runtime lifecycle
+- `apps/playlarr` — Next.js routing, layouts, framework-specific entrypoints, and application composition
+- `apps/playlarr-e2e` — Playwright end-to-end tests
+- `libs/components/ui` — generic reusable React UI
+- `libs/features/*` — user-facing feature implementation and feature-specific presentation logic
+- `libs/lib/domain` — framework-independent Playlarr domain models and business rules
+- `libs/server/providers` — external-service adapters and normalized provider behavior
+- `libs/server/persistence` — SQLite repositories, migrations, transactions, and persistence-specific concerns
+- `libs/server/commands` — durable asynchronous command state and execution semantics
+- `libs/server/runtime` — application composition root and process/runtime lifecycle
 
 Nx module-boundary rules are authoritative. Do not bypass them with relative imports, path aliases, or moving code into a less appropriate project merely to satisfy the linter.
 
@@ -106,13 +106,13 @@ Keep changes focused, reviewable, and easy to reason about.
 
 For any non-trivial task:
 
-* inspect the relevant existing code before changing it
-* understand the current architecture and conventions before introducing abstractions
-* prefer extending an existing pattern over creating a parallel implementation
-* avoid unrelated cleanup, renaming, formatting, or refactoring
-* remove obsolete code when its replacement is complete and verified
-* do not silently change behavior outside the requested scope
-* preserve unrelated user work
+- inspect the relevant existing code before changing it
+- understand the current architecture and conventions before introducing abstractions
+- prefer extending an existing pattern over creating a parallel implementation
+- avoid unrelated cleanup, renaming, formatting, or refactoring
+- remove obsolete code when its replacement is complete and verified
+- do not silently change behavior outside the requested scope
+- preserve unrelated user work
 
 Do not add a dependency when the existing stack already provides an appropriate solution.
 
@@ -150,11 +150,11 @@ Use blank lines to separate distinct logical sections within a file, function, c
 
 For React components, generally separate:
 
-* state and hook declarations from callbacks and derived values
-* callbacks and effects from one another
-* setup logic from the component return
-* distinct sibling sections in JSX
-* guard clauses, mutation setup, execution, and cleanup
+- state and hook declarations from callbacks and derived values
+- callbacks and effects from one another
+- setup logic from the component return
+- distinct sibling sections in JSX
+- guard clauses, mutation setup, execution, and cleanup
 
 Use whitespace to communicate structure, not mechanically between every statement.
 
@@ -196,11 +196,11 @@ Keep `apps/playlarr/src/app` intentionally small.
 
 Route files should primarily:
 
-* define routing
-* receive route/search parameters
-* compose feature entrypoints
-* define framework-required layouts or boundaries
-* expose Next.js-specific route handlers or server entrypoints where appropriate
+- define routing
+- receive route/search parameters
+- compose feature entrypoints
+- define framework-required layouts or boundaries
+- expose Next.js-specific route handlers or server entrypoints where appropriate
 
 Do not move ordinary feature implementation into the app directory merely because Next.js allows it.
 
@@ -208,13 +208,13 @@ User-facing application behavior belongs in `libs/features/*`.
 
 Feature libraries may own:
 
-* screens
-* feature-specific components
-* hooks
-* view models
-* client-side orchestration
-* feature-local types
-* loading, empty, error, and interaction states
+- screens
+- feature-specific components
+- hooks
+- view models
+- client-side orchestration
+- feature-local types
+- loading, empty, error, and interaction states
 
 Generic reusable visual primitives belong in `libs/components/ui`.
 
@@ -230,14 +230,14 @@ Do not use a generic feature library as a dumping ground. Create feature librari
 
 Domain code must not depend on:
 
-* React
-* Next.js
-* SQLite libraries
-* HTTP clients
-* provider SDKs
-* process/environment APIs
-* persistence implementations
-* runtime composition
+- React
+- Next.js
+- SQLite libraries
+- HTTP clients
+- provider SDKs
+- process/environment APIs
+- persistence implementations
+- runtime composition
 
 Domain code should model Playlarr concepts, invariants, and behavior.
 
@@ -247,11 +247,11 @@ Domain code should model Playlarr concepts, invariants, and behavior.
 
 Provider code should:
 
-* encapsulate transport and authentication details
-* validate external responses
-* normalize external data into Playlarr-owned models
-* implement retries/backoff where appropriate
-* avoid leaking third-party response shapes throughout the application
+- encapsulate transport and authentication details
+- validate external responses
+- normalize external data into Playlarr-owned models
+- implement retries/backoff where appropriate
+- avoid leaking third-party response shapes throughout the application
 
 Provider code must not own SQLite persistence or application runtime lifecycle.
 
@@ -261,11 +261,11 @@ Provider code must not own SQLite persistence or application runtime lifecycle.
 
 Persistence code should contain:
 
-* repositories
-* migrations
-* transaction behavior
-* SQLite configuration
-* persistence mappings
+- repositories
+- migrations
+- transaction behavior
+- SQLite configuration
+- persistence mappings
 
 Do not place business rules in repositories merely because data happens to be available there.
 
@@ -287,14 +287,14 @@ Do not blindly repeat external side effects after an uncertain restart.
 
 Runtime code may initialize and connect:
 
-* SQLite
-* migrations
-* repositories
-* providers
-* command execution
-* event infrastructure
-* application lifecycle
-* the Next.js host
+- SQLite
+- migrations
+- repositories
+- providers
+- command execution
+- event infrastructure
+- application lifecycle
+- the Next.js host
 
 Avoid creating additional composition roots elsewhere in the repository.
 
@@ -338,13 +338,13 @@ Do not casually change existing schema semantics.
 
 When changing the database:
 
-* use explicit migrations
-* keep migrations deterministic
-* consider populated existing databases
-* avoid destructive or lossy changes unless explicitly required
-* update repositories, mappings, tests, and migration logic together where appropriate
-* preserve existing imports, settings, matches, and other application state
-* document migration ordering when application code depends on it
+- use explicit migrations
+- keep migrations deterministic
+- consider populated existing databases
+- avoid destructive or lossy changes unless explicitly required
+- update repositories, mappings, tests, and migration logic together where appropriate
+- preserve existing imports, settings, matches, and other application state
+- document migration ordering when application code depends on it
 
 SQLite integration tests should use temporary real SQLite databases where database semantics matter.
 
@@ -358,11 +358,11 @@ External-service code must use Playlarr-owned normalized models at architectural
 
 Relevant integrations include:
 
-* Spotify
-* TIDAL
-* MusicBrainz
-* Lidarr
-* OpenSubsonic/Navidrome-compatible servers
+- Spotify
+- TIDAL
+- MusicBrainz
+- Lidarr
+- OpenSubsonic/Navidrome-compatible servers
 
 Do not depend on live credentials or external services in normal automated tests.
 
@@ -380,11 +380,11 @@ Do not suppress type errors with broad casts, `any`, or `@ts-ignore` when the un
 
 Prefer:
 
-* explicit domain types
-* validated external inputs
-* discriminated unions for meaningful state
-* exhaustive handling where practical
-* narrow interfaces at architectural boundaries
+- explicit domain types
+- validated external inputs
+- discriminated unions for meaningful state
+- exhaustive handling where practical
+- narrow interfaces at architectural boundaries
 
 Avoid creating generic infrastructure abstractions before there is a concrete repeated need.
 
@@ -392,10 +392,10 @@ Do not add dependencies solely to avoid writing a small amount of straightforwar
 
 When adding or upgrading dependencies:
 
-* explain the architectural reason
-* keep unrelated upgrades out of the change
-* update the lockfile with dependency changes
-* verify compatibility with supported runtime/tooling versions
+- explain the architectural reason
+- keep unrelated upgrades out of the change
+- update the lockfile with dependency changes
+- verify compatibility with supported runtime/tooling versions
 
 ## Testing
 
@@ -403,24 +403,24 @@ Add or update tests when behavior changes.
 
 Use:
 
-* Vitest for unit and integration tests
-* Testing Library for React behavior
-* Playwright for meaningful end-to-end user journeys
+- Vitest for unit and integration tests
+- Testing Library for React behavior
+- Playwright for meaningful end-to-end user journeys
 
 Prioritize tests around:
 
-* domain/business rules
-* matching behavior
-* persistence
-* migrations
-* durable command behavior
-* restart recovery
-* authentication and authorization
-* external input validation
-* provider normalization
-* error handling
-* security-sensitive behavior
-* playlist ordering and duplicate preservation
+- domain/business rules
+- matching behavior
+- persistence
+- migrations
+- durable command behavior
+- restart recovery
+- authentication and authorization
+- external input validation
+- provider normalization
+- error handling
+- security-sensitive behavior
+- playlist ordering and duplicate preservation
 
 For integrations, test externally observable behavior rather than implementation details.
 
@@ -441,9 +441,9 @@ Before making changes:
 3. start from the latest default branch
 4. create a dedicated branch using one of:
 
-  * `feat/`
-  * `fix/`
-  * `chore/`
+- `feat/`
+- `fix/`
+- `chore/`
 
 Use a short descriptive kebab-case branch name, for example:
 
@@ -455,10 +455,10 @@ chore/repository-tooling
 
 During implementation:
 
-* follow the repository's commit strategy
-* keep commits small, logical, and independently reviewable
-* do not merge or rebase unrelated work into the task branch
-* do not push directly to the default branch
+- follow the repository's commit strategy
+- keep commits small, logical, and independently reviewable
+- do not merge or rebase unrelated work into the task branch
+- do not push directly to the default branch
 
 After implementation:
 
@@ -477,25 +477,25 @@ Before starting a large implementation or refactor, identify sensible commit bou
 
 Good commit boundaries include:
 
-* foundational domain models
-* persistence schema or migrations
-* provider implementation
-* command infrastructure
-* feature implementation
-* runtime integration
-* tests belonging to a completed behavior
-* deployment or repository infrastructure
-* removal of superseded code
+- foundational domain models
+- persistence schema or migrations
+- provider implementation
+- command infrastructure
+- feature implementation
+- runtime integration
+- tests belonging to a completed behavior
+- deployment or repository infrastructure
+- removal of superseded code
 
 Prefer several focused commits over one large final commit.
 
 Do not:
 
-* create arbitrary checkpoint commits
-* create commits named `WIP`, `progress`, or similar
-* split commits merely to reduce file count
-* mix unrelated changes in the same commit
-* intentionally leave the repository broken between commits when avoidable
+- create arbitrary checkpoint commits
+- create commits named `WIP`, `progress`, or similar
+- split commits merely to reduce file count
+- mix unrelated changes in the same commit
+- intentionally leave the repository broken between commits when avoidable
 
 Each commit should represent one understandable change and leave the repository valid whenever practical.
 
@@ -513,9 +513,9 @@ The complete first line must not exceed 100 characters.
 
 Only use:
 
-* `feat` — introduces or extends behavior
-* `fix` — corrects broken or incorrect behavior
-* `chore` — maintenance, refactoring, tooling, infrastructure, dependency changes, test-only work, or repository housekeeping
+- `feat` — introduces or extends behavior
+- `fix` — corrects broken or incorrect behavior
+- `chore` — maintenance, refactoring, tooling, infrastructure, dependency changes, test-only work, or repository housekeeping
 
 Do not use `test` as a commit type.
 
@@ -529,21 +529,21 @@ Do not use `refactor` as a commit type. Use `chore` for behavior-preserving refa
 
 Use the narrowest applicable scope from:
 
-* `app` — Next.js application composition, routing, and layouts
-* `ui` — shared UI components and styling
-* `import` — playlist import workflows and source-track handling
-* `spotify` — Spotify integration
-* `tidal` — TIDAL integration
-* `musicbrainz` — MusicBrainz integration and matching
-* `lidarr` — Lidarr planning and execution
-* `library` — OpenSubsonic/Navidrome resolution and local additions
-* `db` — SQLite schemas, migrations, repositories, and database infrastructure
-* `runtime` — lifecycle, commands, events, SSE, and runtime composition
-* `auth` — authentication, sessions, route protection, and CSRF
-* `export` — playlist path mapping and exports
-* `config` — shared application or runtime configuration
-* `deployment` — Docker, Unraid, CI/CD, release infrastructure
-* `repo` — repository-wide tooling or maintenance
+- `app` — Next.js application composition, routing, and layouts
+- `ui` — shared UI components and styling
+- `import` — playlist import workflows and source-track handling
+- `spotify` — Spotify integration
+- `tidal` — TIDAL integration
+- `musicbrainz` — MusicBrainz integration and matching
+- `lidarr` — Lidarr planning and execution
+- `library` — OpenSubsonic/Navidrome resolution and local additions
+- `db` — SQLite schemas, migrations, repositories, and database infrastructure
+- `runtime` — lifecycle, commands, events, SSE, and runtime composition
+- `auth` — authentication, sessions, route protection, and CSRF
+- `export` — playlist path mapping and exports
+- `config` — shared application or runtime configuration
+- `deployment` — Docker, Unraid, CI/CD, release infrastructure
+- `repo` — repository-wide tooling or maintenance
 
 Do not invent new scopes unless the repository convention is explicitly updated.
 
@@ -570,10 +570,10 @@ The Gitmoji is independent of the commit type.
 
 Descriptions must:
 
-* use lowercase sentence-style wording
-* use imperative mood where practical
-* describe the resulting change rather than the implementation process
-* not end with a period
+- use lowercase sentence-style wording
+- use imperative mood where practical
+- describe the resulting change rather than the implementation process
+- not end with a period
 
 Prefer:
 
@@ -597,15 +597,15 @@ Run validation relevant to the affected code before creating a commit.
 
 This may include:
 
-* formatting
-* linting
-* type checking
-* unit tests
-* integration tests
-* Playwright tests
-* builds
-* workflow validation
-* Docker validation
+- formatting
+- linting
+- type checking
+- unit tests
+- integration tests
+- Playwright tests
+- builds
+- workflow validation
+- Docker validation
 
 Do not blindly run the most expensive repository-wide suite after every tiny change if narrower validation is sufficient.
 
@@ -631,14 +631,14 @@ Avoid rewriting an entire subsystem in one commit when the work can reasonably b
 
 At the end of a refactor, search for:
 
-* unused old implementations
-* stale imports
-* obsolete environment variables
-* old configuration keys
-* duplicate code paths
-* dead feature flags
-* outdated documentation
-* obsolete tests
+- unused old implementations
+- stale imports
+- obsolete environment variables
+- old configuration keys
+- duplicate code paths
+- dead feature flags
+- outdated documentation
+- obsolete tests
 
 ## Generated files
 
@@ -646,17 +646,17 @@ Do not create separate commit boundaries for generated output alone unless the g
 
 When generated files must be committed:
 
-* keep them with the source change that generated them
-* do not manually edit them
-* regenerate them using the canonical command
+- keep them with the source change that generated them
+- do not manually edit them
+- regenerate them using the canonical command
 
 ## Scope control
 
 If requested work exposes unrelated issues:
 
-* do not silently expand the implementation
-* leave unrelated issues untouched unless they block the task
-* mention relevant follow-up work in the final summary
+- do not silently expand the implementation
+- leave unrelated issues untouched unless they block the task
+- mention relevant follow-up work in the final summary
 
 Small fixes directly required for correctness may be included, but must remain clearly attributable to the task.
 
@@ -664,15 +664,15 @@ Small fixes directly required for correctness may be included, but must remain c
 
 Before declaring a task complete:
 
-* inspect the complete diff against the starting branch
-* ensure no accidental files were modified
-* remove temporary debugging code
-* check that no secrets or credentials were introduced
-* confirm generated artifacts are intentional
-* confirm architectural boundaries remain intact
-* confirm old and new implementations are not accidentally active together
-* verify relevant environment and deployment configuration
-* run final relevant validation
+- inspect the complete diff against the starting branch
+- ensure no accidental files were modified
+- remove temporary debugging code
+- check that no secrets or credentials were introduced
+- confirm generated artifacts are intentional
+- confirm architectural boundaries remain intact
+- confirm old and new implementations are not accidentally active together
+- verify relevant environment and deployment configuration
+- run final relevant validation
 
 For substantial tasks, also review commit history to ensure commits are logically ordered and independently understandable.
 
@@ -720,13 +720,13 @@ Use `None` when none apply.
 
 Explicitly document incompatible changes to:
 
-* APIs
-* database schemas
-* configuration
-* environment variables
-* deployment expectations
-* package contracts
-* application behavior
+- APIs
+- database schemas
+- configuration
+- environment variables
+- deployment expectations
+- package contracts
+- application behavior
 
 Use `None` when there are no known breaking changes.
 
@@ -740,11 +740,11 @@ Remove the section when not applicable.
 
 Use notes only for information that materially helps reviewers, such as:
 
-* architectural decisions
-* non-obvious trade-offs
-* known limitations
-* intentionally deferred work
-* relevant follow-up work
+- architectural decisions
+- non-obvious trade-offs
+- known limitations
+- intentionally deferred work
+- relevant follow-up work
 
 Remove the section when unnecessary.
 
@@ -770,13 +770,37 @@ Do not merge the pull request unless explicitly requested.
 
 At the end of a task, provide a concise summary containing:
 
-* what was implemented
-* important architectural decisions
-* database or deployment steps required
-* validation performed
-* anything that could not be validated
-* notable follow-up work
+- what was implemented
+- important architectural decisions
+- database or deployment steps required
+- validation performed
+- anything that could not be validated
+- notable follow-up work
 
 Also include a short commit summary.
 
 Do not dump a long file-by-file change list unless it is specifically useful.
+
+<!-- nx configuration start-->
+<!-- Leave the start & end comments to automatically receive updates. -->
+
+## General Guidelines for working with Nx
+
+- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
+- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
+- You have access to the Nx MCP server and its tools, use them to help the user
+- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
+- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
+
+## Scaffolding & Generators
+
+- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
+
+## When to use nx_docs
+
+- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
+- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
+- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
+
+<!-- nx configuration end-->

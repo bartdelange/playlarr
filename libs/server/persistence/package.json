@@ -17,7 +17,27 @@
     "name": "server-persistence",
     "tags": [
       "type:persistence"
-    ]
+    ],
+    "targets": {
+      "prisma-generate": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "pnpm prisma generate --config libs/server/persistence/prisma.config.ts"
+        }
+      },
+      "migrate": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "pnpm prisma migrate deploy --config libs/server/persistence/prisma.config.ts"
+        }
+      }
+    }
   },
-  "dependencies": {}
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.9.1",
+    "@prisma/client": "^7.9.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0"
+  }
 }

@@ -1,3 +1,5 @@
-export function serverPersistence(): string {
-  return 'server-persistence';
-}
+export {
+  createDatabase,
+  type DatabaseOptions,
+  type PlaylarrDatabase,
+} from './database.js';
