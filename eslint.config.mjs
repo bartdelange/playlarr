@@ -87,7 +87,6 @@ export default [
                 'type:feature',
                 'type:ui',
                 'type:domain',
-                'type:config',
               ],
             },
             {
