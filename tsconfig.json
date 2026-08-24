@@ -1,0 +1,40 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/playlarr-e2e"
+    },
+    {
+      "path": "./apps/playlarr"
+    },
+    {
+      "path": "./libs/components/ui"
+    },
+    {
+      "path": "./libs/features/home"
+    },
+    {
+      "path": "./libs/features/imports"
+    },
+    {
+      "path": "./libs/features/settings"
+    },
+    {
+      "path": "./libs/lib/domain"
+    },
+    {
+      "path": "./libs/server/providers"
+    },
+    {
+      "path": "./libs/server/persistence"
+    },
+    {
+      "path": "./libs/server/commands"
+    },
+    {
+      "path": "./libs/server/runtime"
+    }
+  ]
+}

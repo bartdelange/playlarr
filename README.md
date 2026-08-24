@@ -1,326 +1,102 @@
 # Playlarr
 
-## Playlists to Lidarr
+<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
-**Playlarr brings your playlists home.**
+✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
 
-Import playlists from music subscription services such as Spotify and TIDAL, match their tracks
-against MusicBrainz, send the corresponding releases to Lidarr, and generate ordered M3U8 playlists
-for your local music server.
+[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/next?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
 
-Already have tracks in Navidrome that were not part of the original playlist? Playlarr can add
-those too.
+## Run tasks
 
-> Point Playlarr at a streaming playlist, let Lidarr build the local library, and recreate the
-> playlist using your own music files.
+To run the dev server for your app, use:
 
-![Playlarr dashboard showing imports at review, plan, download, and export stages.](docs/images/dashboard.png)
-
-Playlarr coordinates metadata and your existing services; it does not download music itself. Use it
-only with media you are legally entitled to acquire and access. See [Responsible use](#responsible-use)
-for the complete disclaimer.
-
-## What can Playlarr do?
-
-- Import playlists from Spotify and TIDAL.
-- Resolve tracks to MusicBrainz recordings and releases.
-- Pause for manual review when a match is uncertain and let you fix it.
-- Preview every proposed Lidarr change before applying anything.
-- Ask Lidarr to add, monitor, and search for the required releases.
-- Preserve source order, moved tracks, and duplicate occurrences.
-- Add optional Navidrome-only tracks to the finished playlist.
-- Generate ordered M3U8 playlists using downloaded local files.
-- Refresh an import later and show what was added, removed, moved, or changed.
-- Retain imports, mappings, manual decisions, progress, and history across restarts.
-
-## How it works
-
-```text
-Spotify / TIDAL
-       │
-       ▼
-    Playlarr
-       │
-       ├── MusicBrainz ── identify tracks and releases
-       │
-       ▼
-     Lidarr ───────────── acquire missing music
-       │
-       ▼
- Local music library
-       │
-       ├── Navidrome ──── optional local additions
-       │
-       ▼
-   M3U8 playlist
+```sh
+npx nx dev playlarr
 ```
 
-Playlarr handles playlist metadata, matching, Lidarr planning, progress tracking, and playlist
-generation. Lidarr remains responsible for acquiring and organizing music. Planning is read-only:
-Playlarr changes Lidarr only after you inspect a plan and select **Apply to Lidarr**.
+To create a production bundle:
 
-## Installing Playlarr
-
-The web UI listens on port `8787`. On first launch, Playlarr asks you to create a password or
-explicitly delegate authorization to a trusted SSO gateway such as Authelia. It does not terminate
-TLS, so keep it on a trusted LAN or place it behind an HTTPS reverse proxy.
-
-### Unraid
-
-Unraid is the primary supported installation path. The repository includes
-[`playlarr.xml`](playlarr.xml), a native Unraid Docker template using:
-
-```text
-ghcr.io/bartdelange/playlarr:latest
+```sh
+npx nx build playlarr
 ```
 
-1. Copy `playlarr.xml` to:
+To see all available targets to run for a project, run:
 
-   ```text
-   /boot/config/plugins/dockerMan/templates-user/my-playlarr.xml
-   ```
-
-2. Refresh the Unraid Docker page.
-3. Select **Add Container**.
-4. Choose `playlarr` under **User templates**.
-5. Fill in the service settings and create the container.
-6. Open `http://UNRAID-IP:8787` and choose the initial authorization mode.
-
-The template uses two mounts:
-
-- `/config` stores the SQLite workflow database and Spotify/TIDAL authentication state.
-- `/playlists` stores generated M3U8 playlists and diagnostic reports.
-
-The template uses `/mnt/user/appdata/playlarr` as its default `/config` host path. When upgrading an
-installation that uses an older appdata directory, keep the existing mount override or migrate its
-contents while the container is stopped.
-
-The image runs as UID/GID `1000:1000` and prepares both mount roots on startup. If you prefer to
-prepare the host directories yourself:
-
-```bash
-mkdir -p /mnt/user/appdata/playlarr /mnt/user/music/playlists
-chown -R 1000:1000 /mnt/user/appdata/playlarr
+```sh
+npx nx show project playlarr
 ```
 
-The template follows `latest`. For controlled upgrades, pin the Repository field to a published
-version such as `ghcr.io/bartdelange/playlarr:2.0.0`.
+These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
 
-### Docker Compose
+[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-The included [`compose.yaml`](compose.yaml) builds Playlarr locally using the repository's verified
-environment and mounts:
+## Add new projects
 
-```bash
-git clone https://github.com/bartdelange/playlarr.git
-cd playlarr
-cp .env.example .env
-mkdir -p container-config container-playlists
-docker compose up -d --build
+While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+
+Use the plugin's generator to create new projects.
+
+To generate a new application, use:
+
+```sh
+npx nx g @nx/next:app demo
 ```
 
-Set a real `MUSICBRAINZ_USER_AGENT` in `.env` before starting. Then open
-`http://127.0.0.1:8787`, or replace the host with your Docker server's LAN address.
+To generate a new library, use:
 
-Check the container with:
-
-```bash
-docker compose ps
-docker compose logs -f playlarr
+```sh
+npx nx g @nx/react:lib mylib
 ```
 
-The health endpoint is available at `/health`.
+You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
 
-For an Unraid Compose stack, use persistent shares:
+[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-```yaml
-volumes:
-  - /mnt/user/appdata/playlarr:/config
-  - /mnt/user/music:/playlists
+## Set up CI!
+
+### Step 1
+
+To connect to Nx Cloud, run the following command:
+
+```sh
+npx nx connect
 ```
 
-## First-time setup
+Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
 
-Open **Settings** in the Playlarr web UI and configure the services you use:
+- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-- **MusicBrainz** identifies source tracks and maps them to releases Lidarr understands. Supply an
-  identifying User-Agent containing a real contact email address or URL.
-- **Spotify** needs a client ID and browser authentication. No client secret is required.
-- **TIDAL** uses its device-login flow and saves the resulting session.
-- **Lidarr** needs its URL, API key, root folder, quality profile, and metadata profile. Use
-  **Test Lidarr** after saving.
-- **Navidrome** is optional and is used only to search for local tracks to append during export. Use
-  **Test Navidrome** after saving.
+### Step 2
 
-Use **Authenticate Spotify** or **Authenticate TIDAL** from Settings when that source is needed.
-Secrets are replacement-only: Playlarr never renders saved passwords, API keys, or tokens back into
-the page.
+Use the following command to configure a CI workflow for your workspace:
 
-![Playlarr Settings with vertically arranged service and application configuration cards.](docs/images/settings.png)
+```sh
+npx nx g ci-workflow
+```
 
-## Import your first playlist
+[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-1. Select **New Import** and choose Spotify or TIDAL.
-2. Browse or filter your playlists and select the one you want to import.
-3. Let Playlarr analyze and resolve its tracks through MusicBrainz.
-4. Select **Review** for unresolved or uncertain tracks and correct them where needed.
-5. Open the Lidarr plan and inspect the track-to-release mapping and every proposed action.
-6. Select **Apply to Lidarr** when the plan is correct.
-7. Give Lidarr time to acquire the requested music.
-8. Select **Refresh monitored & downloaded** to update Playlarr's local-library status.
-9. Optionally open **Local additions** and append Navidrome-only tracks.
-10. Select **Export M3U** to generate the ordered playlist.
+## Install Nx Console
 
-![Spotify playlist browser with filtering, import, and impact-analysis actions.](docs/images/playlist-browser.png)
+Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
 
-![Manual MusicBrainz review for an unresolved source track.](docs/images/musicbrainz-review.png)
+[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-![Lidarr plan showing source tracks, mapped releases, and proposed actions before approval.](docs/images/lidarr-plan.png)
+## Useful links
 
-![Final export view with generated M3U8 path and downloaded local tracks.](docs/images/completed-export.png)
+Learn more:
 
-Long-running catalogue reads, resolution, planning, update previews, and library work run as
-persisted background jobs. Their progress remains visible, and an interrupted job is recorded after
-a restart rather than silently disappearing.
+- [Learn more about this workspace setup](https://nx.dev/nx-api/next?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-## Refreshing an imported playlist
+And join the Nx community:
 
-Streaming playlists change. Select **Refresh playlist** from an existing import to fetch its current
-contents. Playlarr presents a filterable preview containing:
-
-- added tracks;
-- removed tracks;
-- moved tracks;
-- metadata changes;
-- unchanged tracks.
-
-Nothing changes until you apply the preview. Stable source track IDs and exact ISRCs retain safe
-automatic mappings and confirmed manual decisions where possible, including duplicate occurrences.
-New tracks return to MusicBrainz resolution. Every applied refresh stores before-and-after snapshots
-in the import's update history.
-
-Playlarr can also **Reuse mappings** from another import when both tracks have the same non-empty
-ISRC. You choose which proposed overrides to accept; stale Lidarr plans are superseded when accepted
-mappings change the import.
-
-## Documentation
-
-### Advanced configuration
-
-The complete supported environment-variable list and defaults live in [`.env.example`](.env.example).
-The important service variables are:
-
-- `MUSICBRAINZ_USER_AGENT` — required identifying contact information;
-- `SPOTIFY_CLIENT_ID` — required for Spotify imports;
-- `LIDARR_URL` and `LIDARR_API_KEY` — required for Lidarr operations;
-- `NAVIDROME_URL`, `NAVIDROME_USERNAME`, and `NAVIDROME_PASSWORD` — optional local additions.
-
-Local source checkouts default to `.data`, `output`, and `.secrets`. `DATA_DIR`, `OUTPUT_DIR`,
-`TIDAL_SESSION_FILE`, and `SPOTIFY_TOKEN_CACHE` override those paths. Container images set them to
-locations beneath `/config` and `/playlists`.
-
-Service values saved through Settings take precedence over `.env`. Storage paths, including the
-playlist output directory, remain deployment-owned so a saved UI value cannot break container
-mounts.
-
-### Spotify authentication
-
-Create a Spotify application and register the exact configured callback URI. It defaults to
-`http://127.0.0.1:8787/callback`; a headless Unraid deployment should use the externally reachable
-Playlarr URL ending in `/callback`.
-
-Spotify uses Authorization Code with PKCE, so no client secret is needed. The callback must be
-reachable from the browser performing authentication. Tokens default to
-`.secrets/spotify-token.json` locally and `/config/secrets/spotify-token.json` in the container.
-Background jobs use only a cached token and fail with an actionable authentication message instead
-of starting an interactive flow.
-
-### TIDAL authentication
-
-TIDAL uses device login and reuses the saved session file. Playlist folders are traversed
-recursively. The session defaults to `.secrets/tidal-session.json` locally and
-`/config/secrets/tidal-session.json` in the container.
-
-### Matching and Lidarr safety
-
-Automatic MusicBrainz resolution uses:
-
-- normalized ISRC lookup first;
-- title and primary-artist search only as a fallback;
-- guarded title-overlap and similarity thresholds;
-- remix, edit, and version-marker protection;
-- source-album-aware canonical release selection;
-- rate limiting and temporary-failure retries.
-
-Manual recording MBIDs are checked against artist, title, duration, ISRC, and release-group evidence
-before acceptance. Confirmed manual mappings are durable and are not replaced by later automation
-unless you explicitly clear them.
-
-Lidarr synchronization is additive. It does not monitor unrelated albums, sets new-item monitoring
-to `none`, never implicitly adds or changes Various Artists, reuses downloaded canonical releases,
-recognizes recording IDs and guarded alternate-version title matches, and avoids repeating searches
-when an approved plan is replayed. Execution always corresponds to an inspectable, approved plan.
-
-### Playlist generation
-
-M3U8 generation queries downloaded Lidarr files while retaining source order and duplicate
-occurrences. It then resolves saved local additions against Navidrome and appends them in their
-saved order. Missing Lidarr paths and unavailable Navidrome additions are skipped and counted as
-missing.
-
-Persisted path mappings translate library paths such as `/music` to a path visible to the playlist
-consumer, such as `/mnt/media/music`. Relative paths returned by Navidrome remain relative. The
-Final page displays the generated file path, exported-track count, and missing count.
-
-### CSV compatibility and reporting
-
-SQLite is Playlarr's primary state. CSV remains an interchange and diagnostic format. From the web
-UI you can:
-
-- import an existing `*_musicbrainz.csv` mapping;
-- export mapping and unresolved reports;
-- export matched and missing Lidarr reports;
-- export artist-impact and Lidarr-action reports.
-
-Existing report headers remain compatible; new metadata fields are appended where applicable.
-
-### Migrating existing installations
-
-Current containers use a single `/config` appdata mount:
-
-- `/config/data` contains `music-importer.db` and resumable workflow state;
-- `/config/secrets` contains Spotify and TIDAL authentication state.
-
-If an older installation still has separate `/data` and `/secrets` mounts, stop the container, move
-the old `/data` contents into `<config-host-path>/data`, move the old `/secrets` contents into
-`<config-host-path>/secrets`, replace both mounts with the single `/config` mount, and then start
-the updated container.
-
-For a previous local installation, copy `.data/music-importer.db` to
-`<config-host-path>/data/music-importer.db`. If its appdata uses an older directory name, keep that
-host-path override or migrate the directory to `/mnt/user/appdata/playlarr` while the container is
-stopped.
-
-### Security and maintenance
-
-Read [the security guide](docs/security.md) before exposing Playlarr beyond a trusted local network.
-Playlarr is distributed under the [MIT License](LICENSE).
-
-### For contributors and maintainers
-
-Development setup, architecture, tests, and
-contribution guidance are in [CONTRIBUTING.md](CONTRIBUTING.md). Release preparation and publishing
-are in [docs/releasing.md](docs/releasing.md).
-
-## Responsible use
-
-**Use Playlarr responsibly.** Playlarr connects playlist metadata from services such as Spotify and
-TIDAL to a user-controlled Lidarr installation. It does not supply music, rip audio, bypass DRM, or
-grant permission to download copyrighted material.
-
-The project does not condone piracy or any illegal ripping, copying, or downloading. Only acquire
-and use media you are legally entitled to access, and comply with applicable laws, copyright
-licenses, and each service's terms. You are solely responsible for how you configure and use
-Playlarr and the external services connected to it.
-
-Playlarr is not affiliated with Spotify, TIDAL, MusicBrainz, Lidarr, or Navidrome.
+- [Discord](https://go.nx.dev/community)
+- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
+- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
+- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)

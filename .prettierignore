@@ -1,0 +1,12 @@
+node_modules
+dist
+out
+out-tsc
+.next
+**/next-env.d.ts
+coverage
+reports
+test-output
+.nx
+pnpm-lock.yaml
+AGENTS.md
