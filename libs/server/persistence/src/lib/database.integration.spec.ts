@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { chmod, mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -140,15 +140,15 @@ describe('database integration', () => {
   });
 
   it('fails initialization when the database cannot be opened', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'playlarr-readonly-'));
-    await chmod(directory, 0o500);
-
-    const path = join(directory, 'playlarr.db');
+    const directory = await mkdtemp(join(tmpdir(), 'playlarr-invalid-'));
 
     try {
-      await expect(createDatabase({ path })).rejects.toThrow();
+      await expect(
+        createDatabase({
+          path: directory,
+        }),
+      ).rejects.toThrow();
     } finally {
-      await chmod(directory, 0o700);
       await rm(directory, {
         recursive: true,
         force: true,
