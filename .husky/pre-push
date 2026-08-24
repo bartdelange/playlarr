@@ -1,0 +1,1 @@
+pnpm exec nx affected -t lint typecheck test

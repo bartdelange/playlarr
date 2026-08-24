@@ -9,6 +9,7 @@ export default [
       '**/dist',
       '**/out-tsc',
       '**/test-output',
+      '**/src/generated/**',
       '**/vitest.config.*.timestamp*',
     ],
   },
