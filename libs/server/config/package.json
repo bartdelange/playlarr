@@ -1,6 +1,8 @@
 {
-  "name": "@playlarr/feature-home",
+  "name": "@playlarr/server-config",
   "version": "0.0.1",
+  "private": true,
+  "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -12,9 +14,9 @@
     "./package.json": "./package.json"
   },
   "nx": {
-    "name": "@playlarr/feature-home",
     "tags": [
-      "type:feature"
+      "type:domain"
     ]
-  }
+  },
+  "dependencies": {}
 }

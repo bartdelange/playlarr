@@ -12,7 +12,7 @@
     "./package.json": "./package.json"
   },
   "nx": {
-    "name": "feature-settings",
+    "name": "@playlarr/feature-settings",
     "tags": [
       "type:feature"
     ]

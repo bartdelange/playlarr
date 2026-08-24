@@ -35,6 +35,9 @@
     },
     {
       "path": "./libs/server/runtime"
+    },
+    {
+      "path": "./libs/server/config"
     }
   ]
 }

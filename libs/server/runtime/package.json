@@ -14,10 +14,13 @@
     "./package.json": "./package.json"
   },
   "nx": {
-    "name": "server-runtime",
+    "name": "@playlarr/server-runtime",
     "tags": [
       "type:runtime"
     ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "@playlarr/server-config": "workspace:*",
+    "@playlarr/server-persistence": "workspace:*"
+  }
 }

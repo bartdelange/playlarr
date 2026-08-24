@@ -1,1 +1,4 @@
-export * from './lib/server-runtime.js';
+export {
+  createPlaylarrRuntime,
+  type PlaylarrRuntime,
+} from './lib/playlarr-runtime.js';

@@ -11,14 +11,7 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    {
-      "path": "../persistence/tsconfig.lib.json"
-    },
-    {
-      "path": "../config/tsconfig.lib.json"
-    }
-  ],
+  "references": [],
   "exclude": [
     "vite.config.ts",
     "vite.config.mts",
