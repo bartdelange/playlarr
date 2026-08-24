@@ -48,7 +48,7 @@ jobs:
         uses: nrwl/nx-set-shas@v5
 
       - name: Validate GitHub Actions
-        run: pnpm exec nx run @playlarr/source:actionlint
+        run: pnpm exec nx run playlarr-workspace:actionlint
 
       - name: Check formatting
         run: pnpm exec nx format:check
