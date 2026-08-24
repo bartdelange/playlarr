@@ -58,3 +58,9 @@ out
 test-output
 
 vitest.config.*.timestamp*
+
+
+# App specifics
+*.db
+*.db-shm
+*.db-wal

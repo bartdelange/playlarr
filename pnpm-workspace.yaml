@@ -7,8 +7,11 @@ packages:
 autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': true
+  '@prisma/engines': true
   '@swc/core': true
+  better-sqlite3: true
   less: true
   nx: true
+  prisma: true
   sharp: true
   unrs-resolver: true
