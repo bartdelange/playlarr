@@ -1,0 +1,17 @@
+packages:
+  - 'apps/*'
+  - 'libs/components/*'
+  - 'libs/features/*'
+  - 'libs/lib/*'
+  - 'libs/server/*'
+autoInstallPeers: true
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  '@swc/core': true
+  better-sqlite3: true
+  less: true
+  nx: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true

@@ -1,0 +1,96 @@
+name: Feature request
+description: Suggest a new capability or improvement for Playlarr.
+title: '[Feature]: '
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement to Playlarr.
+
+        Please describe the problem or outcome first rather than jumping directly to an implementation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the limitation, workflow problem, or missing capability.
+      placeholder: |
+        As a Playlarr user, I want ...
+        so that ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe what you would expect Playlarr to do.
+      placeholder: Describe the behaviour from the user's perspective.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Spotify
+        - TIDAL
+        - Lidarr
+        - MusicBrainz matching
+        - Navidrome
+        - Playlist generation / M3U8
+        - CSV export
+        - Imports / acquisition
+        - Authentication
+        - Web interface
+        - Worker / background processing
+        - Database / persistence
+        - Docker
+        - Unraid
+        - Developer experience
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Functional requirements
+      description: What must be true for this feature to be considered complete?
+      placeholder: |
+        - Playlarr should ...
+        - The user should be able to ...
+        - Existing ... behaviour should remain unchanged.
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Possible implementation
+      description: |
+        Optional. If you have ideas about how this could be implemented, describe them here.
+        The requested outcome matters more than a specific technical solution.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Are there existing workarounds or alternative approaches?
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Mockups, links, screenshots, examples, related issues, or other useful context.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find an existing request covering this feature.
+          required: true

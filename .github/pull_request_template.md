@@ -1,33 +1,100 @@
-## Summary
+## What does this change?
 
-<!-- Describe the problem and resulting behavior, not a file-by-file change log. -->
+<!--
+Briefly explain what this PR changes and why.
+Focus on the user-visible or architectural outcome rather than listing files.
+-->
 
--
+## Related issue
 
-## Changes
+<!-- Use "Closes #123", "Fixes #123", etc. where applicable. -->
 
--
+Closes #
 
-## Validation
+## Type of change
 
-- [ ] Formatting (`uv run ruff format --check src tests scripts`)
-- [ ] Linting (`uv run ruff check src tests scripts`)
-- [ ] Unit tests (`uv run python -m unittest discover -s tests -v`)
-- [ ] Package build (`uv build`)
-- [ ] Manual testing, when applicable
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Refactor
+- [ ] Documentation
+- [ ] Tests
+- [ ] Build / CI / tooling
+- [ ] Dependency update
+- [ ] Other
 
-## Persistence and configuration
+## Implementation notes
 
-<!-- Describe schema migrations, environment changes, or deployment steps. Write "None" if absent. -->
+<!--
+Explain anything reviewers should understand about the implementation.
 
-None
+Especially call out changes involving:
+- Spotify or TIDAL integrations
+- Lidarr / MusicBrainz matching
+- Navidrome
+- playlist ordering or duplicate preservation
+- persistence / SQLite schema
+- background processing or SSE
+- authentication / security
+- Docker / Unraid behavior
+-->
 
-## Breaking changes
+## Behaviour
 
-<!-- Describe incompatible behavior, API, schema, configuration, or deployment changes. -->
+### Before
 
-None
+<!-- What happened before this change? -->
 
-## Notes
+### After
 
-<!-- Record important decisions, limitations, screenshots, or follow-up work. Remove if unnecessary. -->
+<!-- What happens now? -->
+
+## Testing
+
+<!--
+Describe how this was verified.
+-->
+
+- [ ] Unit tests added or updated
+- [ ] Integration tests added or updated
+- [ ] End-to-end tests added or updated
+- [ ] Tested manually
+- [ ] Existing tests cover the change
+
+### Manual verification
+
+<!-- Steps someone else can use to verify the change. -->
+
+1.
+2.
+3.
+
+## Quality checks
+
+- [ ] Type checking passes
+- [ ] Linting passes
+- [ ] Formatting passes
+- [ ] Relevant tests pass
+- [ ] Production build passes
+
+## Compatibility
+
+<!-- Check all that apply. -->
+
+- [ ] No database migration required
+- [ ] Existing SQLite data remains compatible
+- [ ] Existing configuration remains compatible
+- [ ] Docker deployment remains compatible
+- [ ] Unraid deployment remains compatible
+- [ ] No breaking API or behaviour changes
+
+<!--
+If any item above cannot be checked, explain why below.
+-->
+
+## Screenshots
+
+<!-- Include before/after screenshots for meaningful UI changes. Remove if not applicable. -->
+
+## Additional notes
+
+<!-- Anything else reviewers should know. -->

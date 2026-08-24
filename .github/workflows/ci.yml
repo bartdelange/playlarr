@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  main:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.23.0
+          run_install: false
+
+      # Enable after connecting the workspace to Nx Cloud.
+      # - name: Start Nx Cloud CI run
+      #   run: pnpm exec nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="e2e-ci"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Determine Nx affected SHAs
+        uses: nrwl/nx-set-shas@v5
+
+      - name: Validate GitHub Actions
+        run: pnpm exec nx run @playlarr/source:actionlint
+
+      - name: Check formatting
+        run: pnpm exec nx format:check
+
+      - name: Validate affected projects
+        run: pnpm exec nx affected -t lint test build typecheck e2e
+
+      - name: Run Nx CI fixes
+        if: always()
+        run: pnpm exec nx fix-ci
