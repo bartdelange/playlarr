@@ -33,20 +33,32 @@ export default [
           allow: [],
           depConstraints: [
             {
+              sourceTag: 'type:config',
+              onlyDependOnLibsWithTags: ['type:config'],
+            },
+            {
               sourceTag: 'type:domain',
               onlyDependOnLibsWithTags: ['type:domain'],
             },
             {
               sourceTag: 'type:ui',
-              onlyDependOnLibsWithTags: ['type:ui', 'type:domain'],
+              onlyDependOnLibsWithTags: ['type:ui'],
             },
             {
               sourceTag: 'type:provider',
-              onlyDependOnLibsWithTags: ['type:provider', 'type:domain'],
+              onlyDependOnLibsWithTags: [
+                'type:provider',
+                'type:domain',
+                'type:config',
+              ],
             },
             {
               sourceTag: 'type:persistence',
-              onlyDependOnLibsWithTags: ['type:persistence', 'type:domain'],
+              onlyDependOnLibsWithTags: [
+                'type:persistence',
+                'type:domain',
+                'type:config',
+              ],
             },
             {
               sourceTag: 'type:command',
@@ -55,6 +67,7 @@ export default [
                 'type:domain',
                 'type:provider',
                 'type:persistence',
+                'type:config',
               ],
             },
             {
@@ -65,6 +78,7 @@ export default [
                 'type:domain',
                 'type:provider',
                 'type:persistence',
+                'type:config',
               ],
             },
             {
@@ -82,6 +96,7 @@ export default [
                 'type:ui',
                 'type:domain',
                 'type:runtime',
+                'type:config',
               ],
             },
           ],

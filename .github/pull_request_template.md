@@ -1,3 +1,14 @@
+<!--
+PR titles must follow the same convention as commit messages:
+
+<gitmoji> <type>(<optional-scope>): <subject>
+
+Examples:
+✨ feat(runtime): Create app host
+🐛 fix: Handle startup failure
+🔧 chore(repo): Validate pull request titles
+-->
+
 ## What does this change?
 
 <!--

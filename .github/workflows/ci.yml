@@ -25,7 +25,6 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 11.23.0
           run_install: false
 
       # Enable after connecting the workspace to Nx Cloud.
@@ -48,7 +47,7 @@ jobs:
         uses: nrwl/nx-set-shas@v5
 
       - name: Validate GitHub Actions
-        run: pnpm exec nx run @playlarr/source:actionlint
+        run: pnpm exec nx run playlarr-workspace:actionlint
 
       - name: Check formatting
         run: pnpm exec nx format:check

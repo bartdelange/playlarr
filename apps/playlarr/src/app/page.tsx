@@ -397,7 +397,7 @@ export default function Index() {
                 </svg>
                 View project details
               </summary>
-              <pre>nx show project @playlarr/playlarr --web</pre>
+              <pre>nx show project @playlarr/web --web</pre>
             </details>
             <details>
               <summary>
