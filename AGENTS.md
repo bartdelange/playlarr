@@ -85,8 +85,8 @@ Typical repository-wide validation is:
 
 ```bash
 pnpm nx run-many -t lint,typecheck,test
-pnpm nx run @playlarr/playlarr:build
-pnpm nx run @playlarr/playlarr-e2e:e2e
+pnpm nx run @playlarr/web:build
+pnpm nx run @playlarr/web-e2e:e2e
 pnpm nx format:check
 ```
 
