@@ -34,9 +34,6 @@
       "path": "./libs/server/commands"
     },
     {
-      "path": "./libs/server/runtime"
-    },
-    {
       "path": "./libs/server/config"
     }
   ]
