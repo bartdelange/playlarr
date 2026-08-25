@@ -4,9 +4,9 @@ PR titles must follow the same convention as commit messages:
 <gitmoji> <type>(<optional-scope>): <subject>
 
 Examples:
-✨ feat(runtime): create app host
-🐛 fix: handle startup failure
-🔧 chore(repo): validate pull request titles
+✨ feat(runtime): Create app host
+🐛 fix: Handle startup failure
+🔧 chore(repo): Validate pull request titles
 -->
 
 ## What does this change?
