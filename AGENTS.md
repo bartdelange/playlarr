@@ -14,29 +14,18 @@ Current architectural areas are:
 
 ```text
 apps/
-  playlarr/
-  playlarr-e2e/
+  web/
+  web-e2e/
+  server/
 
 libs/
-  components/
-    ui/
-  features/
-    home/
-    imports/
-    settings/
-  lib/
-    domain/
-  server/
-    providers/
-    persistence/
-    commands/
-    runtime/
+  /
 ```
 
 The intended ownership is:
 
-- `apps/playlarr` — Next.js routing, layouts, framework-specific entrypoints, and application composition
-- `apps/playlarr-e2e` — Playwright end-to-end tests
+- `apps/web` — Next.js routing, layouts, framework-specific entrypoints, and application composition
+- `apps/web-e2e` — Playwright end-to-end tests
 - `libs/components/ui` — generic reusable React UI
 - `libs/features/*` — user-facing feature implementation and feature-specific presentation logic
 - `libs/lib/domain` — framework-independent Playlarr domain models and business rules
@@ -192,7 +181,7 @@ Avoid compressing unrelated logical phases into one uninterrupted block.
 
 ## UI and feature organization
 
-Keep `apps/playlarr/src/app` intentionally small.
+Keep `apps/web/src/app` intentionally small.
 
 Route files should primarily:
 
