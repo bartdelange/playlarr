@@ -3,8 +3,13 @@
   "version": "0.0.1",
   "private": true,
   "nx": {
+    "tags": [
+      "type:e2e",
+      "platform:web"
+    ],
     "implicitDependencies": [
-      "@playlarr/web"
+      "@playlarr/web",
+      "@playlarr/server"
     ]
   }
 }

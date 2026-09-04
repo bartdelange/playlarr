@@ -1,0 +1,50 @@
+{
+  "name": "@playlarr/shared-database",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "tags": [
+      "type:infrastructure",
+      "platform:server",
+      "scope:shared"
+    ],
+    "targets": {
+      "migration:create": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "pnpm --filter @playlarr/shared-database exec mikro-orm migration:create --config libs/shared/database/mikro-orm.config.ts"
+        }
+      },
+      "migration:check": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "pnpm --filter @playlarr/shared-database exec mikro-orm migration:check --config libs/shared/database/mikro-orm.config.ts"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@mikro-orm/core": "^7.1.13",
+    "@mikro-orm/decorators": "^7.1.13",
+    "@mikro-orm/migrations": "^7.1.13",
+    "@mikro-orm/nestjs": "^7.0.2",
+    "@mikro-orm/sqlite": "^7.1.13",
+    "@nestjs/common": "^11.2.1",
+    "@nestjs/config": "^4.0.4",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@mikro-orm/cli": "^7.1.13"
+  }
+}

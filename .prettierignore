@@ -11,6 +11,5 @@ test-output
 pnpm-lock.yaml
 AGENTS.md
 
-
-# Generated Prisma client
-libs/server/persistence/src/generated/prisma/
+# MikroORM generated migration snapshots
+**/.snapshot-*.json

@@ -1,2 +1,4 @@
+echo "=== Checking format ==="
 pnpm exec nx format:check
-pnpm exec nx affected -t lint typecheck
+echo "=== Running lint & typecheck ==="
+pnpm exec nx affected -t lint typecheck --outputStyle=static --nxBail

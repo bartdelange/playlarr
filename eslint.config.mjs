@@ -33,52 +33,46 @@ export default [
           allow: [],
           depConstraints: [
             {
-              sourceTag: 'type:config',
-              onlyDependOnLibsWithTags: ['type:config'],
+              sourceTag: 'platform:web',
+              onlyDependOnLibsWithTags: ['platform:web', 'platform:shared'],
             },
             {
-              sourceTag: 'type:domain',
-              onlyDependOnLibsWithTags: ['type:domain'],
+              sourceTag: 'platform:server',
+              onlyDependOnLibsWithTags: ['platform:server', 'platform:shared'],
+            },
+            {
+              sourceTag: 'platform:shared',
+              onlyDependOnLibsWithTags: ['platform:shared'],
+            },
+
+            {
+              sourceTag: 'type:app',
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:domain',
+                'type:contracts',
+                'type:config',
+                'type:infrastructure',
+                'type:persistence',
+              ],
+            },
+            {
+              sourceTag: 'type:e2e',
+              onlyDependOnLibsWithTags: [
+                'type:app',
+                'type:feature',
+                'type:ui',
+                'type:domain',
+                'type:contracts',
+              ],
             },
             {
               sourceTag: 'type:ui',
-              onlyDependOnLibsWithTags: ['type:ui'],
-            },
-            {
-              sourceTag: 'type:provider',
               onlyDependOnLibsWithTags: [
-                'type:provider',
+                'type:ui',
                 'type:domain',
-                'type:config',
-              ],
-            },
-            {
-              sourceTag: 'type:persistence',
-              onlyDependOnLibsWithTags: [
-                'type:persistence',
-                'type:domain',
-                'type:config',
-              ],
-            },
-            {
-              sourceTag: 'type:command',
-              onlyDependOnLibsWithTags: [
-                'type:command',
-                'type:domain',
-                'type:provider',
-                'type:persistence',
-                'type:config',
-              ],
-            },
-            {
-              sourceTag: 'type:runtime',
-              onlyDependOnLibsWithTags: [
-                'type:runtime',
-                'type:command',
-                'type:domain',
-                'type:provider',
-                'type:persistence',
-                'type:config',
+                'type:contracts',
               ],
             },
             {
@@ -87,17 +81,35 @@ export default [
                 'type:feature',
                 'type:ui',
                 'type:domain',
+                'type:contracts',
+                'type:persistence',
+                'type:infrastructure',
               ],
             },
             {
-              sourceTag: 'type:app',
+              sourceTag: 'type:persistence',
               onlyDependOnLibsWithTags: [
-                'type:feature',
-                'type:ui',
+                'type:persistence',
                 'type:domain',
-                'type:runtime',
-                'type:config',
+                'type:contracts',
+                'type:infrastructure',
               ],
+            },
+            {
+              sourceTag: 'type:infrastructure',
+              onlyDependOnLibsWithTags: ['type:infrastructure', 'type:config'],
+            },
+            {
+              sourceTag: 'type:domain',
+              onlyDependOnLibsWithTags: ['type:domain', 'type:contracts'],
+            },
+            {
+              sourceTag: 'type:contracts',
+              onlyDependOnLibsWithTags: ['type:contracts'],
+            },
+            {
+              sourceTag: 'type:config',
+              onlyDependOnLibsWithTags: ['type:config', 'type:contracts'],
             },
           ],
         },

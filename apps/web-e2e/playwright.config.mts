@@ -1,10 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 import { nxE2EPreset } from '@nx/playwright/preset';
 import { workspaceRoot } from '@nx/devkit';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-// For CI, you may want to set BASE_URL to the deployed application.
-const baseURL = process.env['BASE_URL'] || 'http://localhost:3000';
+const webHost = '127.0.0.1';
+const webPort = 3000;
 
+const serverHost = '127.0.0.1';
+const serverPort = 3001;
+
+const baseURL = process.env['BASE_URL'] ?? `http://${webHost}:${webPort}`;
+
+const e2eDatabasePath = join(tmpdir(), 'playlarr-e2e.sqlite');
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -29,13 +37,32 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
+  globalSetup: './src/global-setup.ts',
   /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'pnpm exec nx run @playlarr/web:dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    cwd: workspaceRoot,
-  },
+  webServer: [
+    {
+      command:
+        'pnpm exec nx run @playlarr/server:serve --watch=false --inspect=false',
+      url: `http://${serverHost}:${serverPort}/api/health`,
+      reuseExistingServer: !process.env.CI,
+      cwd: workspaceRoot,
+      env: {
+        PLAYLARR_SERVER_HOST: serverHost,
+        PLAYLARR_SERVER_PORT: String(serverPort),
+        PLAYLARR_DATABASE_PATH: e2eDatabasePath,
+      },
+    },
+    {
+      command: 'pnpm exec nx run @playlarr/web:dev',
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+      cwd: workspaceRoot,
+      env: {
+        PLAYLARR_SERVER_HOST: serverHost,
+        PLAYLARR_SERVER_PORT: String(serverPort),
+      },
+    },
+  ],
   projects: [
     {
       name: 'chromium',

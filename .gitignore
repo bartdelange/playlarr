@@ -5,6 +5,9 @@ dist
 tmp
 out-tsc
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # dependencies
 node_modules
 
@@ -59,10 +62,15 @@ test-output
 
 vitest.config.*.timestamp*
 
+.nx/polygraph
+
+# Playlarr runtime data
+/data/
 
 # App specifics
 *.db
 *.db-shm
 *.db-wal
-
-.nx/polygraph
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

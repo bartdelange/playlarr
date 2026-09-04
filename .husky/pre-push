@@ -1,1 +1,2 @@
-pnpm exec nx affected -t lint typecheck test
+echo "=== Running lint, typecheck & test ==="
+pnpm exec nx affected -t lint typecheck test --outputStyle=static --nxBail

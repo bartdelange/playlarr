@@ -4,6 +4,7 @@ packages:
   - 'libs/features/*'
   - 'libs/lib/*'
   - 'libs/server/*'
+  - 'libs/shared/*'
 autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': true
@@ -15,3 +16,4 @@ allowBuilds:
   prisma: true
   sharp: true
   unrs-resolver: true
+  '@nestjs/core': false
