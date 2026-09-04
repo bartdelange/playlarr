@@ -43,7 +43,7 @@ export default defineConfig({
     {
       command: 'pnpm exec nx run @playlarr/server:serve',
       url: `http://${serverHost}:${serverPort}/api/health`,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       cwd: workspaceRoot,
       env: {
         PLAYLARR_SERVER_HOST: serverHost,
@@ -54,7 +54,7 @@ export default defineConfig({
     {
       command: 'pnpm exec nx run @playlarr/web:dev',
       url: baseURL,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       cwd: workspaceRoot,
       env: {
         PLAYLARR_SERVER_HOST: serverHost,
