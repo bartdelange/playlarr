@@ -22,9 +22,7 @@
     {
       "plugin": "@nx/js/typescript",
       "options": {
-        "typecheck": {
-          "targetName": "typecheck"
-        },
+        "typecheck": { "targetName": "typecheck" },
         "build": {
           "targetName": "build",
           "configName": "tsconfig.lib.json",
@@ -44,18 +42,8 @@
         "watchDepsTargetName": "watch-deps"
       }
     },
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "lint"
-      }
-    },
-    {
-      "plugin": "@nx/playwright/plugin",
-      "options": {
-        "targetName": "e2e"
-      }
-    },
+    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" } },
+    { "plugin": "@nx/playwright/plugin", "options": { "targetName": "e2e" } },
     {
       "plugin": "@nx/vitest",
       "options": {
@@ -77,17 +65,8 @@
     }
   ],
   "generators": {
-    "@nx/next": {
-      "application": {
-        "style": "css",
-        "linter": "eslint"
-      }
-    },
-    "@nx/react": {
-      "library": {
-        "unitTestRunner": "vitest"
-      }
-    }
+    "@nx/next": { "application": { "style": "css", "linter": "eslint" } },
+    "@nx/react": { "library": { "unitTestRunner": "vitest" } }
   },
   "targetDefaults": {
     "actionlint": {
@@ -104,7 +83,6 @@
       "outputs": ["{projectRoot}/test-output/vitest"]
     }
   },
-  "affected": {
-    "defaultBase": "master"
-  }
+  "affected": { "defaultBase": "master" },
+  "nxCloudId": "6a8af296ebe13be7a2363265"
 }
