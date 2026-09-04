@@ -41,7 +41,8 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: [
     {
-      command: 'pnpm exec nx run @playlarr/server:serve',
+      command:
+        'pnpm exec nx run @playlarr/server:serve --watch=false --inspect=false',
       url: `http://${serverHost}:${serverPort}/api/health`,
       reuseExistingServer: !process.env.CI,
       cwd: workspaceRoot,
