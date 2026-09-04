@@ -45,7 +45,7 @@ export default defineConfig({
       env: {
         PLAYLARR_SERVER_HOST: serverHost,
         PLAYLARR_SERVER_PORT: String(serverPort),
-        PLAYLARR_DATABASE_PATH: 'apps/playlarr-e2e/test-output/e2e.sqlite',
+        PLAYLARR_DATABASE_PATH: 'apps/web-e2e/test-output/e2e.sqlite',
       },
     },
     {
