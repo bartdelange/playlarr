@@ -16,7 +16,7 @@ describe('Playlarr server', () => {
   beforeAll(async () => {
     directory = await mkdtemp(join(tmpdir(), 'playlarr-server-'));
 
-    vi.stubEnv('PLAYLARR_DATABASE_PATH', join(directory, 'playlarr.sqlite'));
+    vi.stubEnv('PLAYLARR_DATABASE_PATH', join(directory, 'playlarr.d'));
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
