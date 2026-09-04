@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { MikroORM } from '@mikro-orm/core';
 import { SqliteDriver } from '@mikro-orm/sqlite';
+import { configureSqlite } from './database.bootstrap';
 
 @Injectable()
 export class DatabaseLifecycle implements OnApplicationBootstrap {
@@ -11,11 +12,7 @@ export class DatabaseLifecycle implements OnApplicationBootstrap {
   async onApplicationBootstrap(): Promise<void> {
     this.logger.log('Configuring SQLite');
 
-    const connection = this.orm.em.getConnection();
-
-    await connection.execute('PRAGMA foreign_keys = ON');
-    await connection.execute('PRAGMA journal_mode = WAL');
-    await connection.execute('PRAGMA busy_timeout = 5000');
+    await configureSqlite(this.orm);
 
     this.logger.log('Running pending database migrations');
 
