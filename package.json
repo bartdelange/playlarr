@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.23.0",
   "scripts": {
     "prepare": "husky",
+    "dev": "nx run-many -t dev,serve --projects=@playlarr/web,@playlarr/server --parallel",
     "actionlint": "github-actionlint",
     "format": "nx format:write --all",
     "format:check": "nx format:check --all"

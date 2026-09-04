@@ -12,7 +12,7 @@ export interface AppConfig {
 
 export const appConfig = registerAs('app', (): AppConfig => ({
   database: {
-    path: process.env['PLAYLARR_DATABASE_PATH'] ?? './data/playlarr.sqlite',
+    path: process.env['PLAYLARR_DATABASE_PATH'] ?? './data/playlarr.db',
   },
   server: {
     host: process.env['PLAYLARR_SERVER_HOST'] ?? '0.0.0.0',
