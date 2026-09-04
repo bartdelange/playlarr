@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import { nxE2EPreset } from '@nx/playwright/preset';
 import { workspaceRoot } from '@nx/devkit';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const webHost = '127.0.0.1';
 const webPort = 3000;
@@ -10,6 +12,7 @@ const serverPort = 3001;
 
 const baseURL = process.env['BASE_URL'] ?? `http://${webHost}:${webPort}`;
 
+const e2eDatabasePath = join(tmpdir(), 'playlarr-e2e.sqlite');
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -45,7 +48,7 @@ export default defineConfig({
       env: {
         PLAYLARR_SERVER_HOST: serverHost,
         PLAYLARR_SERVER_PORT: String(serverPort),
-        PLAYLARR_DATABASE_PATH: 'apps/web-e2e/test-output/e2e.sqlite',
+        PLAYLARR_DATABASE_PATH: e2eDatabasePath,
       },
     },
     {
