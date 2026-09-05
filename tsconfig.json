@@ -17,6 +17,15 @@
     },
     {
       "path": "./libs/commands/domain"
+    },
+    {
+      "path": "./libs/commands/persistence"
+    },
+    {
+      "path": "./libs/commands/server"
+    },
+    {
+      "path": "./libs/sample-command/server"
     }
   ]
 }

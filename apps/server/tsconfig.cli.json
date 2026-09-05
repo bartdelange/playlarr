@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "emitDeclarationOnly": false,
+    "noEmit": true
+  },
+  "include": ["mikro-orm.config.ts"],
+  "references": [
+    {
+      "path": "../../libs/shared/database/tsconfig.lib.json"
+    }
+  ]
+}

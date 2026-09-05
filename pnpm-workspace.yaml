@@ -6,6 +6,8 @@ packages:
   - 'libs/server/*'
   - 'libs/shared/*'
   - 'libs/commands/*'
+  - 'libs/commands/domain/src/lib/libs/commands/*'
+  - 'libs/sample-command/*'
 autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': true
