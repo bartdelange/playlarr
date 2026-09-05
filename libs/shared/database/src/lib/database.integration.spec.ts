@@ -36,7 +36,7 @@ describe('database integration', () => {
 
     const lifecycle = new DatabaseLifecycle(orm);
 
-    await lifecycle.onApplicationBootstrap();
+    await lifecycle.onModuleInit();
 
     return {
       path,

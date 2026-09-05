@@ -14,7 +14,10 @@ import { DatabaseLifecycle } from './database.lifecycle';
       useFactory: (config: ConfigService) => {
         const databasePath = config.getOrThrow<string>('app.database.path');
 
-        return createDatabaseConfig(databasePath);
+        return {
+          ...createDatabaseConfig(databasePath),
+          autoLoadEntities: true,
+        };
       },
     }),
   ],

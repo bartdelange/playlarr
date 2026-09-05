@@ -1,15 +1,15 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MikroORM } from '@mikro-orm/core';
 import { SqliteDriver } from '@mikro-orm/sqlite';
 import { configureSqlite } from './database.bootstrap';
 
 @Injectable()
-export class DatabaseLifecycle implements OnApplicationBootstrap {
+export class DatabaseLifecycle implements OnModuleInit {
   private readonly logger = new Logger(DatabaseLifecycle.name);
 
   constructor(private readonly orm: MikroORM<SqliteDriver>) {}
 
-  async onApplicationBootstrap(): Promise<void> {
+  async onModuleInit(): Promise<void> {
     this.logger.log('Configuring SQLite');
 
     await configureSqlite(this.orm);
