@@ -265,6 +265,12 @@ importers:
 
   apps/web-e2e: {}
 
+  libs/commands/domain:
+    dependencies:
+      tslib:
+        specifier: ^2.3.0
+        version: 2.8.1
+
   libs/shared/database:
     dependencies:
       '@mikro-orm/core':

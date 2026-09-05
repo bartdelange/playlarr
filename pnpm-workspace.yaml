@@ -5,6 +5,7 @@ packages:
   - 'libs/lib/*'
   - 'libs/server/*'
   - 'libs/shared/*'
+  - 'libs/commands/*'
 autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': true
