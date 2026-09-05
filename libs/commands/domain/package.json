@@ -17,7 +17,7 @@
   "nx": {
     "tags": [
       "type:domain",
-      "scope:commands"
+      "platform:server"
     ]
   },
   "dependencies": {
