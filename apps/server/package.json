@@ -104,6 +104,7 @@
   },
   "devDependencies": {
     "@mikro-orm/cli": "^7.1.13",
+    "@mikro-orm/sqlite": "^7.1.13",
     "@nestjs/testing": "^11.2.1",
     "@playlarr/commands-persistence": "workspace:*",
     "@playlarr/commands-server": "workspace:*",

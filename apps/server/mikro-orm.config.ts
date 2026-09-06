@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import type { Options } from '@mikro-orm/sqlite';
 import { createDatabaseConfig } from '@playlarr/shared-database';
 
 const databasePath = process.env['PLAYLARR_DATABASE_PATH'];
@@ -10,16 +11,23 @@ if (!databasePath) {
   );
 }
 
-const config = createDatabaseConfig(databasePath);
+const baseConfig = createDatabaseConfig(databasePath);
 
-export default {
-  ...config,
+const config: Partial<Options> = {
+  ...baseConfig,
 
-  baseDir: '../../',
-
-  entities: ['dist/libs/**/persistence/**/*.entity.js'],
-
-  entitiesTs: ['libs/**/persistence/src/**/*.entity.ts'],
-
+  baseDir: '../..',
   preferTs: true,
+
+  entities: [
+    'dist/libs/**/persistence/**/*.entity.js',
+    'libs/shared/database/src/lib/entities/**/*.entity.ts',
+  ],
+
+  entitiesTs: [
+    'libs/**/persistence/src/**/*.entity.ts',
+    'libs/shared/database/src/lib/entities/**/*.entity.ts',
+  ],
 };
+
+export default config;
