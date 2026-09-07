@@ -63,7 +63,7 @@ describe('CommandProcessor', () => {
   });
 
   afterEach(async () => {
-    processor.onApplicationShutdown();
+    await processor.onApplicationShutdown();
 
     await orm.close(true);
 
@@ -312,9 +312,11 @@ describe('CommandProcessor', () => {
 
     const second = await repository.create('test.blocking', {});
 
-    processor.onApplicationShutdown();
+    const shutdown = processor.onApplicationShutdown();
 
     release();
+
+    await shutdown;
 
     await waitFor(async () => {
       const result = await repository.findById(first.id);

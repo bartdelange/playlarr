@@ -3,6 +3,8 @@ import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 import { Migrator } from '@mikro-orm/migrations';
 import { defineConfig, SqliteDriver } from '@mikro-orm/sqlite';
 
+import { RuntimeMetadataEntity } from './entities/runtime-metadata.entity.js';
+
 const migrationsPath = join(__dirname, 'migrations');
 
 export const createDatabaseConfig = (databasePath: string) =>
@@ -10,13 +12,15 @@ export const createDatabaseConfig = (databasePath: string) =>
     driver: SqliteDriver,
     dbName: databasePath,
 
+    entities: [RuntimeMetadataEntity],
+
     metadataProvider: ReflectMetadataProvider,
 
     extensions: [Migrator],
 
     migrations: {
       path: migrationsPath,
-      pathTs: 'libs/shared/database/src/lib/migrations',
+      pathTs: migrationsPath,
       transactional: true,
       allOrNothing: true,
       dropTables: false,

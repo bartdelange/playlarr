@@ -76,6 +76,7 @@ export class CommandRepository {
       { id, status: 'running' },
       {
         status: 'failed',
+        error,
         completedAt: now,
         updatedAt: now,
       },
@@ -114,6 +115,8 @@ export class CommandRepository {
         );
 
         if (claimed === 1) {
+          tx.clear();
+
           return tx.findOneOrFail(CommandEntity, {
             id: candidate.id,
           });

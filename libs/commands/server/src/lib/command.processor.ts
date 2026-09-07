@@ -16,14 +16,15 @@ export class CommandProcessor
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
   private subscription?: Subscription;
+  private processingPromise?: Promise<void>;
   private processing = false;
   private stopping = false;
+  private readonly fallbackIntervalMs = FALLBACK_INTERVAL_MS;
 
   constructor(
     private readonly repository: CommandRepository,
     private readonly registry: CommandHandlerRegistry,
     private readonly wakeSignal: CommandWakeSignal,
-    private readonly fallbackIntervalMs = FALLBACK_INTERVAL_MS,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -33,13 +34,25 @@ export class CommandProcessor
       this.wakeSignal.wake$,
       timer(0, this.fallbackIntervalMs).pipe(map(() => undefined)),
     ).subscribe(() => {
-      void this.processAvailable();
+      this.startProcessing();
     });
   }
 
-  onApplicationShutdown(): void {
+  async onApplicationShutdown(): Promise<void> {
     this.stopping = true;
     this.subscription?.unsubscribe();
+
+    await this.processingPromise;
+  }
+
+  private startProcessing(): void {
+    if (this.processing || this.stopping) {
+      return;
+    }
+
+    this.processingPromise = this.processAvailable().finally(() => {
+      this.processingPromise = undefined;
+    });
   }
 
   private async processAvailable(): Promise<void> {

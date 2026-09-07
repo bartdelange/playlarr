@@ -2,8 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "types": ["node"],
-    "emitDeclarationOnly": false,
-    "noEmit": true
+    "outDir": "./dist/cli",
+    "emitDeclarationOnly": true
   },
   "include": ["mikro-orm.config.ts"],
   "references": [

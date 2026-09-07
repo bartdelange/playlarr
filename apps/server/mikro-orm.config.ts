@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 import 'reflect-metadata';
 
 import type { Options } from '@mikro-orm/sqlite';
@@ -19,15 +21,17 @@ const config: Partial<Options> = {
   baseDir: '../..',
   preferTs: true,
 
-  entities: [
-    'dist/libs/**/persistence/**/*.entity.js',
-    'libs/shared/database/src/lib/entities/**/*.entity.ts',
-  ],
+  entities: [...(baseConfig.entities ?? []), 'dist/libs/**/*.entity.js'],
 
-  entitiesTs: [
-    'libs/**/persistence/src/**/*.entity.ts',
-    'libs/shared/database/src/lib/entities/**/*.entity.ts',
-  ],
+  entitiesTs: ['libs/**/*.entity.ts'],
+
+  migrations: {
+    ...baseConfig.migrations,
+    pathTs: resolve(
+      process.cwd(),
+      '../../libs/shared/database/src/lib/migrations',
+    ),
+  },
 };
 
 export default config;
