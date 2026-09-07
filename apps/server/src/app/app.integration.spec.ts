@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -143,5 +143,40 @@ describe('Playlarr server', () => {
       status: 'failed',
       error: 'Intentional sample failure',
     });
+  });
+
+  it('fails startup when the database cannot be initialized', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'playlarr-server-failure-'));
+
+    const notADirectory = join(directory, 'not-a-directory');
+
+    await writeFile(notADirectory, 'this is a file');
+
+    vi.stubEnv('PLAYLARR_DATABASE_PATH', join(notADirectory, 'playlarr.db'));
+
+    try {
+      await expect(
+        (async () => {
+          const moduleRef = await Test.createTestingModule({
+            imports: [AppModule],
+          }).compile();
+
+          const failingApp = moduleRef.createNestApplication();
+
+          try {
+            await failingApp.init();
+          } finally {
+            await failingApp.close();
+          }
+        })(),
+      ).rejects.toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+
+      await rm(directory, {
+        recursive: true,
+        force: true,
+      });
+    }
   });
 });
