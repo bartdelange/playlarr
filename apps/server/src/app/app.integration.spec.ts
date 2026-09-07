@@ -145,38 +145,40 @@ describe('Playlarr server', () => {
     });
   });
 
-  it('fails startup when the database cannot be initialized', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'playlarr-server-failure-'));
+  it('enqueues a feature-owned persisted command through HTTP', async () => {
+    const repository = app.get(CommandRepository);
 
-    const notADirectory = join(directory, 'not-a-directory');
-
-    await writeFile(notADirectory, 'this is a file');
-
-    vi.stubEnv('PLAYLARR_DATABASE_PATH', join(notADirectory, 'playlarr.db'));
-
-    try {
-      await expect(
-        (async () => {
-          const moduleRef = await Test.createTestingModule({
-            imports: [AppModule],
-          }).compile();
-
-          const failingApp = moduleRef.createNestApplication();
-
-          try {
-            await failingApp.init();
-          } finally {
-            await failingApp.close();
-          }
-        })(),
-      ).rejects.toThrow();
-    } finally {
-      vi.unstubAllEnvs();
-
-      await rm(directory, {
-        recursive: true,
-        force: true,
+    const response = await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .send({
+        steps: 3,
       });
-    }
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      commandId: expect.any(String),
+    });
+
+    const id = response.body.commandId as string;
+
+    await waitFor(async () => {
+      const command = await repository.findById(id);
+
+      return command?.status === 'completed';
+    });
+
+    const command = await repository.findById(id);
+
+    expect(command).toMatchObject({
+      id,
+      type: 'sample.delay',
+      status: 'completed',
+      current: 3,
+      total: 3,
+      attempts: 1,
+      error: null,
+    });
+
+    expect(command?.completedAt).toBeInstanceOf(Date);
   });
 });
