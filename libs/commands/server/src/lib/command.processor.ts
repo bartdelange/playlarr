@@ -7,7 +7,7 @@ import { map, merge, Subscription, timer } from 'rxjs';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { CommandHandlerRegistry } from './command-handler.registry.js';
 import { CommandWakeSignal } from './command-wake-signal.js';
-import { CommandProgressReporter } from '@playlarr/commands-domain';
+import type { CommandProgressReporter } from '@playlarr/commands-domain';
 
 const FALLBACK_INTERVAL_MS = 10_000;
 
@@ -17,7 +17,6 @@ export class CommandProcessor
 {
   private subscription?: Subscription;
   private processingPromise?: Promise<void>;
-  private processing = false;
   private stopping = false;
   private readonly fallbackIntervalMs = FALLBACK_INTERVAL_MS;
 
@@ -46,7 +45,7 @@ export class CommandProcessor
   }
 
   private startProcessing(): void {
-    if (this.processing || this.stopping) {
+    if (this.processingPromise || this.stopping) {
       return;
     }
 
@@ -56,24 +55,14 @@ export class CommandProcessor
   }
 
   private async processAvailable(): Promise<void> {
-    if (this.processing || this.stopping) {
-      return;
-    }
+    while (!this.stopping) {
+      const command = await this.repository.claimNext();
 
-    this.processing = true;
-
-    try {
-      while (!this.stopping) {
-        const command = await this.repository.claimNext();
-
-        if (!command) {
-          return;
-        }
-
-        await this.execute(command);
+      if (!command) {
+        return;
       }
-    } finally {
-      this.processing = false;
+
+      await this.execute(command);
     }
   }
 

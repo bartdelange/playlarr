@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
+import type {
   CommandHandler,
   CommandProgressReporter,
 } from '@playlarr/commands-domain';

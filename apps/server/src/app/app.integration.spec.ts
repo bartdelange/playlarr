@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -36,7 +36,7 @@ describe('Playlarr server', () => {
   beforeAll(async () => {
     directory = await mkdtemp(join(tmpdir(), 'playlarr-server-'));
 
-    vi.stubEnv('PLAYLARR_DATABASE_PATH', join(directory, 'playlarr.d'));
+    vi.stubEnv('PLAYLARR_DATABASE_PATH', join(directory, 'playlarr.db'));
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],

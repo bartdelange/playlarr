@@ -1,7 +1,16 @@
-import { Entity, PrimaryKey, Property } from '@mikro-orm/decorators/legacy';
+import {
+  Entity,
+  Index,
+  PrimaryKey,
+  Property,
+} from '@mikro-orm/decorators/legacy';
 import type { CommandStatus } from '@playlarr/commands-domain';
 
 @Entity({ tableName: 'commands' })
+@Index({
+  name: 'commands_status_created_at_idx',
+  properties: ['status', 'createdAt'],
+})
 export class CommandEntity {
   @PrimaryKey()
   id!: string;
