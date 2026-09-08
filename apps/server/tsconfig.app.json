@@ -12,6 +12,15 @@
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
   "references": [
     {
+      "path": "../../libs/sample-command/server/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/commands/server/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/commands/persistence/tsconfig.lib.json"
+    },
+    {
       "path": "../../libs/shared/database/tsconfig.lib.json"
     }
   ]

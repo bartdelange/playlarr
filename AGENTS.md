@@ -49,10 +49,10 @@ libs/
 
 Current project ownership is:
 
-* `@playlarr/web` — Next.js App Router application, rendering, layouts, routes, frontend composition, and same-origin `/api/*` proxy configuration
-* `@playlarr/web-e2e` — Playwright end-to-end tests spanning the public Playlarr application
-* `@playlarr/server` — NestJS backend application, API transport, backend composition, configuration, and process lifecycle
-* `@playlarr/shared-database` — global MikroORM/SQLite setup, migrations, and database infrastructure
+- `@playlarr/web` — Next.js App Router application, rendering, layouts, routes, frontend composition, and same-origin `/api/*` proxy configuration
+- `@playlarr/web-e2e` — Playwright end-to-end tests spanning the public Playlarr application
+- `@playlarr/server` — NestJS backend application, API transport, backend composition, configuration, and process lifecycle
+- `@playlarr/shared-database` — global MikroORM/SQLite setup, migrations, and database infrastructure
 
 The repository is intentionally still being decomposed into capabilities. Do not create placeholder libraries merely to match the intended architecture.
 
@@ -105,21 +105,21 @@ The workspace uses project tags to enforce both platform and architectural depen
 
 Relevant platform tags are:
 
-* `platform:web`
-* `platform:server`
-* `platform:shared`
+- `platform:web`
+- `platform:server`
+- `platform:shared`
 
 Relevant project-type tags are:
 
-* `type:app`
-* `type:e2e`
-* `type:feature`
-* `type:ui`
-* `type:domain`
-* `type:contracts`
-* `type:config`
-* `type:infrastructure`
-* `type:persistence`
+- `type:app`
+- `type:e2e`
+- `type:feature`
+- `type:ui`
+- `type:domain`
+- `type:contracts`
+- `type:config`
+- `type:infrastructure`
+- `type:persistence`
 
 Follow the dependency constraints defined in `eslint.config.mjs`.
 
@@ -165,11 +165,11 @@ These paths are examples of the intended organization and do not imply that thos
 
 `libs/shared/database` owns only global database concerns such as:
 
-* MikroORM root configuration
-* SQLite connection configuration
-* migration infrastructure
-* database startup lifecycle
-* genuinely shared database infrastructure
+- MikroORM root configuration
+- SQLite connection configuration
+- migration infrastructure
+- database startup lifecycle
+- genuinely shared database infrastructure
 
 Do not move feature entities or repositories into `shared/database` merely because they use SQLite.
 
@@ -181,13 +181,13 @@ Do not expose ORM entities directly as API contracts.
 
 Domain and contracts code should not depend on framework or infrastructure implementation details such as:
 
-* React
-* Next.js
-* NestJS
-* MikroORM
-* SQLite drivers
-* provider SDKs
-* persistence implementations
+- React
+- Next.js
+- NestJS
+- MikroORM
+- SQLite drivers
+- provider SDKs
+- persistence implementations
 
 unless the project explicitly belongs to an infrastructure-facing layer.
 
@@ -199,11 +199,11 @@ Keep `apps/web/src/app` intentionally small.
 
 Route files should primarily:
 
-* define routes
-* receive route and search parameters
-* compose feature entrypoints
-* define layouts and framework boundaries
-* implement genuinely Next.js-specific behavior
+- define routes
+- receive route and search parameters
+- compose feature entrypoints
+- define layouts and framework boundaries
+- implement genuinely Next.js-specific behavior
 
 Prefer Server Components.
 
@@ -227,11 +227,11 @@ Do not make browser code aware of the internal NestJS host or port.
 
 It owns:
 
-* NestJS application bootstrap
-* global backend configuration
-* API transport setup
-* composition of backend capability modules
-* startup and shutdown lifecycle
+- NestJS application bootstrap
+- global backend configuration
+- API transport setup
+- composition of backend capability modules
+- startup and shutdown lifecycle
 
 The NestJS HTTP API uses the `/api` global prefix.
 
@@ -239,9 +239,9 @@ Keep controllers thin.
 
 Controllers should primarily:
 
-* receive and validate transport input
-* invoke capability-level orchestration
-* translate results into HTTP responses
+- receive and validate transport input
+- invoke capability-level orchestration
+- translate results into HTTP responses
 
 Do not place substantial business logic directly in controllers.
 
@@ -255,10 +255,10 @@ Use durable SQLite-backed commands for work that must survive application restar
 
 Examples include:
 
-* large matching jobs
-* long-running imports
-* multi-step Lidarr execution
-* tasks with meaningful progress or restart recovery
+- large matching jobs
+- long-running imports
+- multi-step Lidarr execution
+- tasks with meaningful progress or restart recovery
 
 Ordinary provider calls and normal API requests should remain ordinary requests.
 
@@ -306,9 +306,9 @@ MikroORM is the ORM.
 
 Production database initialization must configure SQLite with:
 
-* foreign keys enabled
-* WAL journal mode
-* busy timeout
+- foreign keys enabled
+- WAL journal mode
+- busy timeout
 
 Run committed pending migrations programmatically during NestJS startup before the application begins normal operation.
 
@@ -326,12 +326,12 @@ Feature entities and repositories belong to their capability persistence librari
 
 Persistence tests should use real temporary SQLite databases when testing:
 
-* migrations
-* transactions
-* locking
-* constraints
-* SQLite-specific behavior
-* repository behavior that depends on database semantics
+- migrations
+- transactions
+- locking
+- constraints
+- SQLite-specific behavior
+- repository behavior that depends on database semantics
 
 Do not replace such tests with mocks.
 
@@ -359,11 +359,11 @@ Execution should act on that plan rather than silently recalculating a different
 
 Relevant integrations include:
 
-* Spotify
-* TIDAL
-* MusicBrainz
-* Lidarr
-* OpenSubsonic/Navidrome-compatible servers
+- Spotify
+- TIDAL
+- MusicBrainz
+- Lidarr
+- OpenSubsonic/Navidrome-compatible servers
 
 External provider implementations belong on the server side.
 
@@ -371,17 +371,17 @@ Keep secrets server-side.
 
 Never expose provider credentials, tokens, private server addresses, or sensitive configuration in:
 
-* browser bundles
-* public API responses
-* logs
-* committed fixtures
+- browser bundles
+- public API responses
+- logs
+- committed fixtures
 
 Provider adapters should:
 
-* encapsulate transport and authentication details
-* validate external responses
-* normalize third-party data into Playlarr-owned models
-* implement provider-specific retry or error behavior where appropriate
+- encapsulate transport and authentication details
+- validate external responses
+- normalize third-party data into Playlarr-owned models
+- implement provider-specific retry or error behavior where appropriate
 
 Do not leak raw provider response shapes throughout the application.
 
@@ -421,12 +421,12 @@ For example, an E2E project may declare implicit dependencies on applications it
 
 Deterministic tasks such as:
 
-* lint
-* typecheck
-* test
-* build
-* formatting checks
-* workflow validation
+- lint
+- typecheck
+- test
+- build
+- formatting checks
+- workflow validation
 
 should remain cacheable when their inputs and outputs can be represented accurately.
 
@@ -468,11 +468,11 @@ Do not silence type errors with broad casts, `any`, or `@ts-ignore` when the und
 
 Prefer:
 
-* explicit domain types
-* validated external input
-* discriminated unions for meaningful states
-* exhaustive handling where practical
-* narrow interfaces at architectural boundaries
+- explicit domain types
+- validated external input
+- discriminated unions for meaningful states
+- exhaustive handling where practical
+- narrow interfaces at architectural boundaries
 
 Use explicit `.js` extensions for ESM/NodeNext relative imports where required.
 
@@ -510,11 +510,11 @@ Use blank lines to separate distinct logical sections within a file, function, c
 
 For React components, generally separate:
 
-* state and hook declarations from callbacks and derived values
-* callbacks and effects from one another
-* setup logic from the component return
-* distinct sibling sections in JSX
-* guard clauses, mutation setup, execution, and cleanup
+- state and hook declarations from callbacks and derived values
+- callbacks and effects from one another
+- setup logic from the component return
+- distinct sibling sections in JSX
+- guard clauses, mutation setup, execution, and cleanup
 
 Use whitespace to communicate structure rather than mechanically inserting blank lines between every statement.
 
@@ -522,27 +522,27 @@ Use whitespace to communicate structure rather than mechanically inserting blank
 
 Use:
 
-* Vitest for unit and integration tests
-* Testing Library for React behavior
-* Playwright for meaningful end-to-end user flows
+- Vitest for unit and integration tests
+- Testing Library for React behavior
+- Playwright for meaningful end-to-end user flows
 
 Test behavior and architectural boundaries rather than framework internals.
 
 Prioritize coverage for:
 
-* domain and business rules
-* playlist ordering and duplicates
-* MusicBrainz matching
-* explicit manual decisions
-* persistence
-* migrations
-* long-running command behavior
-* restart recovery
-* provider normalization
-* external input validation
-* authentication and authorization
-* error handling
-* security-sensitive behavior
+- domain and business rules
+- playlist ordering and duplicates
+- MusicBrainz matching
+- explicit manual decisions
+- persistence
+- migrations
+- long-running command behavior
+- restart recovery
+- provider normalization
+- external input validation
+- authentication and authorization
+- error handling
+- security-sensitive behavior
 
 Use real temporary SQLite databases for persistence integration tests.
 
@@ -596,13 +596,13 @@ Keep changes focused, reviewable, and easy to reason about.
 
 For non-trivial work:
 
-* inspect the relevant existing code before changing it
-* understand current ownership and conventions before introducing abstractions
-* prefer extending an existing capability over creating a parallel implementation
-* avoid unrelated cleanup, renaming, formatting, or refactoring
-* remove obsolete code once its replacement is complete and verified
-* preserve unrelated user work
-* do not silently change behavior outside the requested scope
+- inspect the relevant existing code before changing it
+- understand current ownership and conventions before introducing abstractions
+- prefer extending an existing capability over creating a parallel implementation
+- avoid unrelated cleanup, renaming, formatting, or refactoring
+- remove obsolete code once its replacement is complete and verified
+- preserve unrelated user work
+- do not silently change behavior outside the requested scope
 
 Do not add a dependency when the existing stack already provides an appropriate solution.
 
@@ -629,10 +629,10 @@ chore/
 
 During implementation:
 
-* follow the repository commit strategy
-* keep commits small, logical, and independently reviewable
-* do not merge or rebase unrelated work into the task branch
-* do not push directly to the default branch
+- follow the repository commit strategy
+- keep commits small, logical, and independently reviewable
+- do not merge or rebase unrelated work into the task branch
+- do not push directly to the default branch
 
 After implementation:
 
@@ -651,25 +651,25 @@ Before starting a large implementation or refactor, identify sensible commit bou
 
 Good commit boundaries include:
 
-* foundational domain models
-* persistence schema or migrations
-* provider implementation
-* command infrastructure
-* feature implementation
-* runtime integration
-* tests belonging to completed behavior
-* deployment or repository infrastructure
-* removal of superseded code
+- foundational domain models
+- persistence schema or migrations
+- provider implementation
+- command infrastructure
+- feature implementation
+- runtime integration
+- tests belonging to completed behavior
+- deployment or repository infrastructure
+- removal of superseded code
 
 Prefer several focused commits over one large final commit.
 
 Do not:
 
-* create arbitrary checkpoint commits
-* create commits named `WIP`, `progress`, or similar
-* split commits merely to reduce file count
-* mix unrelated changes in the same commit
-* intentionally leave the repository broken between commits when avoidable
+- create arbitrary checkpoint commits
+- create commits named `WIP`, `progress`, or similar
+- split commits merely to reduce file count
+- mix unrelated changes in the same commit
+- intentionally leave the repository broken between commits when avoidable
 
 Each commit should represent one understandable change and leave the repository valid whenever practical.
 
@@ -689,29 +689,29 @@ The complete first line must not exceed 100 characters.
 
 Allowed types are:
 
-* `feat`
-* `fix`
-* `chore`
-* `test`
+- `feat`
+- `fix`
+- `chore`
+- `test`
 
 ### Scopes
 
 When a scope is used, it must be one of:
 
-* `web`
-* `server`
-* `e2e`
-* `ui`
-* `database`
-* `imports`
-* `settings`
-* `lidarr`
-* `musicbrainz`
-* `domain`
-* `contracts`
-* `persistence`
-* `config`
-* `repo`
+- `web`
+- `server`
+- `e2e`
+- `ui`
+- `database`
+- `imports`
+- `settings`
+- `lidarr`
+- `musicbrainz`
+- `domain`
+- `contracts`
+- `persistence`
+- `config`
+- `repo`
 
 Use the narrowest applicable scope.
 
@@ -759,3 +759,27 @@ Use `.github/pull_request_template.md` when creating pull requests.
 Complete the template based on the actual implementation and validation performed.
 
 Do not claim tests, builds, compatibility, or manual verification that was not actually performed.
+
+<!-- nx configuration start-->
+<!-- Leave the start & end comments to automatically receive updates. -->
+
+## General Guidelines for working with Nx
+
+- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
+- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
+- You have access to the Nx MCP server and its tools, use them to help the user
+- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
+- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
+
+## Scaffolding & Generators
+
+- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
+
+## When to use nx_docs
+
+- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
+- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
+- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
+
+<!-- nx configuration end-->

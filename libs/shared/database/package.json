@@ -16,23 +16,8 @@
   "nx": {
     "tags": [
       "type:infrastructure",
-      "platform:server",
-      "scope:shared"
-    ],
-    "targets": {
-      "migration:create": {
-        "executor": "nx:run-commands",
-        "options": {
-          "command": "pnpm --filter @playlarr/shared-database exec mikro-orm migration:create --config libs/shared/database/mikro-orm.config.ts"
-        }
-      },
-      "migration:check": {
-        "executor": "nx:run-commands",
-        "options": {
-          "command": "pnpm --filter @playlarr/shared-database exec mikro-orm migration:check --config libs/shared/database/mikro-orm.config.ts"
-        }
-      }
-    }
+      "platform:server"
+    ]
   },
   "dependencies": {
     "@mikro-orm/core": "^7.1.13",
@@ -43,8 +28,5 @@
     "@nestjs/common": "^11.2.1",
     "@nestjs/config": "^4.0.4",
     "tslib": "^2.3.0"
-  },
-  "devDependencies": {
-    "@mikro-orm/cli": "^7.1.13"
   }
 }

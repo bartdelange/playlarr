@@ -30,13 +30,13 @@ describe('database integration', () => {
   async function createDatabase() {
     directory = await mkdtemp(join(tmpdir(), 'playlarr-database-'));
 
-    const path = join(directory, 'playlarr.sqlite');
+    const path = join(directory, 'playlarr.db');
 
     orm = await MikroORM.init<SqliteDriver>(createDatabaseConfig(path));
 
     const lifecycle = new DatabaseLifecycle(orm);
 
-    await lifecycle.onApplicationBootstrap();
+    await lifecycle.onModuleInit();
 
     return {
       path,

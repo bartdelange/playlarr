@@ -42,7 +42,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        'pnpm exec nx run @playlarr/server:serve --watch=false --inspect=false',
+        'pnpm exec nx run @playlarr/server:dev --watch=false --inspect=false',
       url: `http://${serverHost}:${serverPort}/api/health`,
       reuseExistingServer: !process.env.CI,
       cwd: workspaceRoot,

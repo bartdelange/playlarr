@@ -53,7 +53,7 @@
         ],
         "executor": "nx:noop"
       },
-      "serve": {
+      "dev": {
         "executor": "@nx/js:node",
         "continuous": true,
         "defaultConfiguration": "development",
@@ -72,6 +72,18 @@
             "buildTarget": "@playlarr/server:build"
           }
         }
+      },
+      "migration:create": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "pnpm --filter @playlarr/server exec mikro-orm migration:create --config mikro-orm.config.ts"
+        }
+      },
+      "migration:check": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "pnpm --filter @playlarr/server exec mikro-orm migration:check --config mikro-orm.config.ts"
+        }
       }
     },
     "tags": [
@@ -84,13 +96,19 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.2.1",
     "@nestjs/platform-express": "^11.2.1",
+    "@playlarr/commands-persistence": "workspace:*",
+    "@playlarr/commands-server": "workspace:*",
+    "@playlarr/sample-command-server": "workspace:*",
     "@playlarr/shared-database": "workspace:*",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@mikro-orm/cli": "^7.1.13",
+    "@mikro-orm/sqlite": "^7.1.13",
     "@nestjs/testing": "^11.2.1",
+    "@types/node": "^22.20.1",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.2.2"
   }
