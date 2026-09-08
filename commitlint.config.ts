@@ -2,7 +2,7 @@ import type { UserConfig } from '@commitlint/types';
 import { createProjectGraphAsync } from '@nx/devkit';
 
 const types = ['feat', 'fix', 'chore', 'test'] as const;
-const defaultScopes = ['repo', 'ci', 'deps', 'release'] as const;
+const defaultScopes = ['repo', 'config', 'ci', 'deps', 'release'] as const;
 
 function getScopes(projectNames: string[]) {
   const projectScopes = projectNames.map((name) =>
