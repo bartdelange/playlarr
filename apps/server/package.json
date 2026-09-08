@@ -53,7 +53,7 @@
         ],
         "executor": "nx:noop"
       },
-      "serve": {
+      "dev": {
         "executor": "@nx/js:node",
         "continuous": true,
         "defaultConfiguration": "development",
