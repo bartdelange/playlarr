@@ -26,6 +26,9 @@
     },
     {
       "path": "./libs/sample-command/server"
+    },
+    {
+      "path": "./libs/events/server"
     }
   ]
 }

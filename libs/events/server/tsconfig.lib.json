@@ -8,20 +8,12 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"],
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "references": [
     {
-      "path": "../../events/server/tsconfig.lib.json"
-    },
-    {
-      "path": "../persistence/tsconfig.lib.json"
-    },
-    {
-      "path": "../domain/tsconfig.lib.json"
+      "path": "../../commands/domain/tsconfig.lib.json"
     }
   ],
   "exclude": [

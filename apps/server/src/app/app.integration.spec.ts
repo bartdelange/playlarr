@@ -11,6 +11,7 @@ import { AppModule } from './app.module.js';
 
 import { CommandService } from '@playlarr/commands-server';
 import { CommandRepository } from '@playlarr/commands-persistence';
+import { ApplicationEventBus } from '@playlarr/events-server';
 
 const waitFor = async (
   predicate: () => Promise<boolean>,
@@ -46,7 +47,7 @@ describe('Playlarr server', () => {
 
     app.setGlobalPrefix('api');
 
-    await app.init();
+    await app.listen(0, '127.0.0.1');
   });
 
   afterAll(async () => {
@@ -145,6 +146,70 @@ describe('Playlarr server', () => {
     });
   });
 
+  it('streams persisted command progress through NestJS SSE', async () => {
+    const repository = app.get(CommandRepository);
+    const eventBus = app.get(ApplicationEventBus);
+    const command = await repository.create('test.sse', {});
+
+    await repository.claimNext();
+    await repository.updateProgress(command.id, 1, 2, 'Step 1');
+
+    const abortController = new AbortController();
+    const response = await fetch(
+      `${await app.getUrl()}/api/events?commandId=${command.id}`,
+      { signal: abortController.signal },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/event-stream');
+
+    const reader = response.body?.getReader();
+
+    if (!reader) {
+      throw new Error('SSE response did not include a readable body');
+    }
+
+    const decoder = new TextDecoder();
+    let received = '';
+
+    while (!received.includes('event: command.snapshot')) {
+      const result = await reader.read();
+
+      if (result.done) {
+        throw new Error('SSE stream ended before the current-state snapshot');
+      }
+
+      received += decoder.decode(result.value, { stream: true });
+    }
+
+    const state = await repository.findStateById(command.id);
+
+    if (!state) {
+      throw new Error('Persisted command state was not found');
+    }
+
+    eventBus.publish({
+      type: 'command.progress',
+      occurredAt: new Date().toISOString(),
+      command: state,
+    });
+
+    while (!received.includes('event: command.progress')) {
+      const result = await reader.read();
+
+      if (result.done) {
+        throw new Error('SSE stream ended before live progress');
+      }
+
+      received += decoder.decode(result.value, { stream: true });
+    }
+
+    expect(received).toContain(`"id":"${command.id}"`);
+    expect(received).toContain('"current":1');
+
+    abortController.abort();
+  });
+
   it('enqueues a feature-owned persisted command through HTTP', async () => {
     const repository = app.get(CommandRepository);
 
@@ -180,5 +245,21 @@ describe('Playlarr server', () => {
     });
 
     expect(command?.completedAt).toBeInstanceOf(Date);
+
+    const currentState = await request(app.getHttpServer()).get(
+      `/api/commands/${id}`,
+    );
+
+    expect(currentState.status).toBe(200);
+    expect(currentState.body).toMatchObject({
+      id,
+      type: 'sample.delay',
+      status: 'completed',
+      current: 3,
+      total: 3,
+      attempts: 1,
+      completedAt: expect.any(String),
+    });
+    expect(currentState.body).not.toHaveProperty('payloadJson');
   });
 });

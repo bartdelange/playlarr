@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { MikroORM } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
+import type { CommandState } from '@playlarr/commands-domain';
 
 import { CommandEntity } from './command.entity.js';
 
@@ -32,6 +33,12 @@ export class CommandRepository {
 
   async findById(id: string): Promise<CommandEntity | null> {
     return this.orm.em.fork().findOne(CommandEntity, { id });
+  }
+
+  async findStateById(id: string): Promise<CommandState | null> {
+    const command = await this.findById(id);
+
+    return command ? this.toState(command) : null;
   }
 
   async updateProgress(
@@ -152,5 +159,28 @@ export class CommandRepository {
         updatedAt: new Date(),
       },
     );
+  }
+
+  private toState(command: CommandEntity): CommandState {
+    return {
+      id: command.id,
+      type: command.type,
+      status: command.status,
+      current: command.current,
+      total: command.total,
+      ...(command.currentItem == null
+        ? {}
+        : { currentItem: command.currentItem }),
+      attempts: command.attempts,
+      ...(command.error == null ? {} : { error: command.error }),
+      createdAt: command.createdAt.toISOString(),
+      updatedAt: command.updatedAt.toISOString(),
+      ...(command.startedAt == null
+        ? {}
+        : { startedAt: command.startedAt.toISOString() }),
+      ...(command.completedAt == null
+        ? {}
+        : { completedAt: command.completedAt.toISOString() }),
+    };
   }
 }

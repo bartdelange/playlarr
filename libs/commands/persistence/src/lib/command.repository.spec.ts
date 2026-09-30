@@ -80,6 +80,31 @@ describe('CommandRepository', () => {
     });
   });
 
+  it('returns transport-safe authoritative command state', async () => {
+    const command = await repository.create('test.command', {
+      secret: 'not part of state',
+    });
+
+    await repository.claimNext();
+    await repository.updateProgress(command.id, 1, 2, 'Doing thing 1');
+
+    const state = await repository.findStateById(command.id);
+
+    expect(state).toEqual({
+      id: command.id,
+      type: 'test.command',
+      status: 'running',
+      current: 1,
+      total: 2,
+      currentItem: 'Doing thing 1',
+      attempts: 1,
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
+      startedAt: expect.any(String),
+    });
+    expect(state).not.toHaveProperty('payloadJson');
+  });
+
   it('completes a running command', async () => {
     const command = await repository.create('test.command', {});
 

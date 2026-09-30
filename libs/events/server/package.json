@@ -1,5 +1,5 @@
 {
-  "name": "@playlarr/commands-server",
+  "name": "@playlarr/events-server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -15,21 +15,14 @@
     }
   },
   "nx": {
+    "name": "events-server",
     "tags": [
       "type:feature",
       "platform:server"
     ]
   },
   "dependencies": {
-    "@nestjs/common": "^11.2.1",
     "@playlarr/commands-domain": "workspace:*",
-    "@playlarr/commands-persistence": "workspace:*",
-    "@playlarr/events-server": "workspace:*",
-    "rxjs": "^7.8.2",
     "tslib": "^2.3.0"
-  },
-  "devDependencies": {
-    "@mikro-orm/decorators": "^7.1.13",
-    "@mikro-orm/sqlite": "^7.1.13"
   }
 }

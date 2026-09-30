@@ -8,6 +8,10 @@ import { CommandRepository } from '@playlarr/commands-persistence';
 import { CommandHandlerRegistry } from './command-handler.registry.js';
 import { CommandWakeSignal } from './command-wake-signal.js';
 import type { CommandProgressReporter } from '@playlarr/commands-domain';
+import {
+  ApplicationEventBus,
+  type CommandEventType,
+} from '@playlarr/events-server';
 
 const FALLBACK_INTERVAL_MS = 10_000;
 
@@ -24,6 +28,7 @@ export class CommandProcessor
     private readonly repository: CommandRepository,
     private readonly registry: CommandHandlerRegistry,
     private readonly wakeSignal: CommandWakeSignal,
+    private readonly eventBus: ApplicationEventBus,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -71,6 +76,8 @@ export class CommandProcessor
     type: string;
     payloadJson: unknown;
   }): Promise<void> {
+    await this.publishCommandEvent(command.id, 'command.started');
+
     const handler = this.registry.get(command.type);
 
     if (!handler) {
@@ -78,23 +85,33 @@ export class CommandProcessor
         command.id,
         `Unsupported command type: ${command.type}`,
       );
+      await this.publishCommandEvent(command.id, 'command.failed');
 
       return;
     }
 
     const progress: CommandProgressReporter = {
-      report: ({ current, total, currentItem }) =>
-        this.repository.updateProgress(command.id, current, total, currentItem),
+      report: async ({ current, total, currentItem }) => {
+        await this.repository.updateProgress(
+          command.id,
+          current,
+          total,
+          currentItem,
+        );
+        await this.publishCommandEvent(command.id, 'command.progress');
+      },
     };
 
     try {
       await handler.execute(command.payloadJson, progress);
       await this.repository.complete(command.id);
+      await this.publishCommandEvent(command.id, 'command.completed');
     } catch (error) {
       await this.repository.fail(
         command.id,
         error instanceof Error ? error.message : String(error),
       );
+      await this.publishCommandEvent(command.id, 'command.failed');
     }
   }
 
@@ -109,6 +126,7 @@ export class CommandProcessor
           command.id,
           `Unsupported command type: ${command.type}`,
         );
+        await this.publishCommandEvent(command.id, 'command.failed');
 
         continue;
       }
@@ -122,6 +140,28 @@ export class CommandProcessor
         command.id,
         'Command interrupted by application restart',
       );
+      await this.publishCommandEvent(command.id, 'command.failed');
+    }
+  }
+
+  private async publishCommandEvent(
+    id: string,
+    type: CommandEventType,
+  ): Promise<void> {
+    try {
+      const command = await this.repository.findStateById(id);
+
+      if (!command) {
+        return;
+      }
+
+      this.eventBus.publish({
+        type,
+        occurredAt: new Date().toISOString(),
+        command,
+      });
+    } catch {
+      // Notification failures must not change authoritative command execution.
     }
   }
 }

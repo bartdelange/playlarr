@@ -7,6 +7,7 @@ packages:
   - 'libs/shared/*'
   - 'libs/commands/*'
   - 'libs/sample-command/*'
+  - 'libs/events/*'
 autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': true

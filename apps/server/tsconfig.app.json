@@ -15,6 +15,9 @@
       "path": "../../libs/sample-command/server/tsconfig.lib.json"
     },
     {
+      "path": "../../libs/events/server/tsconfig.lib.json"
+    },
+    {
       "path": "../../libs/commands/server/tsconfig.lib.json"
     },
     {
