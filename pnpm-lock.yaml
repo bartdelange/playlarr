@@ -234,6 +234,9 @@ importers:
       '@playlarr/commands-server':
         specifier: workspace:*
         version: link:../../libs/commands/server
+      '@playlarr/events-server':
+        specifier: workspace:*
+        version: link:../../libs/events/server
       '@playlarr/sample-command-server':
         specifier: workspace:*
         version: link:../../libs/sample-command/server
@@ -325,6 +328,9 @@ importers:
       '@playlarr/commands-persistence':
         specifier: workspace:*
         version: link:../persistence
+      '@playlarr/events-server':
+        specifier: workspace:*
+        version: link:../../events/server
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
