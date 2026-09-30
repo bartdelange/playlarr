@@ -7,11 +7,11 @@ import { map, merge, Subscription, timer } from 'rxjs';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { CommandHandlerRegistry } from './command-handler.registry.js';
 import { CommandWakeSignal } from './command-wake-signal.js';
-import type { CommandProgressReporter } from '@playlarr/commands-domain';
 import {
-  ApplicationEventBus,
+  CommandEventPublisher,
   type CommandEventType,
-} from '@playlarr/events-server';
+  type CommandProgressReporter,
+} from '@playlarr/commands-domain';
 
 const FALLBACK_INTERVAL_MS = 10_000;
 
@@ -28,7 +28,7 @@ export class CommandProcessor
     private readonly repository: CommandRepository,
     private readonly registry: CommandHandlerRegistry,
     private readonly wakeSignal: CommandWakeSignal,
-    private readonly eventBus: ApplicationEventBus,
+    private readonly eventPublisher: CommandEventPublisher,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -149,17 +149,7 @@ export class CommandProcessor
     type: CommandEventType,
   ): Promise<void> {
     try {
-      const command = await this.repository.findStateById(id);
-
-      if (!command) {
-        return;
-      }
-
-      this.eventBus.publish({
-        type,
-        occurredAt: new Date().toISOString(),
-        command,
-      });
+      await this.eventPublisher.publish(id, type);
     } catch {
       // Notification failures must not change authoritative command execution.
     }

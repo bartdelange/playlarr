@@ -1,10 +1,4 @@
-import type { CommandState } from '@playlarr/commands-domain';
-
-export type CommandEventType =
-  | 'command.started'
-  | 'command.progress'
-  | 'command.completed'
-  | 'command.failed';
+import type { CommandEventType, CommandState } from '@playlarr/commands-domain';
 
 export interface CommandEvent {
   readonly type: CommandEventType;

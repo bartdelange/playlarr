@@ -1,21 +1,28 @@
+import type { CommandState } from '@playlarr/commands-domain';
 import { CommandRepository } from '@playlarr/commands-persistence';
-import { ApplicationEventBus } from '@playlarr/events-server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ApplicationEventBus } from './application-event-bus.js';
 import { ApplicationEventsController } from './application-events.controller.js';
 
-const completedCommand = {
+const commandState = (
+  updatedAt: string,
+  current: number,
+  status: CommandState['status'] = 'running',
+): CommandState => ({
   id: 'command-1',
   type: 'test.command',
-  status: 'completed' as const,
-  current: 2,
-  total: 2,
+  status,
+  current,
+  total: 3,
   attempts: 1,
   createdAt: '2026-09-30T10:00:00.000Z',
-  updatedAt: '2026-09-30T10:00:02.000Z',
+  updatedAt,
   startedAt: '2026-09-30T10:00:01.000Z',
-  completedAt: '2026-09-30T10:00:02.000Z',
-};
+  ...(status === 'completed'
+    ? { completedAt: '2026-09-30T10:00:04.000Z' }
+    : {}),
+});
 
 describe('ApplicationEventsController', () => {
   const subscriptions: Array<{ unsubscribe(): void }> = [];
@@ -29,6 +36,11 @@ describe('ApplicationEventsController', () => {
   });
 
   it('reconciles a command-scoped connection from persisted current state', async () => {
+    const completedCommand = commandState(
+      '2026-09-30T10:00:04.000Z',
+      3,
+      'completed',
+    );
     const repository = Object.create(
       CommandRepository.prototype,
     ) as CommandRepository;
@@ -77,6 +89,61 @@ describe('ApplicationEventsController', () => {
       type: 'command.snapshot',
       data: { command: completedCommand },
     });
+  });
+
+  it('drops queued command events that are not newer than the snapshot', async () => {
+    let resolveSnapshot!: (command: CommandState) => void;
+    const snapshot = new Promise<CommandState>((resolve) => {
+      resolveSnapshot = resolve;
+    });
+    const repository = Object.create(
+      CommandRepository.prototype,
+    ) as CommandRepository;
+
+    vi.spyOn(repository, 'findStateById').mockReturnValue(snapshot);
+
+    const eventBus = new ApplicationEventBus();
+    const controller = new ApplicationEventsController(eventBus, repository);
+    const messages: Array<{ type?: string; data?: unknown }> = [];
+
+    subscriptions.push(
+      controller.events('command-1').subscribe((event) => {
+        messages.push(event);
+      }),
+    );
+
+    eventBus.publish({
+      type: 'command.progress',
+      occurredAt: '2026-09-30T10:00:01.000Z',
+      command: commandState('2026-09-30T10:00:01.000Z', 1),
+    });
+    eventBus.publish({
+      type: 'command.progress',
+      occurredAt: '2026-09-30T10:00:02.000Z',
+      command: commandState('2026-09-30T10:00:02.000Z', 2),
+    });
+    eventBus.publish({
+      type: 'command.progress',
+      occurredAt: '2026-09-30T10:00:03.000Z',
+      command: commandState('2026-09-30T10:00:03.000Z', 3),
+    });
+
+    resolveSnapshot(commandState('2026-09-30T10:00:02.000Z', 2));
+
+    await vi.waitFor(() => {
+      expect(messages).toHaveLength(2);
+    });
+
+    expect(messages).toMatchObject([
+      {
+        type: 'command.snapshot',
+        data: { command: { current: 2 } },
+      },
+      {
+        type: 'command.progress',
+        data: { command: { current: 3 } },
+      },
+    ]);
   });
 
   it('cleans up its event-bus listener when the SSE client disconnects', () => {

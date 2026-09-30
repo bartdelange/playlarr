@@ -4,9 +4,11 @@ import {
   Module,
   type OnApplicationShutdown,
 } from '@nestjs/common';
-import { ApplicationEventBus } from '@playlarr/events-server';
+import { CommandEventPublisher } from '@playlarr/commands-domain';
 import { CommandsPersistenceModule } from '@playlarr/commands-persistence';
 
+import { ApplicationCommandEventPublisher } from './application-command-event.publisher.js';
+import { ApplicationEventBus } from './application-event-bus.js';
 import { ApplicationEventsController } from './application-events.controller.js';
 
 @Injectable()
@@ -22,7 +24,15 @@ class ApplicationEventsLifecycle implements OnApplicationShutdown {
 @Module({
   imports: [CommandsPersistenceModule],
   controllers: [ApplicationEventsController],
-  providers: [ApplicationEventBus, ApplicationEventsLifecycle],
-  exports: [ApplicationEventBus],
+  providers: [
+    ApplicationEventBus,
+    ApplicationCommandEventPublisher,
+    {
+      provide: CommandEventPublisher,
+      useExisting: ApplicationCommandEventPublisher,
+    },
+    ApplicationEventsLifecycle,
+  ],
+  exports: [ApplicationEventBus, CommandEventPublisher],
 })
 export class ApplicationEventsModule {}

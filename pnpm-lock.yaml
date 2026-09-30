@@ -328,9 +328,6 @@ importers:
       '@playlarr/commands-persistence':
         specifier: workspace:*
         version: link:../persistence
-      '@playlarr/events-server':
-        specifier: workspace:*
-        version: link:../../events/server
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -347,9 +344,18 @@ importers:
 
   libs/events/server:
     dependencies:
+      '@nestjs/common':
+        specifier: ^11.2.1
+        version: 11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
       '@playlarr/commands-domain':
         specifier: workspace:*
         version: link:../../commands/domain
+      '@playlarr/commands-persistence':
+        specifier: workspace:*
+        version: link:../../commands/persistence
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
       tslib:
         specifier: ^2.3.0
         version: 2.8.1

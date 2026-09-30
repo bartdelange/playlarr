@@ -1,19 +1,20 @@
 import {
   Controller,
   Get,
-  MessageEvent,
+  type MessageEvent,
   NotFoundException,
   Param,
   Query,
   Sse,
 } from '@nestjs/common';
 import { CommandRepository } from '@playlarr/commands-persistence';
-import {
-  ApplicationEventBus,
-  type ApplicationEvent,
-  type ApplicationEventFilter,
-} from '@playlarr/events-server';
 import { Observable } from 'rxjs';
+
+import { ApplicationEventBus } from './application-event-bus.js';
+import type {
+  ApplicationEvent,
+  ApplicationEventFilter,
+} from './application-event.js';
 
 interface CommandSnapshotEvent {
   readonly type: 'command.snapshot';
@@ -32,6 +33,13 @@ const message = (
 
 const optionalQuery = (value: string | undefined): string | undefined =>
   value && value.trim().length > 0 ? value : undefined;
+
+const occurredAfterSnapshot = (
+  event: ApplicationEvent,
+  snapshot: CommandSnapshotEvent['command'],
+): boolean =>
+  event.type === 'domain.invalidated' ||
+  event.command.updatedAt > snapshot.updatedAt;
 
 @Controller()
 export class ApplicationEventsController {
@@ -56,13 +64,11 @@ export class ApplicationEventsController {
     @Query('commandId') commandIdQuery?: string,
     @Query('scope') scopeQuery?: string,
   ): Observable<MessageEvent> {
+    const commandId = optionalQuery(commandIdQuery);
+    const scope = optionalQuery(scopeQuery);
     const filter: ApplicationEventFilter = {
-      ...(optionalQuery(commandIdQuery) === undefined
-        ? {}
-        : { commandId: optionalQuery(commandIdQuery) }),
-      ...(optionalQuery(scopeQuery) === undefined
-        ? {}
-        : { scope: optionalQuery(scopeQuery) }),
+      ...(commandId === undefined ? {} : { commandId }),
+      ...(scope === undefined ? {} : { scope }),
     };
 
     return new Observable<MessageEvent>((subscriber) => {
@@ -99,7 +105,9 @@ export class ApplicationEventsController {
             initialized = true;
 
             for (const event of pending) {
-              subscriber.next(message(event));
+              if (!command || occurredAfterSnapshot(event, command)) {
+                subscriber.next(message(event));
+              }
             }
 
             pending.length = 0;

@@ -4,13 +4,16 @@ import { join } from 'node:path';
 
 import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 import { MikroORM } from '@mikro-orm/sqlite';
-import type { CommandHandler } from '@playlarr/commands-domain';
+import {
+  CommandEventPublisher,
+  type CommandEventType,
+  type CommandHandler,
+} from '@playlarr/commands-domain';
 import {
   CommandEntity,
   CommandRepository,
 } from '@playlarr/commands-persistence';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApplicationEventBus } from '@playlarr/events-server';
 
 import { CommandHandlerRegistry } from './command-handler.registry.js';
 import { CommandProcessor } from './command.processor.js';
@@ -33,6 +36,28 @@ const waitFor = async (
   throw new Error('Timed out waiting for condition');
 };
 
+class RecordingCommandEventPublisher extends CommandEventPublisher {
+  readonly events: Array<{
+    type: CommandEventType;
+    status?: string;
+    error?: string;
+  }> = [];
+
+  constructor(private readonly repository: CommandRepository) {
+    super();
+  }
+
+  async publish(commandId: string, type: CommandEventType): Promise<void> {
+    const command = await this.repository.findStateById(commandId);
+
+    this.events.push({
+      type,
+      ...(command === null ? {} : { status: command.status }),
+      ...(command?.error === undefined ? {} : { error: command.error }),
+    });
+  }
+}
+
 describe('CommandProcessor', () => {
   let directory: string;
   let databasePath: string;
@@ -41,7 +66,7 @@ describe('CommandProcessor', () => {
   let repository: CommandRepository;
   let registry: CommandHandlerRegistry;
   let wakeSignal: CommandWakeSignal;
-  let eventBus: ApplicationEventBus;
+  let eventPublisher: RecordingCommandEventPublisher;
   let processor: CommandProcessor;
 
   beforeEach(async () => {
@@ -60,13 +85,13 @@ describe('CommandProcessor', () => {
     repository = new CommandRepository(orm);
     registry = new CommandHandlerRegistry();
     wakeSignal = new CommandWakeSignal();
-    eventBus = new ApplicationEventBus();
+    eventPublisher = new RecordingCommandEventPublisher(repository);
 
     processor = new CommandProcessor(
       repository,
       registry,
       wakeSignal,
-      eventBus,
+      eventPublisher,
     );
   });
 
@@ -170,17 +195,6 @@ describe('CommandProcessor', () => {
     registry.register(handler);
 
     const command = await repository.create('test.events', {});
-    const events: Array<{ type: string; status?: string }> = [];
-
-    eventBus.subscribe({ commandId: command.id }, (event) => {
-      events.push({
-        type: event.type,
-        ...(event.type === 'domain.invalidated'
-          ? {}
-          : { status: event.command.status }),
-      });
-    });
-
     await processor.onApplicationBootstrap();
 
     await waitFor(async () => {
@@ -189,7 +203,7 @@ describe('CommandProcessor', () => {
       return result?.status === 'completed';
     });
 
-    expect(events).toEqual([
+    expect(eventPublisher.events).toEqual([
       { type: 'command.started', status: 'running' },
       { type: 'command.progress', status: 'running' },
       { type: 'command.completed', status: 'completed' },
@@ -207,9 +221,9 @@ describe('CommandProcessor', () => {
     registry.register(handler);
 
     const command = await repository.create('test.observer-failure', {});
-    const findStateById = vi.spyOn(repository, 'findStateById');
-
-    findStateById.mockRejectedValueOnce(new Error('Notification read failed'));
+    vi.spyOn(eventPublisher, 'publish').mockRejectedValueOnce(
+      new Error('Notification delivery failed'),
+    );
 
     await processor.onApplicationBootstrap();
 
@@ -253,19 +267,6 @@ describe('CommandProcessor', () => {
     registry.register(handler);
 
     const command = await repository.create('test.failure', {});
-    const failedEvents: Array<{ status: string; error?: string }> = [];
-
-    eventBus.subscribe({ commandId: command.id }, (event) => {
-      if (event.type === 'command.failed') {
-        failedEvents.push({
-          status: event.command.status,
-          ...(event.command.error === undefined
-            ? {}
-            : { error: event.command.error }),
-        });
-      }
-    });
-
     await processor.onApplicationBootstrap();
 
     await waitFor(async () => {
@@ -280,9 +281,11 @@ describe('CommandProcessor', () => {
       status: 'failed',
       error: 'Intentional failure',
     });
-    expect(failedEvents).toEqual([
-      { status: 'failed', error: 'Intentional failure' },
-    ]);
+    expect(eventPublisher.events.at(-1)).toEqual({
+      type: 'command.failed',
+      status: 'failed',
+      error: 'Intentional failure',
+    });
   });
 
   it('retries interrupted commands when the handler allows it', async () => {
