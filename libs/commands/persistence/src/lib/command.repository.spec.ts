@@ -98,11 +98,35 @@ describe('CommandRepository', () => {
       total: 2,
       currentItem: 'Doing thing 1',
       attempts: 1,
+      revision: 2,
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
       startedAt: expect.any(String),
     });
     expect(state).not.toHaveProperty('payloadJson');
+  });
+
+  it('orders transitions by revision when timestamps are identical', async () => {
+    const timestamp = new Date('2026-10-02T10:00:00.000Z');
+
+    vi.useFakeTimers();
+    vi.setSystemTime(timestamp);
+
+    try {
+      const command = await repository.create('test.command', {});
+
+      await repository.claimNext();
+      const claimed = await repository.findStateById(command.id);
+
+      await repository.updateProgress(command.id, 1, 2);
+      const progressed = await repository.findStateById(command.id);
+
+      expect(claimed).toMatchObject({ revision: 1 });
+      expect(progressed).toMatchObject({ revision: 2 });
+      expect(progressed?.updatedAt).toBe(claimed?.updatedAt);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('completes a running command', async () => {

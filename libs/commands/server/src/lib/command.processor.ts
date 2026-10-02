@@ -1,5 +1,7 @@
 import {
   Injectable,
+  Inject,
+  Logger,
   OnApplicationBootstrap,
   OnApplicationShutdown,
 } from '@nestjs/common';
@@ -8,10 +10,11 @@ import { CommandRepository } from '@playlarr/commands-persistence';
 import { CommandHandlerRegistry } from './command-handler.registry.js';
 import { CommandWakeSignal } from './command-wake-signal.js';
 import {
-  CommandEventPublisher,
+  type CommandEventPublisher,
   type CommandEventType,
   type CommandProgressReporter,
 } from '@playlarr/commands-domain';
+import { COMMAND_EVENT_PUBLISHER } from './command-event-publisher.token.js';
 
 const FALLBACK_INTERVAL_MS = 10_000;
 
@@ -23,11 +26,13 @@ export class CommandProcessor
   private processingPromise?: Promise<void>;
   private stopping = false;
   private readonly fallbackIntervalMs = FALLBACK_INTERVAL_MS;
+  private readonly logger = new Logger(CommandProcessor.name);
 
   constructor(
     private readonly repository: CommandRepository,
     private readonly registry: CommandHandlerRegistry,
     private readonly wakeSignal: CommandWakeSignal,
+    @Inject(COMMAND_EVENT_PUBLISHER)
     private readonly eventPublisher: CommandEventPublisher,
   ) {}
 
@@ -150,8 +155,12 @@ export class CommandProcessor
   ): Promise<void> {
     try {
       await this.eventPublisher.publish(id, type);
-    } catch {
+    } catch (error) {
       // Notification failures must not change authoritative command execution.
+      this.logger.error(
+        `Failed to publish ${type} for command ${id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 }

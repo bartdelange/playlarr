@@ -8,6 +8,7 @@ export interface CommandState {
   readonly total: number;
   readonly currentItem?: string;
   readonly attempts: number;
+  readonly revision: number;
   readonly error?: string;
   readonly createdAt: string;
   readonly updatedAt: string;

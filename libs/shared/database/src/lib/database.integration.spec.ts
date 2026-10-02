@@ -67,4 +67,48 @@ describe('database integration', () => {
 
     expect(Number(busyTimeout[0]?.timeout)).toBe(5000);
   });
+
+  it('adds command revisions without changing existing command data', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'playlarr-database-'));
+    orm = await MikroORM.init<SqliteDriver>(
+      createDatabaseConfig(join(directory, 'playlarr.db')),
+    );
+
+    const migrator = orm.migrator;
+
+    await migrator.up({ to: 'Migration20260908102644' });
+    await orm.em.getConnection().execute(
+      `insert into commands (id, type, payload_json, status, current, total, attempts, created_at, updated_at)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'existing-command',
+        'test.command',
+        '{}',
+        'running',
+        1,
+        2,
+        1,
+        '2026-10-02T10:00:00.000Z',
+        '2026-10-02T10:00:00.000Z',
+      ],
+    );
+
+    await migrator.up();
+
+    const commands = await orm.em
+      .getConnection()
+      .execute(
+        'select id, status, current, revision from commands where id = ?',
+        ['existing-command'],
+      );
+
+    expect(commands).toEqual([
+      {
+        id: 'existing-command',
+        status: 'running',
+        current: 1,
+        revision: 0,
+      },
+    ]);
+  });
 });

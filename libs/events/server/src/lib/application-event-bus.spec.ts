@@ -10,6 +10,7 @@ const command = (id: string): CommandState => ({
   current: 1,
   total: 2,
   attempts: 1,
+  revision: 2,
   createdAt: '2026-09-30T10:00:00.000Z',
   updatedAt: '2026-09-30T10:00:01.000Z',
   startedAt: '2026-09-30T10:00:01.000Z',

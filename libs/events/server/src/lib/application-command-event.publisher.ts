@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
-  CommandEventPublisher,
+  type CommandEventPublisher,
   type CommandEventType,
 } from '@playlarr/commands-domain';
 import { CommandRepository } from '@playlarr/commands-persistence';
@@ -8,13 +8,11 @@ import { CommandRepository } from '@playlarr/commands-persistence';
 import { ApplicationEventBus } from './application-event-bus.js';
 
 @Injectable()
-export class ApplicationCommandEventPublisher extends CommandEventPublisher {
+export class ApplicationCommandEventPublisher implements CommandEventPublisher {
   constructor(
     private readonly commandRepository: CommandRepository,
     private readonly eventBus: ApplicationEventBus,
-  ) {
-    super();
-  }
+  ) {}
 
   async publish(commandId: string, type: CommandEventType): Promise<void> {
     const command = await this.commandRepository.findStateById(commandId);

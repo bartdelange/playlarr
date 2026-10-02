@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { MikroORM } from '@mikro-orm/core';
+import { MikroORM, raw } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 import type { CommandState } from '@playlarr/commands-domain';
 
@@ -21,6 +21,7 @@ export class CommandRepository {
       current: 0,
       total: 0,
       attempts: 0,
+      revision: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -56,6 +57,7 @@ export class CommandRepository {
         current,
         total,
         currentItem,
+        revision: raw('revision + 1'),
         updatedAt: now,
       },
     );
@@ -70,6 +72,7 @@ export class CommandRepository {
       {
         status: 'completed',
         completedAt: now,
+        revision: raw('revision + 1'),
         updatedAt: now,
       },
     );
@@ -85,6 +88,7 @@ export class CommandRepository {
         status: 'failed',
         error,
         completedAt: now,
+        revision: raw('revision + 1'),
         updatedAt: now,
       },
     );
@@ -116,6 +120,7 @@ export class CommandRepository {
           {
             status: 'running',
             attempts: candidate.attempts + 1,
+            revision: raw('revision + 1'),
             startedAt: now,
             updatedAt: now,
           },
@@ -155,6 +160,7 @@ export class CommandRepository {
       },
       {
         status: 'queued',
+        revision: raw('revision + 1'),
         startedAt: null,
         updatedAt: new Date(),
       },
@@ -172,6 +178,7 @@ export class CommandRepository {
         ? {}
         : { currentItem: command.currentItem }),
       attempts: command.attempts,
+      revision: command.revision,
       ...(command.error == null ? {} : { error: command.error }),
       createdAt: command.createdAt.toISOString(),
       updatedAt: command.updatedAt.toISOString(),

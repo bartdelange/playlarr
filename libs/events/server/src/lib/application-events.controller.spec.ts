@@ -6,9 +6,10 @@ import { ApplicationEventBus } from './application-event-bus.js';
 import { ApplicationEventsController } from './application-events.controller.js';
 
 const commandState = (
-  updatedAt: string,
+  revision: number,
   current: number,
   status: CommandState['status'] = 'running',
+  updatedAt = '2026-09-30T10:00:01.000Z',
 ): CommandState => ({
   id: 'command-1',
   type: 'test.command',
@@ -16,6 +17,7 @@ const commandState = (
   current,
   total: 3,
   attempts: 1,
+  revision,
   createdAt: '2026-09-30T10:00:00.000Z',
   updatedAt,
   startedAt: '2026-09-30T10:00:01.000Z',
@@ -37,9 +39,10 @@ describe('ApplicationEventsController', () => {
 
   it('reconciles a command-scoped connection from persisted current state', async () => {
     const completedCommand = commandState(
-      '2026-09-30T10:00:04.000Z',
+      3,
       3,
       'completed',
+      '2026-09-30T10:00:04.000Z',
     );
     const repository = Object.create(
       CommandRepository.prototype,
@@ -91,7 +94,7 @@ describe('ApplicationEventsController', () => {
     });
   });
 
-  it('drops queued command events that are not newer than the snapshot', async () => {
+  it('reconciles queued command events by revision, including equal timestamps', async () => {
     let resolveSnapshot!: (command: CommandState) => void;
     const snapshot = new Promise<CommandState>((resolve) => {
       resolveSnapshot = resolve;
@@ -115,20 +118,20 @@ describe('ApplicationEventsController', () => {
     eventBus.publish({
       type: 'command.progress',
       occurredAt: '2026-09-30T10:00:01.000Z',
-      command: commandState('2026-09-30T10:00:01.000Z', 1),
+      command: commandState(1, 1),
     });
     eventBus.publish({
       type: 'command.progress',
       occurredAt: '2026-09-30T10:00:02.000Z',
-      command: commandState('2026-09-30T10:00:02.000Z', 2),
+      command: commandState(2, 2),
     });
     eventBus.publish({
       type: 'command.progress',
       occurredAt: '2026-09-30T10:00:03.000Z',
-      command: commandState('2026-09-30T10:00:03.000Z', 3),
+      command: commandState(3, 3),
     });
 
-    resolveSnapshot(commandState('2026-09-30T10:00:02.000Z', 2));
+    resolveSnapshot(commandState(2, 2));
 
     await vi.waitFor(() => {
       expect(messages).toHaveLength(2);
@@ -137,11 +140,11 @@ describe('ApplicationEventsController', () => {
     expect(messages).toMatchObject([
       {
         type: 'command.snapshot',
-        data: { command: { current: 2 } },
+        data: { command: { current: 2, revision: 2 } },
       },
       {
         type: 'command.progress',
-        data: { command: { current: 3 } },
+        data: { command: { current: 3, revision: 3 } },
       },
     ]);
   });

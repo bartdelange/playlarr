@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  type MessageEvent,
-  NotFoundException,
-  Param,
-  Query,
-  Sse,
-} from '@nestjs/common';
+import { Controller, type MessageEvent, Query, Sse } from '@nestjs/common';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { Observable } from 'rxjs';
 
@@ -39,7 +31,7 @@ const occurredAfterSnapshot = (
   snapshot: CommandSnapshotEvent['command'],
 ): boolean =>
   event.type === 'domain.invalidated' ||
-  event.command.updatedAt > snapshot.updatedAt;
+  event.command.revision > snapshot.revision;
 
 @Controller()
 export class ApplicationEventsController {
@@ -47,17 +39,6 @@ export class ApplicationEventsController {
     private readonly eventBus: ApplicationEventBus,
     private readonly commandRepository: CommandRepository,
   ) {}
-
-  @Get('commands/:id')
-  async command(@Param('id') id: string) {
-    const command = await this.commandRepository.findStateById(id);
-
-    if (!command) {
-      throw new NotFoundException('Command not found');
-    }
-
-    return command;
-  }
 
   @Sse('events')
   events(

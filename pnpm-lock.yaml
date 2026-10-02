@@ -353,6 +353,9 @@ importers:
       '@playlarr/commands-persistence':
         specifier: workspace:*
         version: link:../../commands/persistence
+      '@playlarr/commands-server':
+        specifier: workspace:*
+        version: link:../../commands/server
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2

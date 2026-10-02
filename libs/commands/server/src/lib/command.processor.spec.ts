@@ -4,8 +4,9 @@ import { join } from 'node:path';
 
 import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 import { MikroORM } from '@mikro-orm/sqlite';
+import { Logger } from '@nestjs/common';
 import {
-  CommandEventPublisher,
+  type CommandEventPublisher,
   type CommandEventType,
   type CommandHandler,
 } from '@playlarr/commands-domain';
@@ -36,16 +37,14 @@ const waitFor = async (
   throw new Error('Timed out waiting for condition');
 };
 
-class RecordingCommandEventPublisher extends CommandEventPublisher {
+class RecordingCommandEventPublisher implements CommandEventPublisher {
   readonly events: Array<{
     type: CommandEventType;
     status?: string;
     error?: string;
   }> = [];
 
-  constructor(private readonly repository: CommandRepository) {
-    super();
-  }
+  constructor(private readonly repository: CommandRepository) {}
 
   async publish(commandId: string, type: CommandEventType): Promise<void> {
     const command = await this.repository.findStateById(commandId);
@@ -211,6 +210,9 @@ describe('CommandProcessor', () => {
   });
 
   it('continues execution when event state cannot be loaded', async () => {
+    const loggerError = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
     const handler = {
       type: 'test.observer-failure',
       retryInterrupted: true,
@@ -234,6 +236,10 @@ describe('CommandProcessor', () => {
     });
 
     expect(handler.execute).toHaveBeenCalledOnce();
+    expect(loggerError).toHaveBeenCalledWith(
+      `Failed to publish command.started for command ${command.id}`,
+      expect.stringContaining('Notification delivery failed'),
+    );
   });
 
   it('fails commands with an unknown type', async () => {

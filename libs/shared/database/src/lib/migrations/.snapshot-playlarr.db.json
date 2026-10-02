@@ -195,6 +195,23 @@
           "enumItems": [],
           "mappedType": "json"
         },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "0",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
         "started_at": {
           "name": "started_at",
           "type": "datetime",
