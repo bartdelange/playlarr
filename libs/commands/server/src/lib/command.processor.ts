@@ -157,7 +157,7 @@ export class CommandProcessor
       await this.eventPublisher.publish(id, type);
     } catch (error) {
       // Notification failures must not change authoritative command execution.
-      this.logger.error(
+      this.logger.warn(
         `Failed to publish ${type} for command ${id}`,
         error instanceof Error ? error.stack : String(error),
       );

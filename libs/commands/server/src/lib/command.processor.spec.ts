@@ -210,8 +210,8 @@ describe('CommandProcessor', () => {
   });
 
   it('continues execution when event state cannot be loaded', async () => {
-    const loggerError = vi
-      .spyOn(Logger.prototype, 'error')
+    const loggerWarn = vi
+      .spyOn(Logger.prototype, 'warn')
       .mockImplementation(() => undefined);
     const handler = {
       type: 'test.observer-failure',
@@ -236,7 +236,7 @@ describe('CommandProcessor', () => {
     });
 
     expect(handler.execute).toHaveBeenCalledOnce();
-    expect(loggerError).toHaveBeenCalledWith(
+    expect(loggerWarn).toHaveBeenCalledWith(
       `Failed to publish command.started for command ${command.id}`,
       expect.stringContaining('Notification delivery failed'),
     );

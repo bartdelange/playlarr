@@ -1,20 +1,37 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  type DynamicModule,
+  type ModuleMetadata,
+  type Type,
+} from '@nestjs/common';
+import type { CommandEventPublisher } from '@playlarr/commands-domain';
 import { CommandsPersistenceModule } from '@playlarr/commands-persistence';
-import { CommandHandlerRegistry } from './command-handler.registry.js';
-import { CommandWakeSignal } from './command-wake-signal.js';
-import { CommandService } from './command.service.js';
+
+import { COMMAND_EVENT_PUBLISHER } from './command-event-publisher.token.js';
 import { CommandProcessor } from './command.processor.js';
-import { CommandController } from './command.controller.js';
+import { CommandServicesModule } from './command-services.module.js';
+
+interface CommandsModuleOptions {
+  readonly imports: NonNullable<ModuleMetadata['imports']>;
+  readonly eventPublisher: Type<CommandEventPublisher>;
+}
 
 @Module({
-  imports: [CommandsPersistenceModule],
-  controllers: [CommandController],
-  providers: [
-    CommandHandlerRegistry,
-    CommandWakeSignal,
-    CommandService,
-    CommandProcessor,
-  ],
-  exports: [CommandHandlerRegistry, CommandService],
+  imports: [CommandServicesModule, CommandsPersistenceModule],
 })
-export class CommandsModule {}
+export class CommandsModule {
+  static register(options: CommandsModuleOptions): DynamicModule {
+    return {
+      module: CommandsModule,
+      imports: [...options.imports],
+      providers: [
+        {
+          provide: COMMAND_EVENT_PUBLISHER,
+          useExisting: options.eventPublisher,
+        },
+        CommandProcessor,
+      ],
+      exports: [COMMAND_EVENT_PUBLISHER, CommandProcessor],
+    };
+  }
+}

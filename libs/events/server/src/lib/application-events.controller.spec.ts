@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import type { CommandState } from '@playlarr/commands-domain';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +36,20 @@ describe('ApplicationEventsController', () => {
     }
 
     subscriptions.length = 0;
+  });
+
+  it('rejects mutually incompatible command and scope filters', () => {
+    const repository = Object.create(
+      CommandRepository.prototype,
+    ) as CommandRepository;
+    const controller = new ApplicationEventsController(
+      new ApplicationEventBus(),
+      repository,
+    );
+
+    expect(() => controller.events('command-1', 'imports')).toThrow(
+      new BadRequestException('commandId and scope filters cannot be combined'),
+    );
   });
 
   it('reconciles a command-scoped connection from persisted current state', async () => {

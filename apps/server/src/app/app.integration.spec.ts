@@ -9,9 +9,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from './app.module.js';
 
-import { CommandService } from '@playlarr/commands-server';
+import {
+  COMMAND_EVENT_PUBLISHER,
+  CommandProcessor,
+  CommandService,
+} from '@playlarr/commands-server';
 import { CommandRepository } from '@playlarr/commands-persistence';
-import { ApplicationEventBus } from '@playlarr/events-server';
+import { ApplicationCommandEventPublisher } from '@playlarr/events-server';
 
 const waitFor = async (
   predicate: () => Promise<boolean>,
@@ -148,11 +152,11 @@ describe('Playlarr server', () => {
 
   it('streams persisted command progress through NestJS SSE', async () => {
     const repository = app.get(CommandRepository);
-    const eventBus = app.get(ApplicationEventBus);
-    const command = await repository.create('test.sse', {});
+    const processor = app.get(CommandProcessor);
+    const publisher = app.get(COMMAND_EVENT_PUBLISHER);
+    const command = await repository.create('sample.delay', { steps: 2 });
 
-    await repository.claimNext();
-    await repository.updateProgress(command.id, 1, 2, 'Step 1');
+    expect(publisher).toBe(app.get(ApplicationCommandEventPublisher));
 
     const abortController = new AbortController();
     const response = await fetch(
@@ -182,17 +186,13 @@ describe('Playlarr server', () => {
       received += decoder.decode(result.value, { stream: true });
     }
 
-    const state = await repository.findStateById(command.id);
+    const claimedCommand = await repository.claimNext();
 
-    if (!state) {
-      throw new Error('Persisted command state was not found');
+    if (!claimedCommand) {
+      throw new Error('Persisted sample command could not be claimed');
     }
 
-    eventBus.publish({
-      type: 'command.progress',
-      occurredAt: new Date().toISOString(),
-      command: state,
-    });
+    await processor.execute(claimedCommand);
 
     while (!received.includes('event: command.progress')) {
       const result = await reader.read();
@@ -205,7 +205,9 @@ describe('Playlarr server', () => {
     }
 
     expect(received).toContain(`"id":"${command.id}"`);
-    expect(received).toContain('"current":1');
+    expect(received).toContain('event: command.progress');
+    expect(received).toContain('"current":2');
+    expect(received).toContain('event: command.completed');
 
     abortController.abort();
   });

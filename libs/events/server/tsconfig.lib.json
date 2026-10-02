@@ -15,9 +15,6 @@
   "include": ["src/**/*.ts"],
   "references": [
     {
-      "path": "../../commands/server/tsconfig.lib.json"
-    },
-    {
       "path": "../../commands/persistence/tsconfig.lib.json"
     },
     {

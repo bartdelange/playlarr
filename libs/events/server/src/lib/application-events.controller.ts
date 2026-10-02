@@ -1,4 +1,10 @@
-import { Controller, type MessageEvent, Query, Sse } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  type MessageEvent,
+  Query,
+  Sse,
+} from '@nestjs/common';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { Observable } from 'rxjs';
 
@@ -47,6 +53,13 @@ export class ApplicationEventsController {
   ): Observable<MessageEvent> {
     const commandId = optionalQuery(commandIdQuery);
     const scope = optionalQuery(scopeQuery);
+
+    if (commandId !== undefined && scope !== undefined) {
+      throw new BadRequestException(
+        'commandId and scope filters cannot be combined',
+      );
+    }
+
     const filter: ApplicationEventFilter = {
       ...(commandId === undefined ? {} : { commandId }),
       ...(scope === undefined ? {} : { scope }),
