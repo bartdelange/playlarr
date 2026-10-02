@@ -31,7 +31,6 @@ export class CommandsModule {
         },
         CommandProcessor,
       ],
-      exports: [COMMAND_EVENT_PUBLISHER, CommandProcessor],
     };
   }
 }
