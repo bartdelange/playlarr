@@ -5,6 +5,7 @@ import {
   Query,
   Sse,
 } from '@nestjs/common';
+import type { CommandState } from '@playlarr/commands-domain';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { Observable } from 'rxjs';
 
@@ -17,9 +18,7 @@ import type {
 interface CommandSnapshotEvent {
   readonly type: 'command.snapshot';
   readonly occurredAt: string;
-  readonly command: NonNullable<
-    Awaited<ReturnType<CommandRepository['findStateById']>>
-  >;
+  readonly command: CommandState;
 }
 
 const message = (
@@ -29,8 +28,11 @@ const message = (
   data: event,
 });
 
-const optionalQuery = (value: string | undefined): string | undefined =>
-  value && value.trim().length > 0 ? value : undefined;
+const optionalQuery = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim();
+
+  return trimmed || undefined;
+};
 
 const occurredAfterSnapshot = (
   event: ApplicationEvent,

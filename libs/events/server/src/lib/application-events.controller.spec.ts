@@ -70,7 +70,7 @@ describe('ApplicationEventsController', () => {
     const messages: unknown[] = [];
 
     const droppedConnection = controller
-      .events('command-1')
+      .events('  command-1  ')
       .subscribe((event) => {
         messages.push(event);
       });
