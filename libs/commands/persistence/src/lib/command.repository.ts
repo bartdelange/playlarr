@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { MikroORM } from '@mikro-orm/core';
+import { MikroORM, raw } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
+import type { CommandState } from '@playlarr/commands-domain';
 
 import { CommandEntity } from './command.entity.js';
 
@@ -20,6 +21,7 @@ export class CommandRepository {
       current: 0,
       total: 0,
       attempts: 0,
+      revision: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -32,6 +34,12 @@ export class CommandRepository {
 
   async findById(id: string): Promise<CommandEntity | null> {
     return this.orm.em.fork().findOne(CommandEntity, { id });
+  }
+
+  async findStateById(id: string): Promise<CommandState | null> {
+    const command = await this.findById(id);
+
+    return command ? this.toState(command) : null;
   }
 
   async updateProgress(
@@ -49,6 +57,7 @@ export class CommandRepository {
         current,
         total,
         currentItem,
+        revision: raw('revision + 1'),
         updatedAt: now,
       },
     );
@@ -63,6 +72,7 @@ export class CommandRepository {
       {
         status: 'completed',
         completedAt: now,
+        revision: raw('revision + 1'),
         updatedAt: now,
       },
     );
@@ -78,6 +88,7 @@ export class CommandRepository {
         status: 'failed',
         error,
         completedAt: now,
+        revision: raw('revision + 1'),
         updatedAt: now,
       },
     );
@@ -109,6 +120,7 @@ export class CommandRepository {
           {
             status: 'running',
             attempts: candidate.attempts + 1,
+            revision: raw('revision + 1'),
             startedAt: now,
             updatedAt: now,
           },
@@ -148,9 +160,34 @@ export class CommandRepository {
       },
       {
         status: 'queued',
+        revision: raw('revision + 1'),
         startedAt: null,
         updatedAt: new Date(),
       },
     );
+  }
+
+  private toState(command: CommandEntity): CommandState {
+    return {
+      id: command.id,
+      type: command.type,
+      status: command.status,
+      current: command.current,
+      total: command.total,
+      ...(command.currentItem == null
+        ? {}
+        : { currentItem: command.currentItem }),
+      attempts: command.attempts,
+      revision: command.revision,
+      ...(command.error == null ? {} : { error: command.error }),
+      createdAt: command.createdAt.toISOString(),
+      updatedAt: command.updatedAt.toISOString(),
+      ...(command.startedAt == null
+        ? {}
+        : { startedAt: command.startedAt.toISOString() }),
+      ...(command.completedAt == null
+        ? {}
+        : { completedAt: command.completedAt.toISOString() }),
+    };
   }
 }

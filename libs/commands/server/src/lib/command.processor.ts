@@ -1,5 +1,7 @@
 import {
   Injectable,
+  Inject,
+  Logger,
   OnApplicationBootstrap,
   OnApplicationShutdown,
 } from '@nestjs/common';
@@ -7,7 +9,12 @@ import { map, merge, Subscription, timer } from 'rxjs';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { CommandHandlerRegistry } from './command-handler.registry.js';
 import { CommandWakeSignal } from './command-wake-signal.js';
-import type { CommandProgressReporter } from '@playlarr/commands-domain';
+import {
+  type CommandEventPublisher,
+  type CommandEventType,
+  type CommandProgressReporter,
+} from '@playlarr/commands-domain';
+import { COMMAND_EVENT_PUBLISHER } from './command-event-publisher.token.js';
 
 const FALLBACK_INTERVAL_MS = 10_000;
 
@@ -19,11 +26,14 @@ export class CommandProcessor
   private processingPromise?: Promise<void>;
   private stopping = false;
   private readonly fallbackIntervalMs = FALLBACK_INTERVAL_MS;
+  private readonly logger = new Logger(CommandProcessor.name);
 
   constructor(
     private readonly repository: CommandRepository,
     private readonly registry: CommandHandlerRegistry,
     private readonly wakeSignal: CommandWakeSignal,
+    @Inject(COMMAND_EVENT_PUBLISHER)
+    private readonly eventPublisher: CommandEventPublisher,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -71,6 +81,8 @@ export class CommandProcessor
     type: string;
     payloadJson: unknown;
   }): Promise<void> {
+    await this.publishCommandEvent(command.id, 'command.started');
+
     const handler = this.registry.get(command.type);
 
     if (!handler) {
@@ -78,23 +90,33 @@ export class CommandProcessor
         command.id,
         `Unsupported command type: ${command.type}`,
       );
+      await this.publishCommandEvent(command.id, 'command.failed');
 
       return;
     }
 
     const progress: CommandProgressReporter = {
-      report: ({ current, total, currentItem }) =>
-        this.repository.updateProgress(command.id, current, total, currentItem),
+      report: async ({ current, total, currentItem }) => {
+        await this.repository.updateProgress(
+          command.id,
+          current,
+          total,
+          currentItem,
+        );
+        await this.publishCommandEvent(command.id, 'command.progress');
+      },
     };
 
     try {
       await handler.execute(command.payloadJson, progress);
       await this.repository.complete(command.id);
+      await this.publishCommandEvent(command.id, 'command.completed');
     } catch (error) {
       await this.repository.fail(
         command.id,
         error instanceof Error ? error.message : String(error),
       );
+      await this.publishCommandEvent(command.id, 'command.failed');
     }
   }
 
@@ -109,6 +131,7 @@ export class CommandProcessor
           command.id,
           `Unsupported command type: ${command.type}`,
         );
+        await this.publishCommandEvent(command.id, 'command.failed');
 
         continue;
       }
@@ -121,6 +144,22 @@ export class CommandProcessor
       await this.repository.fail(
         command.id,
         'Command interrupted by application restart',
+      );
+      await this.publishCommandEvent(command.id, 'command.failed');
+    }
+  }
+
+  private async publishCommandEvent(
+    id: string,
+    type: CommandEventType,
+  ): Promise<void> {
+    try {
+      await this.eventPublisher.publish(id, type);
+    } catch (error) {
+      // Notification failures must not change authoritative command execution.
+      this.logger.warn(
+        `Failed to publish ${type} for command ${id}`,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }

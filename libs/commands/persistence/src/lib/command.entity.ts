@@ -36,6 +36,9 @@ export class CommandEntity {
   @Property()
   attempts = 0;
 
+  @Property()
+  revision = 0;
+
   @Property({ nullable: true })
   error?: string;
 

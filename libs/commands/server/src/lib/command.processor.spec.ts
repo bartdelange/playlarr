@@ -4,7 +4,12 @@ import { join } from 'node:path';
 
 import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 import { MikroORM } from '@mikro-orm/sqlite';
-import type { CommandHandler } from '@playlarr/commands-domain';
+import { Logger } from '@nestjs/common';
+import {
+  type CommandEventPublisher,
+  type CommandEventType,
+  type CommandHandler,
+} from '@playlarr/commands-domain';
 import {
   CommandEntity,
   CommandRepository,
@@ -32,6 +37,26 @@ const waitFor = async (
   throw new Error('Timed out waiting for condition');
 };
 
+class RecordingCommandEventPublisher implements CommandEventPublisher {
+  readonly events: Array<{
+    type: CommandEventType;
+    status?: string;
+    error?: string;
+  }> = [];
+
+  constructor(private readonly repository: CommandRepository) {}
+
+  async publish(commandId: string, type: CommandEventType): Promise<void> {
+    const command = await this.repository.findStateById(commandId);
+
+    this.events.push({
+      type,
+      ...(command === null ? {} : { status: command.status }),
+      ...(command?.error === undefined ? {} : { error: command.error }),
+    });
+  }
+}
+
 describe('CommandProcessor', () => {
   let directory: string;
   let databasePath: string;
@@ -40,6 +65,7 @@ describe('CommandProcessor', () => {
   let repository: CommandRepository;
   let registry: CommandHandlerRegistry;
   let wakeSignal: CommandWakeSignal;
+  let eventPublisher: RecordingCommandEventPublisher;
   let processor: CommandProcessor;
 
   beforeEach(async () => {
@@ -58,8 +84,14 @@ describe('CommandProcessor', () => {
     repository = new CommandRepository(orm);
     registry = new CommandHandlerRegistry();
     wakeSignal = new CommandWakeSignal();
+    eventPublisher = new RecordingCommandEventPublisher(repository);
 
-    processor = new CommandProcessor(repository, registry, wakeSignal);
+    processor = new CommandProcessor(
+      repository,
+      registry,
+      wakeSignal,
+      eventPublisher,
+    );
   });
 
   afterEach(async () => {
@@ -149,6 +181,67 @@ describe('CommandProcessor', () => {
     });
   });
 
+  it('publishes persisted command lifecycle state in order', async () => {
+    const handler = {
+      type: 'test.events',
+      retryInterrupted: true,
+
+      execute: vi.fn(async (_payload, progress) => {
+        await progress.report({ current: 1, total: 1 });
+      }),
+    } satisfies CommandHandler<unknown>;
+
+    registry.register(handler);
+
+    const command = await repository.create('test.events', {});
+    await processor.onApplicationBootstrap();
+
+    await waitFor(async () => {
+      const result = await repository.findById(command.id);
+
+      return result?.status === 'completed';
+    });
+
+    expect(eventPublisher.events).toEqual([
+      { type: 'command.started', status: 'running' },
+      { type: 'command.progress', status: 'running' },
+      { type: 'command.completed', status: 'completed' },
+    ]);
+  });
+
+  it('continues execution when event state cannot be loaded', async () => {
+    const loggerWarn = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
+    const handler = {
+      type: 'test.observer-failure',
+      retryInterrupted: true,
+
+      execute: vi.fn(async () => undefined),
+    } satisfies CommandHandler<unknown>;
+
+    registry.register(handler);
+
+    const command = await repository.create('test.observer-failure', {});
+    vi.spyOn(eventPublisher, 'publish').mockRejectedValueOnce(
+      new Error('Notification delivery failed'),
+    );
+
+    await processor.onApplicationBootstrap();
+
+    await waitFor(async () => {
+      const result = await repository.findById(command.id);
+
+      return result?.status === 'completed';
+    });
+
+    expect(handler.execute).toHaveBeenCalledOnce();
+    expect(loggerWarn).toHaveBeenCalledWith(
+      `Failed to publish command.started for command ${command.id}`,
+      expect.stringContaining('Notification delivery failed'),
+    );
+  });
+
   it('fails commands with an unknown type', async () => {
     const command = await repository.create('does.not.exist', {});
 
@@ -180,7 +273,6 @@ describe('CommandProcessor', () => {
     registry.register(handler);
 
     const command = await repository.create('test.failure', {});
-
     await processor.onApplicationBootstrap();
 
     await waitFor(async () => {
@@ -192,6 +284,11 @@ describe('CommandProcessor', () => {
     const result = await repository.findById(command.id);
 
     expect(result).toMatchObject({
+      status: 'failed',
+      error: 'Intentional failure',
+    });
+    expect(eventPublisher.events.at(-1)).toEqual({
+      type: 'command.failed',
       status: 'failed',
       error: 'Intentional failure',
     });

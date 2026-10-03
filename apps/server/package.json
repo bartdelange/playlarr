@@ -98,6 +98,7 @@
     "@nestjs/platform-express": "^11.2.1",
     "@playlarr/commands-persistence": "workspace:*",
     "@playlarr/commands-server": "workspace:*",
+    "@playlarr/events-server": "workspace:*",
     "@playlarr/sample-command-server": "workspace:*",
     "@playlarr/shared-database": "workspace:*",
     "reflect-metadata": "^0.2.2",
