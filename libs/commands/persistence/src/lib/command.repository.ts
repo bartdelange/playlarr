@@ -97,46 +97,44 @@ export class CommandRepository {
   async claimNext(): Promise<CommandEntity | null> {
     const em = this.orm.em.fork();
 
-    return em.transactional(async (tx) => {
-      while (true) {
-        const candidate = await tx.findOne(
-          CommandEntity,
-          { status: 'queued' },
-          { orderBy: { createdAt: 'ASC' } },
-        );
+    while (true) {
+      const candidate = await em.findOne(
+        CommandEntity,
+        { status: 'queued' },
+        { orderBy: { createdAt: 'ASC' } },
+      );
 
-        if (!candidate) {
-          return null;
-        }
-
-        const now = new Date();
-
-        const claimed = await tx.nativeUpdate(
-          CommandEntity,
-          {
-            id: candidate.id,
-            status: 'queued',
-          },
-          {
-            status: 'running',
-            attempts: candidate.attempts + 1,
-            revision: raw('revision + 1'),
-            startedAt: now,
-            updatedAt: now,
-          },
-        );
-
-        if (claimed === 1) {
-          tx.clear();
-
-          return tx.findOneOrFail(CommandEntity, {
-            id: candidate.id,
-          });
-        }
-
-        tx.clear();
+      if (!candidate) {
+        return null;
       }
-    });
+
+      const now = new Date();
+
+      const claimed = await em.nativeUpdate(
+        CommandEntity,
+        {
+          id: candidate.id,
+          status: 'queued',
+        },
+        {
+          status: 'running',
+          attempts: candidate.attempts + 1,
+          revision: raw('revision + 1'),
+          startedAt: now,
+          updatedAt: now,
+        },
+      );
+
+      if (claimed === 1) {
+        em.clear();
+
+        return em.findOneOrFail(CommandEntity, {
+          id: candidate.id,
+        });
+      }
+
+      em.clear();
+    }
   }
 
   async findRunning(): Promise<CommandEntity[]> {
