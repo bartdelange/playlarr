@@ -19,6 +19,17 @@
           "rootDir": "apps/server/src"
         }
       },
+      "start-production": {
+        "continuous": true,
+        "dependsOn": [
+          "build",
+          "@playlarr/web:build"
+        ],
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "node apps/server/dist/production-main.js"
+        }
+      },
       "prune-lockfile": {
         "dependsOn": [
           "build"
