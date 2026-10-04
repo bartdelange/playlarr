@@ -13,6 +13,7 @@ describe('CommandRepository', () => {
   let directory: string;
   let databasePath: string;
   let orm: MikroORM;
+  let secondOrm: MikroORM | undefined;
   let repository: CommandRepository;
 
   beforeEach(async () => {
@@ -32,6 +33,7 @@ describe('CommandRepository', () => {
   });
 
   afterEach(async () => {
+    await secondOrm?.close(true);
     await orm.close(true);
 
     await rm(directory, {
@@ -195,6 +197,42 @@ describe('CommandRepository', () => {
 
     expect(found?.status).toBe('running');
     expect(found?.attempts).toBe(1);
+  });
+
+  it('does not double-claim through independent database connections', async () => {
+    const command = await repository.create('test.command', {});
+
+    secondOrm = await MikroORM.init({
+      dbName: databasePath,
+      entities: [CommandEntity],
+      metadataProvider: ReflectMetadataProvider,
+    });
+
+    for (const currentOrm of [orm, secondOrm]) {
+      const connection = currentOrm.em.getConnection();
+
+      await connection.execute('PRAGMA journal_mode = WAL');
+      await connection.execute('PRAGMA busy_timeout = 5000');
+    }
+
+    const secondRepository = new CommandRepository(secondOrm);
+    const [first, second] = await Promise.all([
+      repository.claimNext(),
+      secondRepository.claimNext(),
+    ]);
+
+    const claimedIds = [first?.id, second?.id].filter(
+      (id): id is string => id !== undefined && id !== null,
+    );
+
+    expect(claimedIds).toEqual([command.id]);
+
+    const found = await repository.findById(command.id);
+
+    expect(found).toMatchObject({
+      status: 'running',
+      attempts: 1,
+    });
   });
 
   it('persists queued commands across database close and reopen', async () => {
