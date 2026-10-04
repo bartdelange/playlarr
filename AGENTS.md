@@ -314,9 +314,9 @@ Run committed pending migrations programmatically during NestJS startup before t
 
 Do not use destructive automatic schema synchronization in production.
 
-Existing Playlarr SQLite data is part of the compatibility contract.
+Databases created by the legacy Python Playlarr application are not part of the compatibility contract. The rewritten TypeScript application may establish a fresh database baseline.
 
-Schema changes must use forward migrations that preserve legacy user data whenever feasible.
+After that baseline, schema changes must use forward migrations that preserve data created by the rewritten application whenever feasible.
 
 Prefer migrations that remain stable independently of the current entity implementation.
 
