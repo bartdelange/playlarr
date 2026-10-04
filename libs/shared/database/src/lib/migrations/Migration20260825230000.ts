@@ -1,6 +1,8 @@
 import { Migration } from '@mikro-orm/migrations';
 
 export class Migration20260825230000 extends Migration {
+  override name = 'Migration20260825230000';
+
   override async up(): Promise<void> {
     this.addSql(`
       create table if not exists "_runtime_metadata" (
