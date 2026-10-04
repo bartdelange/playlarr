@@ -66,7 +66,7 @@ describe('optional authentication', () => {
     await enableAuthentication();
     app = await createApplication();
 
-    await request(app.getHttpServer()).get('/api/health').expect(401);
+    await request(app.getHttpServer()).get('/api/commands/unknown').expect(401);
 
     const invalidLogin = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -74,7 +74,16 @@ describe('optional authentication', () => {
       .expect(401);
 
     expect(invalidLogin.headers['set-cookie']).toBeUndefined();
-    await request(app.getHttpServer()).get('/api/health').expect(401);
+    await request(app.getHttpServer()).get('/api/commands/unknown').expect(401);
+  });
+
+  it('keeps the operational health endpoint public when authentication is enabled', async () => {
+    await enableAuthentication();
+    app = await createApplication();
+
+    await request(app.getHttpServer()).get('/api/health').expect(200, {
+      status: 'ok',
+    });
   });
 
   it('persists a valid session across navigation and application restart', async () => {
@@ -131,7 +140,7 @@ describe('optional authentication', () => {
     expect(logout.headers['set-cookie']?.[0]).toContain('playlarr_session=;');
 
     await request(app.getHttpServer())
-      .get('/api/health')
+      .get('/api/commands/unknown')
       .set('Cookie', cookie)
       .expect(401);
   });
