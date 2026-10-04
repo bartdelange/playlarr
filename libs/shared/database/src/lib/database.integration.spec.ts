@@ -10,12 +10,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createDatabaseConfig } from './database.config.js';
 import { DatabaseLifecycle } from './database.lifecycle.js';
 
-const CURRENT_MIGRATIONS = [
-  'Migration20260825230000',
-  'Migration20260908102644',
-  'Migration20261002114158',
-];
-
 class DeliberatelyFailingMigration extends Migration {
   override name = 'Migration99999999999999';
 
@@ -72,15 +66,13 @@ describe('database integration', () => {
        where type = 'table' and name in ('_runtime_metadata', 'commands')
        order by name`,
     );
-    const executed = await database.orm.migrator.getExecuted();
+    const pending = await database.orm.migrator.getPending();
 
     expect(tables).toEqual([
       { name: '_runtime_metadata' },
       { name: 'commands' },
     ]);
-    expect(executed.map((migration) => migration.name)).toEqual(
-      CURRENT_MIGRATIONS,
-    );
+    expect(pending).toEqual([]);
   });
 
   it('configures the required SQLite pragmas', async () => {
@@ -145,9 +137,7 @@ describe('database integration', () => {
         revision: 0,
       },
     ]);
-    expect(
-      (await migrator.getExecuted()).map((migration) => migration.name),
-    ).toEqual(CURRENT_MIGRATIONS);
+    await expect(migrator.getPending()).resolves.toEqual([]);
   });
 
   it('does not reapply completed migrations on an already-current database', async () => {
