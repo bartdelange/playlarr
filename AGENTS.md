@@ -335,7 +335,7 @@ Feature entities and repositories belong to their capability persistence librari
 
 `libs/shared/database` must not accumulate feature-specific persistence.
 
-Persistence tests should use real temporary SQLite databases when testing:
+When SQLite-specific behavior matters, persistence tests should use real temporary SQLite databases for:
 
 - migrations
 - transactions
@@ -537,9 +537,13 @@ Use:
 - Testing Library for React behavior
 - Playwright for meaningful end-to-end user flows
 
-Test behavior and architectural boundaries rather than framework internals.
+Test coverage is not a goal by itself. Tests should protect meaningful Playlarr-owned behavior, decisions, invariants, realistic failure modes, architectural boundaries, or regressions. Before adding a test, identify a concrete failure it would catch that matters to Playlarr.
 
-Prioritize coverage for:
+Do not add tests primarily to prove that SQLite, MikroORM, NestJS, Next.js, React, or another dependency behaves as documented, unless Playlarr relies on that behavior in an unusual or particularly important way. Existing tests, architectural enforcement, production behavior, or a stronger test at another layer may already provide sufficient confidence.
+
+Acceptance criteria describe required behavior and confidence; they do not imply one test per criterion. It is valid for a change to add few or no tests when existing coverage already protects the behavior and additional tests would not materially increase confidence. Do not chase coverage percentages or add trivial cases solely to increase coverage.
+
+Prioritize tests for:
 
 - domain and business rules
 - playlist ordering and duplicates
@@ -555,13 +559,15 @@ Prioritize coverage for:
 - error handling
 - security-sensitive behavior
 
-Use real temporary SQLite databases for persistence integration tests.
+Persistence integration tests that depend on database semantics must use real temporary SQLite databases.
 
 Use deterministic provider fixtures and mocks.
 
 Critical restart-sensitive workflows should be tested through interruption and recovery, not only internal state transitions.
 
-E2E tests should exercise behavior through the public application boundary:
+For hardening work, inspect the current implementation and coverage first, then identify the remaining realistic risks. Prefer a small number of adversarial tests for Playlarr-owned concurrency, recovery, state transitions, side effects, and failure handling over broad coverage of framework or database mechanics.
+
+Add E2E tests when crossing the real application boundary provides meaningful additional confidence. Do not reproduce every lower-level unit or integration scenario in Playwright. E2E tests should exercise behavior through the public application boundary:
 
 ```text
 browser/request
@@ -610,9 +616,7 @@ Prefer the smallest implementation that correctly solves the current requirement
 - Do not generalize code for hypothetical future requirements. Implement the current requirement and refactor when a second real use case establishes the abstraction.
 - Before adding a new class/module/provider, ask whether the behavior can remain in the component that already owns the responsibility.
 - Avoid classes that merely wrap one boolean, function, or dependency unless the wrapper establishes a meaningful boundary.
-- Do not mirror issue/acceptance-criteria wording mechanically into production types, methods, or one-test-per-bullet tests.
-- Tests should primarily protect Playlarr-owned behavior, decisions, edge cases, and regressions. Avoid tests whose main purpose is verifying framework/library behavior.
-- For lifecycle, persistence, concurrency, and asynchronous code, actively test race conditions and failure paths rather than only the happy path.
+- Do not mirror issue or acceptance-criteria wording mechanically into production types, methods, or tests.
 - Prefer deterministic controlled promises/fakes and fake timers over sleeps or timing-dependent tests.
 - Do not make shared test fixtures depend on test execution order or have individual tests perform suite-level cleanup.
 - When an existing framework lifecycle or primitive already provides the required behavior, use it rather than recreating it behind a Playlarr abstraction.
@@ -623,8 +627,8 @@ Before considering a change complete, perform a simplification pass:
 1. Identify every new abstraction introduced by the change.
 2. For each one, state what concrete problem it solves today.
 3. Remove it if the answer is only "clean architecture", "future flexibility", "testability", or mirroring terminology from the issue.
-4. Look for concurrency boundaries, partial failures, shutdown races, retries, and interrupted operations that happy-path tests may miss.
-5. Prefer fewer concepts and stronger behavioral tests over more structure and superficial coverage.
+4. Look for remaining realistic risks around concurrency boundaries, partial failures, shutdown races, retries, and interrupted operations.
+5. Prefer fewer concepts and a small number of stronger behavioral tests over more structure or superficial coverage.
 
 ## General implementation principles
 
@@ -790,9 +794,13 @@ Pull request titles follow the same basic format as commit messages:
 <gitmoji> <type>(<optional-scope>): <subject>
 ```
 
-Use `.github/pull_request_template.md` when creating pull requests.
+Use `.github/pull_request_template.md` when creating pull requests, and structure the description according to that template. Complete it based on the actual implementation and validation performed.
 
-Complete the template based on the actual implementation and validation performed.
+Keep the description proportional to the change. Small changes should have small descriptions; larger or operationally risky changes may justify more explanation. Prefer short, factual descriptions written for a maintainer who can read the diff. Explain what changed and, when it is not obvious, why. Mention important behavioral, migration, compatibility, recovery, or operational consequences only when they actually exist.
+
+Do not narrate the implementation process, investigation history, every implementation detail, or the diff file-by-file or method-by-method. Do not repeat issue acceptance criteria as claims about the implementation. Avoid generated-looking prose, excessive headings, exhaustive bullet lists, repeated statements, and ceremonial lists of everything the change does not affect.
+
+Keep optional template sections brief or omit them when the template permits and they add no useful information. Summarize testing and validation compactly; list individual commands or tests only when that detail helps reviewers.
 
 Do not claim tests, builds, compatibility, or manual verification that was not actually performed.
 
