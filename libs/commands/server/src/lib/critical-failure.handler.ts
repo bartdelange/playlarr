@@ -4,6 +4,7 @@ export const CRITICAL_FAILURE_HANDLER = Symbol('CRITICAL_FAILURE_HANDLER');
 
 export interface CriticalFailureHandler {
   terminate(error: unknown): void;
+  forceTerminate(error: unknown): void;
 }
 
 @Injectable()
@@ -25,5 +26,14 @@ export class ProcessCriticalFailureHandler implements CriticalFailureHandler {
     );
 
     process.kill(process.pid, 'SIGTERM');
+  }
+
+  forceTerminate(error: unknown): void {
+    this.logger.error(
+      'Graceful backend shutdown timed out; terminating Playlarr immediately',
+      error instanceof Error ? error.stack : String(error),
+    );
+
+    process.exit(1);
   }
 }

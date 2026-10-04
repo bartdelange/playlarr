@@ -1,26 +1,34 @@
 import 'reflect-metadata';
 
-import { Logger } from '@nestjs/common';
+import { type INestApplication, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app/app.module.js';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  let app: INestApplication | undefined;
 
-  const config = app.get(ConfigService);
-  const logger = new Logger('Bootstrap');
+  try {
+    app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api');
-  app.enableShutdownHooks();
+    const config = app.get(ConfigService);
+    const logger = new Logger('Bootstrap');
 
-  const host = config.getOrThrow<string>('app.server.host');
-  const port = config.getOrThrow<number>('app.server.port');
+    app.setGlobalPrefix('api');
+    app.enableShutdownHooks();
 
-  await app.listen(port, host);
+    const host = config.getOrThrow<string>('app.server.host');
+    const port = config.getOrThrow<number>('app.server.port');
 
-  logger.log(`Playlarr server listening on http://${host}:${port}`);
+    await app.listen(port, host);
+
+    logger.log(`Playlarr server listening on http://${host}:${port}`);
+  } catch (error) {
+    await app?.close();
+
+    throw error;
+  }
 }
 
 void bootstrap().catch((error: unknown) => {
@@ -31,5 +39,5 @@ void bootstrap().catch((error: unknown) => {
     error instanceof Error ? error.stack : String(error),
   );
 
-  process.exitCode = 1;
+  process.exit(1);
 });
