@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { INestApplication } from '@nestjs/common';
+import { MikroORM } from '@mikro-orm/sqlite';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -37,6 +38,7 @@ const waitFor = async (
 describe('Playlarr server', () => {
   let app: INestApplication;
   let directory: string;
+  let appClosed = false;
 
   beforeAll(async () => {
     directory = await mkdtemp(join(tmpdir(), 'playlarr-server-'));
@@ -55,7 +57,9 @@ describe('Playlarr server', () => {
   });
 
   afterAll(async () => {
-    await app?.close();
+    if (!appClosed) {
+      await app?.close();
+    }
 
     vi.unstubAllEnvs();
 
@@ -263,5 +267,15 @@ describe('Playlarr server', () => {
       completedAt: expect.any(String),
     });
     expect(currentState.body).not.toHaveProperty('payloadJson');
+  });
+
+  it('closes the database exactly once during application shutdown', async () => {
+    const orm = app.get(MikroORM);
+    const close = vi.spyOn(orm, 'close');
+
+    await app.close();
+    appClosed = true;
+
+    expect(close).toHaveBeenCalledOnce();
   });
 });

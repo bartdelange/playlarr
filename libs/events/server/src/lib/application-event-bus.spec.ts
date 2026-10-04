@@ -76,4 +76,22 @@ describe('ApplicationEventBus', () => {
       }),
     ).not.toThrow();
   });
+
+  it('closes subscriptions idempotently during shutdown', () => {
+    const bus = new ApplicationEventBus();
+    const listener = vi.fn();
+
+    bus.subscribe({}, listener);
+
+    bus.close();
+    bus.close();
+
+    bus.publish({
+      type: 'command.completed',
+      occurredAt: '2026-09-30T10:00:02.000Z',
+      command: command('command-1'),
+    });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
 });

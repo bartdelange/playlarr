@@ -23,4 +23,13 @@ async function bootstrap(): Promise<void> {
   logger.log(`Playlarr server listening on http://${host}:${port}`);
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  const logger = new Logger('Bootstrap');
+
+  logger.error(
+    'Playlarr server failed to start',
+    error instanceof Error ? error.stack : String(error),
+  );
+
+  process.exitCode = 1;
+});

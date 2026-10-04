@@ -18,7 +18,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CommandHandlerRegistry } from './command-handler.registry.js';
 import { CommandProcessor } from './command.processor.js';
+import { CommandRuntimeLifecycle } from './command-runtime-lifecycle.js';
 import { CommandWakeSignal } from './command-wake-signal.js';
+import type { CriticalFailureHandler } from './critical-failure.handler.js';
 
 const waitFor = async (
   predicate: () => Promise<boolean>,
@@ -66,6 +68,8 @@ describe('CommandProcessor', () => {
   let registry: CommandHandlerRegistry;
   let wakeSignal: CommandWakeSignal;
   let eventPublisher: RecordingCommandEventPublisher;
+  let lifecycle: CommandRuntimeLifecycle;
+  let criticalFailureHandler: CriticalFailureHandler;
   let processor: CommandProcessor;
 
   beforeEach(async () => {
@@ -85,17 +89,23 @@ describe('CommandProcessor', () => {
     registry = new CommandHandlerRegistry();
     wakeSignal = new CommandWakeSignal();
     eventPublisher = new RecordingCommandEventPublisher(repository);
+    lifecycle = new CommandRuntimeLifecycle();
+    criticalFailureHandler = {
+      terminate: vi.fn(),
+    };
 
     processor = new CommandProcessor(
       repository,
       registry,
       wakeSignal,
       eventPublisher,
+      lifecycle,
+      criticalFailureHandler,
     );
   });
 
   afterEach(async () => {
-    await processor.onApplicationShutdown();
+    await processor.beforeApplicationShutdown();
 
     await orm.close(true);
 
@@ -409,7 +419,7 @@ describe('CommandProcessor', () => {
 
     const second = await repository.create('test.blocking', {});
 
-    const shutdown = processor.onApplicationShutdown();
+    const shutdown = processor.beforeApplicationShutdown();
 
     release();
 
@@ -430,5 +440,21 @@ describe('CommandProcessor', () => {
     expect(secondResult?.status).toBe('queued');
 
     expect(handler.execute).toHaveBeenCalledOnce();
+  });
+
+  it('fails the backend when command claiming fails critically', async () => {
+    const failure = new Error('Database unavailable');
+
+    vi.spyOn(repository, 'claimNext').mockRejectedValue(failure);
+
+    await processor.onApplicationBootstrap();
+
+    await waitFor(
+      async () =>
+        vi.mocked(criticalFailureHandler.terminate).mock.calls.length === 1,
+    );
+
+    expect(lifecycle.isAcceptingWork()).toBe(false);
+    expect(criticalFailureHandler.terminate).toHaveBeenCalledWith(failure);
   });
 });
