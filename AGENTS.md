@@ -796,7 +796,11 @@ Pull request titles follow the same basic format as commit messages:
 
 Use `.github/pull_request_template.md` when creating pull requests.
 
-Complete the template based on the actual implementation and validation performed.
+Keep the description proportional to the change. Small changes should have small descriptions; larger or operationally risky changes may justify more explanation. Prefer short, factual descriptions written for a maintainer who can read the diff. Explain what changed and, when it is not obvious, why. Mention important behavioral, migration, compatibility, recovery, or operational consequences only when they actually exist.
+
+Do not narrate the implementation process, investigation history, every implementation detail, or the diff file-by-file or method-by-method. Do not repeat issue acceptance criteria as claims about the implementation. Avoid generated-looking prose, excessive headings, exhaustive bullet lists, repeated statements, and ceremonial lists of everything the change does not affect.
+
+Use the pull request template as a prompt, not a quota. Complete sections that add useful information, and keep optional sections brief or omit them when they do not. Summarize testing and validation compactly; list individual commands or tests only when that detail helps reviewers.
 
 Do not claim tests, builds, compatibility, or manual verification that was not actually performed.
 
