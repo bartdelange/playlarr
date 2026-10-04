@@ -10,11 +10,11 @@ export class DatabaseLifecycle implements OnModuleInit {
   constructor(private readonly orm: MikroORM<SqliteDriver>) {}
 
   async onModuleInit(): Promise<void> {
-    this.logger.log('Configuring SQLite');
+    this.logger.debug('Configuring SQLite');
 
     await configureSqlite(this.orm);
 
-    this.logger.log('Running pending database migrations');
+    this.logger.debug('Running pending database migrations');
 
     await this.orm.migrator.up();
 
