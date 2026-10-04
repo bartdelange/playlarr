@@ -308,7 +308,41 @@ describe('CommandProcessor', () => {
     });
   });
 
-  it('retries interrupted commands when the handler allows it', async () => {
+  it('recovers a retryable command after the database is reopened', async () => {
+    const command = await repository.create('test.retryable', {});
+
+    const claimed = await repository.claimNext();
+
+    expect(claimed?.id).toBe(command.id);
+    expect(claimed?.attempts).toBe(1);
+
+    await processor.beforeApplicationShutdown();
+    await orm.close(true);
+
+    orm = await MikroORM.init({
+      dbName: databasePath,
+      entities: [CommandEntity],
+      metadataProvider: ReflectMetadataProvider,
+    });
+
+    repository = new CommandRepository(orm);
+    registry = new CommandHandlerRegistry();
+    wakeSignal = new CommandWakeSignal();
+    eventPublisher = new RecordingCommandEventPublisher(repository);
+    lifecycle = new CommandRuntimeLifecycle();
+    criticalFailureHandler = {
+      terminate: vi.fn(),
+      forceTerminate: vi.fn(),
+    };
+    processor = new CommandProcessor(
+      repository,
+      registry,
+      wakeSignal,
+      eventPublisher,
+      lifecycle,
+      criticalFailureHandler,
+    );
+
     const handler = {
       type: 'test.retryable',
       retryInterrupted: true,
@@ -317,13 +351,7 @@ describe('CommandProcessor', () => {
     } satisfies CommandHandler<unknown>;
 
     registry.register(handler);
-
-    const command = await repository.create('test.retryable', {});
-
-    const claimed = await repository.claimNext();
-
-    expect(claimed?.id).toBe(command.id);
-    expect(claimed?.attempts).toBe(1);
+    const requeue = vi.spyOn(repository, 'requeue');
 
     await processor.onApplicationBootstrap();
 
@@ -338,6 +366,9 @@ describe('CommandProcessor', () => {
     expect(result?.status).toBe('completed');
 
     expect(result?.attempts).toBe(2);
+
+    expect(requeue).toHaveBeenCalledOnce();
+    expect(requeue).toHaveBeenCalledWith(command.id);
 
     expect(handler.execute).toHaveBeenCalledOnce();
   });
