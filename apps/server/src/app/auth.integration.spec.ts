@@ -135,6 +135,18 @@ describe('optional authentication', () => {
       .set('Cookie', cookie)
       .expect(401);
   });
+
+  it('clears an invalid session cookie on logout', async () => {
+    await enableAuthentication();
+    app = await createApplication();
+
+    const logout = await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .set('Cookie', 'playlarr_session=invalid')
+      .expect(201, { authenticated: false });
+
+    expect(logout.headers['set-cookie']?.[0]).toContain('playlarr_session=;');
+  });
 });
 
 async function enableAuthentication(): Promise<void> {

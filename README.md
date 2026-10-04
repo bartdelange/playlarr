@@ -1,5 +1,26 @@
 # Playlarr
 
+## Optional authentication
+
+Authentication is disabled by default. To enable it, configure:
+
+- `PLAYLARR_AUTH_ENABLED=true`
+- `PLAYLARR_AUTH_USERNAME` with the single operator username
+- `PLAYLARR_AUTH_PASSWORD_HASH` with a scrypt password hash
+- `PLAYLARR_AUTH_SESSION_LIFETIME_SECONDS` to override the default 30-day session lifetime
+
+Generate the password hash without placing the plaintext password in shell history:
+
+```sh
+read -rs "password?Password: "
+printf '\n'
+printf '%s' "$password" | pnpm auth:hash-password
+unset password
+```
+
+Copy the printed value into `PLAYLARR_AUTH_PASSWORD_HASH`. Authentication uses
+Secure cookies, so the public Playlarr origin must use HTTPS when it is enabled.
+
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
 ✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.

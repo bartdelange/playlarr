@@ -15,6 +15,18 @@
     }
   },
   "nx": {
+    "targets": {
+      "hash-password": {
+        "cache": false,
+        "dependsOn": [
+          "build"
+        ],
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "node libs/auth/server/dist/hash-password.js"
+        }
+      }
+    },
     "tags": [
       "type:feature",
       "platform:server"

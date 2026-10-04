@@ -66,6 +66,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @PublicAuthRoute()
   async logout(
     @Req() request: AuthRequest,
     @Res({ passthrough: true }) response: AuthResponse,
