@@ -590,6 +590,31 @@ Run workflow validation through the repository's `actionlint` Nx target.
 
 Do not claim validation passed unless the relevant command actually completed successfully.
 
+## Engineering style
+
+Prefer the smallest implementation that correctly solves the current requirement.
+
+- Do not introduce abstractions, interfaces, wrappers, services, tokens, or generic infrastructure unless they represent a real architectural boundary or have multiple meaningful consumers/implementations.
+- Do not create an interface solely to make a dependency mockable. Prefer testing through real boundaries or simple concrete fakes when practical.
+- Do not generalize code for hypothetical future requirements. Implement the current requirement and refactor when a second real use case establishes the abstraction.
+- Before adding a new class/module/provider, ask whether the behavior can remain in the component that already owns the responsibility.
+- Avoid classes that merely wrap one boolean, function, or dependency unless the wrapper establishes a meaningful boundary.
+- Do not mirror issue/acceptance-criteria wording mechanically into production types, methods, or one-test-per-bullet tests.
+- Tests should primarily protect Playlarr-owned behavior, decisions, edge cases, and regressions. Avoid tests whose main purpose is verifying framework/library behavior.
+- For lifecycle, persistence, concurrency, and asynchronous code, actively test race conditions and failure paths rather than only the happy path.
+- Prefer deterministic controlled promises/fakes and fake timers over sleeps or timing-dependent tests.
+- Do not make shared test fixtures depend on test execution order or have individual tests perform suite-level cleanup.
+- When an existing framework lifecycle or primitive already provides the required behavior, use it rather than recreating it behind a Playlarr abstraction.
+- Keep feature-specific concepts feature-specific until another genuine consumer proves they are shared.
+- A requirement being important does not imply it needs its own class or abstraction.
+
+Before considering a change complete, perform a simplification pass:
+1. Identify every new abstraction introduced by the change.
+2. For each one, state what concrete problem it solves today.
+3. Remove it if the answer is only "clean architecture", "future flexibility", "testability", or mirroring terminology from the issue.
+4. Look for concurrency boundaries, partial failures, shutdown races, retries, and interrupted operations that happy-path tests may miss.
+5. Prefer fewer concepts and stronger behavioral tests over more structure and superficial coverage.
+
 ## General implementation principles
 
 Keep changes focused, reviewable, and easy to reason about.

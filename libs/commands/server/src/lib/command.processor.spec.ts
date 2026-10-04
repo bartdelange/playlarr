@@ -17,8 +17,13 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CommandHandlerRegistry } from './command-handler.registry.js';
-import { CommandProcessor } from './command.processor.js';
+import {
+  COMMAND_SHUTDOWN_GRACE_MS,
+  CommandProcessor,
+} from './command.processor.js';
+import { CommandRuntimeLifecycle } from './command-runtime-lifecycle.js';
 import { CommandWakeSignal } from './command-wake-signal.js';
+import type { CriticalFailureHandler } from './critical-failure.handler.js';
 
 const waitFor = async (
   predicate: () => Promise<boolean>,
@@ -66,6 +71,8 @@ describe('CommandProcessor', () => {
   let registry: CommandHandlerRegistry;
   let wakeSignal: CommandWakeSignal;
   let eventPublisher: RecordingCommandEventPublisher;
+  let lifecycle: CommandRuntimeLifecycle;
+  let criticalFailureHandler: CriticalFailureHandler;
   let processor: CommandProcessor;
 
   beforeEach(async () => {
@@ -85,17 +92,24 @@ describe('CommandProcessor', () => {
     registry = new CommandHandlerRegistry();
     wakeSignal = new CommandWakeSignal();
     eventPublisher = new RecordingCommandEventPublisher(repository);
+    lifecycle = new CommandRuntimeLifecycle();
+    criticalFailureHandler = {
+      terminate: vi.fn(),
+      forceTerminate: vi.fn(),
+    };
 
     processor = new CommandProcessor(
       repository,
       registry,
       wakeSignal,
       eventPublisher,
+      lifecycle,
+      criticalFailureHandler,
     );
   });
 
   afterEach(async () => {
-    await processor.onApplicationShutdown();
+    await processor.beforeApplicationShutdown();
 
     await orm.close(true);
 
@@ -409,7 +423,7 @@ describe('CommandProcessor', () => {
 
     const second = await repository.create('test.blocking', {});
 
-    const shutdown = processor.onApplicationShutdown();
+    const shutdown = processor.beforeApplicationShutdown();
 
     release();
 
@@ -430,5 +444,91 @@ describe('CommandProcessor', () => {
     expect(secondResult?.status).toBe('queued');
 
     expect(handler.execute).toHaveBeenCalledOnce();
+  });
+
+  it('requeues a command claimed while shutdown begins', async () => {
+    const handler = {
+      type: 'test.claim-race',
+      retryInterrupted: true,
+      execute: vi.fn(async () => undefined),
+    } satisfies CommandHandler<unknown>;
+    registry.register(handler);
+
+    const command = await repository.create('test.claim-race', {});
+    const claimNext = repository.claimNext.bind(repository);
+    let releaseClaim!: () => void;
+    const claimBlocked = new Promise<void>((resolve) => {
+      releaseClaim = resolve;
+    });
+    vi.spyOn(repository, 'claimNext').mockImplementationOnce(async () => {
+      await claimBlocked;
+
+      return claimNext();
+    });
+
+    await processor.onApplicationBootstrap();
+    await vi.waitFor(() => {
+      expect(repository.claimNext).toHaveBeenCalledOnce();
+    });
+
+    const shutdown = processor.beforeApplicationShutdown();
+    releaseClaim();
+    await shutdown;
+
+    const result = await repository.findById(command.id);
+
+    expect(result?.status).toBe('queued');
+    expect(result?.attempts).toBe(0);
+    expect(result?.startedAt).toBeNull();
+    expect(handler.execute).not.toHaveBeenCalled();
+    expect(eventPublisher.events).toEqual([]);
+  });
+
+  it('forces termination when active work exceeds the shutdown grace period', async () => {
+    vi.useFakeTimers();
+
+    try {
+      const handler = {
+        type: 'test.stuck',
+        retryInterrupted: true,
+        execute: vi.fn(() => new Promise<void>(() => undefined)),
+      } satisfies CommandHandler<unknown>;
+      registry.register(handler);
+
+      const command = await repository.create('test.stuck', {});
+      await processor.onApplicationBootstrap();
+      await vi.waitFor(async () => {
+        expect((await repository.findById(command.id))?.status).toBe('running');
+      });
+
+      const firstShutdown = processor.beforeApplicationShutdown();
+      const repeatedShutdown = processor.beforeApplicationShutdown();
+
+      expect(repeatedShutdown).toBe(firstShutdown);
+
+      await vi.advanceTimersByTimeAsync(COMMAND_SHUTDOWN_GRACE_MS);
+      await firstShutdown;
+
+      expect(criticalFailureHandler.forceTerminate).toHaveBeenCalledOnce();
+      expect((await repository.findById(command.id))?.status).toBe('running');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('fails the backend when command claiming fails critically', async () => {
+    const failure = new Error('Database unavailable');
+
+    vi.spyOn(repository, 'claimNext').mockRejectedValue(failure);
+
+    await processor.onApplicationBootstrap();
+
+    await waitFor(
+      async () =>
+        vi.mocked(criticalFailureHandler.terminate).mock.calls.length === 1,
+    );
+
+    expect(lifecycle.isAcceptingWork()).toBe(false);
+    expect(criticalFailureHandler.terminate).toHaveBeenCalledWith(failure);
   });
 });

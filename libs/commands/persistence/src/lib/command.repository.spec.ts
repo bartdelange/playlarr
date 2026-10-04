@@ -243,6 +243,21 @@ describe('CommandRepository', () => {
     expect(found?.startedAt).toBeNull();
   });
 
+  it('releases an unstarted claim without consuming an attempt', async () => {
+    const command = await repository.create('test.command', {});
+
+    await repository.claimNext();
+    await repository.releaseUnstartedClaim(command.id);
+
+    const found = await repository.findById(command.id);
+
+    expect(found).toMatchObject({
+      status: 'queued',
+      attempts: 0,
+    });
+    expect(found?.startedAt).toBeNull();
+  });
+
   it('finds running commands', async () => {
     const running = await repository.create('running.command', {});
 

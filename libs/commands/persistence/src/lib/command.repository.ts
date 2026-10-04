@@ -167,6 +167,25 @@ export class CommandRepository {
     );
   }
 
+  async releaseUnstartedClaim(id: string): Promise<void> {
+    const em = this.orm.em.fork();
+
+    await em.nativeUpdate(
+      CommandEntity,
+      {
+        id,
+        status: 'running',
+      },
+      {
+        status: 'queued',
+        attempts: raw('attempts - 1'),
+        revision: raw('revision + 1'),
+        startedAt: null,
+        updatedAt: new Date(),
+      },
+    );
+  }
+
   private toState(command: CommandEntity): CommandState {
     return {
       id: command.id,

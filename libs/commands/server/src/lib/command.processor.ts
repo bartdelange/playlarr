@@ -3,7 +3,7 @@ import {
   Inject,
   Logger,
   OnApplicationBootstrap,
-  OnApplicationShutdown,
+  BeforeApplicationShutdown,
 } from '@nestjs/common';
 import { map, merge, Subscription, timer } from 'rxjs';
 import { CommandRepository } from '@playlarr/commands-persistence';
@@ -15,15 +15,22 @@ import {
   type CommandProgressReporter,
 } from '@playlarr/commands-domain';
 import { COMMAND_EVENT_PUBLISHER } from './command-event-publisher.token.js';
+import { CommandRuntimeLifecycle } from './command-runtime-lifecycle.js';
+import {
+  CRITICAL_FAILURE_HANDLER,
+  type CriticalFailureHandler,
+} from './critical-failure.handler.js';
 
 const FALLBACK_INTERVAL_MS = 10_000;
+export const COMMAND_SHUTDOWN_GRACE_MS = 10_000;
 
 @Injectable()
 export class CommandProcessor
-  implements OnApplicationBootstrap, OnApplicationShutdown
+  implements OnApplicationBootstrap, BeforeApplicationShutdown
 {
   private subscription?: Subscription;
   private processingPromise?: Promise<void>;
+  private shutdownPromise?: Promise<void>;
   private stopping = false;
   private readonly fallbackIntervalMs = FALLBACK_INTERVAL_MS;
   private readonly logger = new Logger(CommandProcessor.name);
@@ -34,6 +41,9 @@ export class CommandProcessor
     private readonly wakeSignal: CommandWakeSignal,
     @Inject(COMMAND_EVENT_PUBLISHER)
     private readonly eventPublisher: CommandEventPublisher,
+    private readonly lifecycle: CommandRuntimeLifecycle,
+    @Inject(CRITICAL_FAILURE_HANDLER)
+    private readonly criticalFailureHandler: CriticalFailureHandler,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -47,11 +57,49 @@ export class CommandProcessor
     });
   }
 
-  async onApplicationShutdown(): Promise<void> {
+  beforeApplicationShutdown(): Promise<void> {
+    this.shutdownPromise ??= this.stop();
+
+    return this.shutdownPromise;
+  }
+
+  private async stop(): Promise<void> {
+    if (this.stopping) {
+      return;
+    }
+
     this.stopping = true;
+    this.lifecycle.stopAcceptingWork();
     this.subscription?.unsubscribe();
 
-    await this.processingPromise;
+    const processingPromise = this.processingPromise;
+
+    if (!processingPromise) {
+      return;
+    }
+
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      await Promise.race([
+        processingPromise,
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => {
+            reject(
+              new Error(
+                `Command processing did not stop within ${COMMAND_SHUTDOWN_GRACE_MS}ms`,
+              ),
+            );
+          }, COMMAND_SHUTDOWN_GRACE_MS);
+        }),
+      ]);
+    } catch (error) {
+      this.criticalFailureHandler.forceTerminate(error);
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    }
   }
 
   private startProcessing(): void {
@@ -59,9 +107,14 @@ export class CommandProcessor
       return;
     }
 
-    this.processingPromise = this.processAvailable().finally(() => {
-      this.processingPromise = undefined;
-    });
+    this.processingPromise = this.processAvailable()
+      .catch((error: unknown) => {
+        this.lifecycle.stopAcceptingWork();
+        this.criticalFailureHandler.terminate(error);
+      })
+      .finally(() => {
+        this.processingPromise = undefined;
+      });
   }
 
   private async processAvailable(): Promise<void> {
@@ -69,6 +122,12 @@ export class CommandProcessor
       const command = await this.repository.claimNext();
 
       if (!command) {
+        return;
+      }
+
+      if (this.stopping) {
+        await this.repository.releaseUnstartedClaim(command.id);
+
         return;
       }
 
