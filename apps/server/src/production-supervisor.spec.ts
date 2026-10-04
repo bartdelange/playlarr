@@ -2,7 +2,10 @@ import { EventEmitter } from 'node:events';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { ProductionSupervisor } from './production-supervisor.js';
+import {
+  PRODUCTION_SHUTDOWN_GRACE_MS,
+  ProductionSupervisor,
+} from './production-supervisor.js';
 
 class FakeChildProcess extends EventEmitter {
   readonly kill = vi.fn(() => true);
@@ -84,16 +87,18 @@ describe('ProductionSupervisor', () => {
     try {
       const server = new FakeChildProcess();
       const web = new FakeChildProcess();
-      const supervisor = new ProductionSupervisor(
-        [
-          { name: 'server', child: server },
-          { name: 'web', child: web },
-        ],
-        1_000,
-      );
+      const supervisor = new ProductionSupervisor([
+        { name: 'server', child: server },
+        { name: 'web', child: web },
+      ]);
 
       supervisor.shutdown('SIGTERM');
-      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      expect(server.kill).toHaveBeenCalledOnce();
+      expect(web.kill).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(PRODUCTION_SHUTDOWN_GRACE_MS - 10_000);
 
       expect(server.kill).toHaveBeenLastCalledWith('SIGKILL');
       expect(web.kill).toHaveBeenLastCalledWith('SIGKILL');

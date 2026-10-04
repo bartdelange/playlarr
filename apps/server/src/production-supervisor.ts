@@ -1,7 +1,8 @@
 import type { ChildProcess } from 'node:child_process';
 
 export type ShutdownSignal = 'SIGINT' | 'SIGTERM';
-export const PRODUCTION_SHUTDOWN_GRACE_MS = 10_000;
+// This outer safety net must leave the backend's 10-second shutdown policy time to finish first.
+export const PRODUCTION_SHUTDOWN_GRACE_MS = 15_000;
 
 interface ManagedProcess {
   readonly name: string;
