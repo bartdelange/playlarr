@@ -249,6 +249,17 @@ NestJS modules should compose capabilities rather than becoming large feature im
 
 Long-running operations must not depend on the lifetime of an HTTP request or browser connection.
 
+## Logging
+
+Use NestJS `Logger` with a meaningful class or subsystem context. Keep production logs concise and searchable, prefer contextual fields over prose-only messages, and log an exception once at the layer that owns the operation.
+
+- `ERROR`: failed authoritative work, unexpected infrastructure failures, or unreachable invariants; include useful context and the underlying error or stack when available.
+- `WARN`: abnormal but recoverable or safely ignored failures, including failed optional event publication and interrupted-command recovery; never use warnings for normal control flow.
+- `INFO`: meaningful application, database, integration, and durable-command lifecycle milestones; do not log per-request, per-item, progress, query, or SSE activity at this level.
+- `DEBUG`: diagnostic details such as command claims and progress, event filtering, safe provider metadata, reconciliation, retries, and fallbacks. Do not add `TRACE` without a concrete need.
+
+Choose severity by operational impact rather than by whether an exception was caught. Expected input errors should not produce `ERROR` logs. Never log secrets, credentials, authorization data, cookies, command payloads, or other potentially sensitive payloads. Logging must not change authoritative behavior or duplicate the same failure as it propagates.
+
 ## Long-running work and durable commands
 
 Use durable SQLite-backed commands for work that must survive application restarts or continue independently of the initiating request.

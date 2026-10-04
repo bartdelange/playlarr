@@ -16,8 +16,11 @@ export class SampleCommandHandler implements CommandHandler<{ steps: number }> {
     progress: CommandProgressReporter,
   ): Promise<void> {
     for (let current = 1; current <= payload.steps; current++) {
-      this.logger.log(`Executing step ${current} of ${payload.steps}`);
-      this.logger.debug(`Payload: ${JSON.stringify(payload)}`);
+      this.logger.debug({
+        message: 'Executing sample command step',
+        current,
+        total: payload.steps,
+      });
 
       await progress.report({
         current,

@@ -125,6 +125,12 @@ export class CommandProcessor
         return;
       }
 
+      this.logger.debug({
+        message: 'Claimed command for processing',
+        commandId: command.id,
+        commandType: command.type,
+      });
+
       if (this.stopping) {
         await this.repository.releaseUnstartedClaim(command.id);
 
@@ -140,6 +146,12 @@ export class CommandProcessor
     type: string;
     payloadJson: unknown;
   }): Promise<void> {
+    this.logger.log({
+      message: 'Command started',
+      commandId: command.id,
+      commandType: command.type,
+    });
+
     await this.publishCommandEvent(command.id, 'command.started');
 
     const handler = this.registry.get(command.type);
@@ -149,6 +161,11 @@ export class CommandProcessor
         command.id,
         `Unsupported command type: ${command.type}`,
       );
+      this.logger.error({
+        message: 'Command failed because its type is unsupported',
+        commandId: command.id,
+        commandType: command.type,
+      });
       await this.publishCommandEvent(command.id, 'command.failed');
 
       return;
@@ -169,11 +186,24 @@ export class CommandProcessor
     try {
       await handler.execute(command.payloadJson, progress);
       await this.repository.complete(command.id);
+      this.logger.log({
+        message: 'Command completed',
+        commandId: command.id,
+        commandType: command.type,
+      });
       await this.publishCommandEvent(command.id, 'command.completed');
     } catch (error) {
       await this.repository.fail(
         command.id,
         error instanceof Error ? error.message : String(error),
+      );
+      this.logger.error(
+        {
+          message: 'Command failed',
+          commandId: command.id,
+          commandType: command.type,
+        },
+        error instanceof Error ? error.stack : String(error),
       );
       await this.publishCommandEvent(command.id, 'command.failed');
     }
@@ -190,6 +220,12 @@ export class CommandProcessor
           command.id,
           `Unsupported command type: ${command.type}`,
         );
+        this.logger.warn({
+          message: 'Interrupted command could not be recovered',
+          commandId: command.id,
+          commandType: command.type,
+          reason: 'unsupported command type',
+        });
         await this.publishCommandEvent(command.id, 'command.failed');
 
         continue;
@@ -197,6 +233,11 @@ export class CommandProcessor
 
       if (handler.retryInterrupted) {
         await this.repository.requeue(command.id);
+        this.logger.warn({
+          message: 'Requeued command interrupted by application restart',
+          commandId: command.id,
+          commandType: command.type,
+        });
         continue;
       }
 
@@ -204,6 +245,12 @@ export class CommandProcessor
         command.id,
         'Command interrupted by application restart',
       );
+      this.logger.warn({
+        message:
+          'Failed non-retryable command interrupted by application restart',
+        commandId: command.id,
+        commandType: command.type,
+      });
       await this.publishCommandEvent(command.id, 'command.failed');
     }
   }
