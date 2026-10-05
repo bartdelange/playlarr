@@ -7,7 +7,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { AppModule } from './app.module.js';
+import { AppModule } from '../app/app.module.js';
 
 import {
   COMMAND_EVENT_PUBLISHER,

@@ -8,7 +8,7 @@ import { hashPassword } from '@playlarr/auth-server';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AppModule } from './app.module.js';
+import { AppModule } from '../app/app.module.js';
 
 const createApplication = async (): Promise<INestApplication> => {
   const moduleRef = await Test.createTestingModule({
