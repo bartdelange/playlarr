@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AuthConfigurationRepository } from '@playlarr/auth-persistence';
 import { hashPassword } from '@playlarr/auth-server';
+import { SettingsRepository } from '@playlarr/settings-persistence';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -54,9 +54,9 @@ describe('optional authentication', () => {
 
   it('distinguishes unconfigured authentication from explicitly disabled authentication', async () => {
     app = await createApplication();
-    const configurations = app.get(AuthConfigurationRepository);
+    const settings = app.get(SettingsRepository);
 
-    await expect(configurations.find()).resolves.toBeNull();
+    await expect(settings.get('auth')).resolves.toBeNull();
 
     await request(app.getHttpServer()).get('/api/health').expect(200);
     await request(app.getHttpServer()).get('/api/auth/status').expect(200, {
@@ -64,14 +64,14 @@ describe('optional authentication', () => {
       authenticated: true,
     });
 
-    await configurations.save({
+    await settings.set('auth', {
       enabled: false,
       username: '',
       passwordHash: '',
       sessionLifetimeSeconds: 2_592_000,
     });
 
-    await expect(configurations.find()).resolves.toEqual({
+    await expect(settings.get('auth')).resolves.toEqual({
       enabled: false,
       username: '',
       passwordHash: '',
@@ -189,7 +189,7 @@ async function enableAuthentication(app: INestApplication): Promise<void> {
 
   expect(passwordHash).not.toContain('secret');
 
-  await app.get(AuthConfigurationRepository).save({
+  await app.get(SettingsRepository).set('auth', {
     enabled: true,
     username: 'operator',
     passwordHash,

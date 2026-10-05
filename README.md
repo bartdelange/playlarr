@@ -2,17 +2,19 @@
 
 ## Optional authentication
 
-Single-user authentication configuration is application state persisted in SQLite.
-A fresh installation has no authentication configuration and remains accessible
-without credentials. This is distinct from authentication having been explicitly
-configured as disabled, so a future onboarding flow can identify first-run state.
+Application and integration settings are stored as feature-owned documents in a
+common SQLite settings table. Authentication owns the shape and validation of its
+single-user settings document. A fresh installation has no authentication settings
+and remains accessible without credentials. This is distinct from authentication
+having been explicitly configured as disabled, so a future onboarding flow can
+identify first-run state.
 
 Authentication configuration and sessions are stored separately. Passwords are
 stored only as scrypt hashes, and session tokens are stored only as hashes with
 their expiry timestamps. When authentication is enabled, its Secure session cookie
 requires HTTPS on the public Playlarr origin.
 
-Onboarding and settings controls for managing authentication configuration are not
+Onboarding and settings controls for managing authentication settings are not
 implemented yet.
 
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>

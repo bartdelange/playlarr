@@ -2,11 +2,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
 
-import {
-  type AuthConfiguration,
-  AuthConfigurationRepository,
-  AuthSessionRepository,
-} from '@playlarr/auth-persistence';
+import { AuthSessionRepository } from '@playlarr/auth-persistence';
+import { SettingsRepository } from '@playlarr/settings-persistence';
 
 import { verifyPassword } from './password.js';
 
@@ -15,38 +12,47 @@ interface LoginSession {
   lifetimeMilliseconds: number;
 }
 
+interface AuthSettings {
+  enabled: boolean;
+  username: string;
+  passwordHash: string;
+  sessionLifetimeSeconds: number;
+}
+
+const authSettingsKey = 'auth';
+
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly configurations: AuthConfigurationRepository,
+    private readonly settings: SettingsRepository,
     private readonly sessions: AuthSessionRepository,
   ) {}
 
   async isEnabled(): Promise<boolean> {
-    const configuration = await this.getConfiguration();
+    const authSettings = await this.getAuthSettings();
 
-    return configuration?.enabled ?? false;
+    return authSettings?.enabled ?? false;
   }
 
   async login(
     username: string,
     password: string,
   ): Promise<LoginSession | null> {
-    const configuration = await this.getConfiguration();
+    const authSettings = await this.getAuthSettings();
 
     if (
-      !configuration?.enabled ||
-      !this.usernameMatches(username, configuration.username)
+      !authSettings?.enabled ||
+      !this.usernameMatches(username, authSettings.username)
     ) {
       return null;
     }
 
-    if (!(await verifyPassword(password, configuration.passwordHash))) {
+    if (!(await verifyPassword(password, authSettings.passwordHash))) {
       return null;
     }
 
     const token = randomBytes(32).toString('base64url');
-    const lifetimeMilliseconds = configuration.sessionLifetimeSeconds * 1_000;
+    const lifetimeMilliseconds = authSettings.sessionLifetimeSeconds * 1_000;
     const expiresAt = new Date(Date.now() + lifetimeMilliseconds);
 
     await this.sessions.create(this.hashToken(token), expiresAt);
@@ -55,9 +61,9 @@ export class AuthService {
   }
 
   async isAuthenticated(token: string | null): Promise<boolean> {
-    const configuration = await this.getConfiguration();
+    const authSettings = await this.getAuthSettings();
 
-    if (!configuration?.enabled) {
+    if (!authSettings?.enabled) {
       return true;
     }
 
@@ -70,16 +76,26 @@ export class AuthService {
     }
   }
 
-  private async getConfiguration(): Promise<AuthConfiguration | null> {
-    const configuration = await this.configurations.find();
+  private async getAuthSettings(): Promise<AuthSettings | null> {
+    const authSettings = await this.settings.get(authSettingsKey);
 
-    if (!configuration) {
+    if (!authSettings) {
       return null;
     }
 
     if (
-      configuration.enabled &&
-      (!configuration.username || !configuration.passwordHash)
+      !this.isSettingsDocument(authSettings) ||
+      typeof authSettings.enabled !== 'boolean' ||
+      typeof authSettings.username !== 'string' ||
+      typeof authSettings.passwordHash !== 'string' ||
+      typeof authSettings.sessionLifetimeSeconds !== 'number'
+    ) {
+      throw new Error('Authentication settings are invalid');
+    }
+
+    if (
+      authSettings.enabled &&
+      (!authSettings.username || !authSettings.passwordHash)
     ) {
       throw new Error(
         'Enabled authentication requires a username and password hash',
@@ -87,15 +103,24 @@ export class AuthService {
     }
 
     if (
-      !Number.isSafeInteger(configuration.sessionLifetimeSeconds) ||
-      configuration.sessionLifetimeSeconds <= 0
+      !Number.isSafeInteger(authSettings.sessionLifetimeSeconds) ||
+      authSettings.sessionLifetimeSeconds <= 0
     ) {
       throw new Error(
         'Authentication session lifetime must be a positive integer',
       );
     }
 
-    return configuration;
+    return {
+      enabled: authSettings.enabled,
+      username: authSettings.username,
+      passwordHash: authSettings.passwordHash,
+      sessionLifetimeSeconds: authSettings.sessionLifetimeSeconds,
+    };
+  }
+
+  private isSettingsDocument(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private usernameMatches(username: string, expectedUsername: string): boolean {

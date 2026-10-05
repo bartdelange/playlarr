@@ -35,6 +35,9 @@
     },
     {
       "path": "./libs/auth/server"
+    },
+    {
+      "path": "./libs/settings/persistence"
     }
   ]
 }

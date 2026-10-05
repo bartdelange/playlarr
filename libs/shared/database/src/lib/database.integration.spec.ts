@@ -153,7 +153,7 @@ describe('database integration', () => {
     expect(after).toEqual(before);
   });
 
-  it('adds auth configuration without configuring existing installations', async () => {
+  it('adds settings storage without configuring authentication', async () => {
     directory = await mkdtemp(join(tmpdir(), 'playlarr-database-'));
     orm = await MikroORM.init<SqliteDriver>(
       createDatabaseConfig(join(directory, 'playlarr.db')),
@@ -177,12 +177,12 @@ describe('database integration', () => {
     const sessions = await orm.em
       .getConnection()
       .execute('select token_hash from auth_sessions');
-    const configurations = await orm.em
+    const settings = await orm.em
       .getConnection()
-      .execute('select id from auth_configuration');
+      .execute('select key from settings');
 
     expect(sessions).toEqual([{ token_hash: 'existing-session' }]);
-    expect(configurations).toEqual([]);
+    expect(settings).toEqual([]);
     await expect(migrator.getPending()).resolves.toEqual([]);
   });
 
