@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { hashPassword } from '@playlarr/auth-server';
+import { authSettingsSchema, hashPassword } from '@playlarr/auth-server';
 import { SettingsRepository } from '@playlarr/settings-persistence';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -56,7 +56,7 @@ describe('optional authentication', () => {
     app = await createApplication();
     const settings = app.get(SettingsRepository);
 
-    await expect(settings.get('auth')).resolves.toBeNull();
+    await expect(settings.get('auth', authSettingsSchema)).resolves.toBeNull();
 
     await request(app.getHttpServer()).get('/api/health').expect(200);
     await request(app.getHttpServer()).get('/api/auth/status').expect(200, {
@@ -71,7 +71,7 @@ describe('optional authentication', () => {
       sessionLifetimeSeconds: 2_592_000,
     });
 
-    await expect(settings.get('auth')).resolves.toEqual({
+    await expect(settings.get('auth', authSettingsSchema)).resolves.toEqual({
       enabled: false,
       username: '',
       passwordHash: '',
