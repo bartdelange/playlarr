@@ -115,9 +115,9 @@ describe('optional authentication', () => {
     app = await createApplication();
 
     await request(app.getHttpServer())
-      .get('/api/health')
+      .get('/api/commands/unknown')
       .set('Cookie', cookie)
-      .expect(200);
+      .expect(404);
   });
 
   it('invalidates the current session on logout', async () => {
