@@ -15,18 +15,6 @@
     }
   },
   "nx": {
-    "targets": {
-      "hash-password": {
-        "cache": false,
-        "dependsOn": [
-          "build"
-        ],
-        "executor": "nx:run-commands",
-        "options": {
-          "command": "node libs/auth/server/dist/hash-password.js"
-        }
-      }
-    },
     "tags": [
       "type:feature",
       "platform:server"
@@ -34,7 +22,6 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.2.1",
-    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.2.1",
     "@playlarr/auth-persistence": "workspace:*",
     "tslib": "^2.3.0"

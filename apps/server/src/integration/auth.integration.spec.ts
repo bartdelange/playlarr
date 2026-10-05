@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { AuthConfigurationRepository } from '@playlarr/auth-persistence';
 import { hashPassword } from '@playlarr/auth-server';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -51,20 +52,36 @@ describe('optional authentication', () => {
     await rm(directory, { recursive: true, force: true });
   });
 
-  it('allows normal routes when authentication is disabled', async () => {
-    vi.stubEnv('PLAYLARR_AUTH_ENABLED', 'false');
+  it('distinguishes unconfigured authentication from explicitly disabled authentication', async () => {
     app = await createApplication();
+    const configurations = app.get(AuthConfigurationRepository);
+
+    await expect(configurations.find()).resolves.toBeNull();
 
     await request(app.getHttpServer()).get('/api/health').expect(200);
     await request(app.getHttpServer()).get('/api/auth/status').expect(200, {
       enabled: false,
       authenticated: true,
     });
+
+    await configurations.save({
+      enabled: false,
+      username: '',
+      passwordHash: '',
+      sessionLifetimeSeconds: 2_592_000,
+    });
+
+    await expect(configurations.find()).resolves.toEqual({
+      enabled: false,
+      username: '',
+      passwordHash: '',
+      sessionLifetimeSeconds: 2_592_000,
+    });
   });
 
   it('rejects unauthenticated access and invalid credentials', async () => {
-    await enableAuthentication();
     app = await createApplication();
+    await enableAuthentication(app);
 
     await request(app.getHttpServer()).get('/api/commands/unknown').expect(401);
 
@@ -78,8 +95,8 @@ describe('optional authentication', () => {
   });
 
   it('keeps the operational health endpoint public when authentication is enabled', async () => {
-    await enableAuthentication();
     app = await createApplication();
+    await enableAuthentication(app);
 
     await request(app.getHttpServer()).get('/api/health').expect(200, {
       status: 'ok',
@@ -87,8 +104,8 @@ describe('optional authentication', () => {
   });
 
   it('persists a valid session across navigation and application restart', async () => {
-    await enableAuthentication();
     app = await createApplication();
+    await enableAuthentication(app);
 
     const login = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -130,8 +147,8 @@ describe('optional authentication', () => {
   });
 
   it('invalidates the current session on logout', async () => {
-    await enableAuthentication();
     app = await createApplication();
+    await enableAuthentication(app);
 
     const login = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -155,8 +172,8 @@ describe('optional authentication', () => {
   });
 
   it('clears an invalid session cookie on logout', async () => {
-    await enableAuthentication();
     app = await createApplication();
+    await enableAuthentication(app);
 
     const logout = await request(app.getHttpServer())
       .post('/api/auth/logout')
@@ -167,9 +184,15 @@ describe('optional authentication', () => {
   });
 });
 
-async function enableAuthentication(): Promise<void> {
-  vi.stubEnv('PLAYLARR_AUTH_ENABLED', 'true');
-  vi.stubEnv('PLAYLARR_AUTH_USERNAME', 'operator');
-  vi.stubEnv('PLAYLARR_AUTH_PASSWORD_HASH', await hashPassword('secret'));
-  vi.stubEnv('PLAYLARR_AUTH_SESSION_LIFETIME_SECONDS', '3600');
+async function enableAuthentication(app: INestApplication): Promise<void> {
+  const passwordHash = await hashPassword('secret');
+
+  expect(passwordHash).not.toContain('secret');
+
+  await app.get(AuthConfigurationRepository).save({
+    enabled: true,
+    username: 'operator',
+    passwordHash,
+    sessionLifetimeSeconds: 3_600,
+  });
 }

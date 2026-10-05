@@ -2,24 +2,18 @@
 
 ## Optional authentication
 
-Authentication is disabled by default. To enable it, configure:
+Single-user authentication configuration is application state persisted in SQLite.
+A fresh installation has no authentication configuration and remains accessible
+without credentials. This is distinct from authentication having been explicitly
+configured as disabled, so a future onboarding flow can identify first-run state.
 
-- `PLAYLARR_AUTH_ENABLED=true`
-- `PLAYLARR_AUTH_USERNAME` with the single operator username
-- `PLAYLARR_AUTH_PASSWORD_HASH` with a scrypt password hash
-- `PLAYLARR_AUTH_SESSION_LIFETIME_SECONDS` to override the default 30-day session lifetime
+Authentication configuration and sessions are stored separately. Passwords are
+stored only as scrypt hashes, and session tokens are stored only as hashes with
+their expiry timestamps. When authentication is enabled, its Secure session cookie
+requires HTTPS on the public Playlarr origin.
 
-Generate the password hash without placing the plaintext password in shell history:
-
-```sh
-read -rs "password?Password: "
-printf '\n'
-printf '%s' "$password" | pnpm auth:hash-password
-unset password
-```
-
-Copy the printed value into `PLAYLARR_AUTH_PASSWORD_HASH`. Authentication uses
-Secure cookies, so the public Playlarr origin must use HTTPS when it is enabled.
+Onboarding and settings controls for managing authentication configuration are not
+implemented yet.
 
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 

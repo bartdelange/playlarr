@@ -25,12 +25,13 @@ export class AuthController {
   @Get('status')
   @PublicAuthRoute()
   async status(@Req() request: AuthRequest) {
+    const enabled = await this.auth.isEnabled();
     const authenticated = await this.auth.isAuthenticated(
       readCookie(request, authCookieName),
     );
 
     return {
-      enabled: this.auth.enabled,
+      enabled,
       authenticated,
     };
   }
@@ -48,15 +49,15 @@ export class AuthController {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    const token = await this.auth.login(body.username, body.password);
+    const session = await this.auth.login(body.username, body.password);
 
-    if (!token) {
+    if (!session) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    response.cookie(authCookieName, token, {
+    response.cookie(authCookieName, session.token, {
       httpOnly: true,
-      maxAge: this.auth.sessionLifetimeMilliseconds,
+      maxAge: session.lifetimeMilliseconds,
       path: '/',
       sameSite: 'strict',
       secure: true,

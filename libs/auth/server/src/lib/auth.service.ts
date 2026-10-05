@@ -1,75 +1,63 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
-import { AuthSessionRepository } from '@playlarr/auth-persistence';
+import {
+  type AuthConfiguration,
+  AuthConfigurationRepository,
+  AuthSessionRepository,
+} from '@playlarr/auth-persistence';
 
 import { verifyPassword } from './password.js';
 
-interface AuthConfiguration {
-  enabled: boolean;
-  username: string;
-  passwordHash: string;
-  sessionLifetimeSeconds: number;
+interface LoginSession {
+  token: string;
+  lifetimeMilliseconds: number;
 }
 
 @Injectable()
 export class AuthService {
-  private readonly configuration: AuthConfiguration;
-
   constructor(
-    config: ConfigService,
+    private readonly configurations: AuthConfigurationRepository,
     private readonly sessions: AuthSessionRepository,
-  ) {
-    this.configuration = config.getOrThrow<AuthConfiguration>('app.auth');
+  ) {}
+
+  async isEnabled(): Promise<boolean> {
+    const configuration = await this.getConfiguration();
+
+    return configuration?.enabled ?? false;
+  }
+
+  async login(
+    username: string,
+    password: string,
+  ): Promise<LoginSession | null> {
+    const configuration = await this.getConfiguration();
 
     if (
-      this.configuration.enabled &&
-      (!this.configuration.username || !this.configuration.passwordHash)
+      !configuration?.enabled ||
+      !this.usernameMatches(username, configuration.username)
     ) {
-      throw new Error(
-        'Authentication requires PLAYLARR_AUTH_USERNAME and PLAYLARR_AUTH_PASSWORD_HASH',
-      );
-    }
-
-    if (
-      !Number.isSafeInteger(this.configuration.sessionLifetimeSeconds) ||
-      this.configuration.sessionLifetimeSeconds <= 0
-    ) {
-      throw new Error(
-        'Authentication session lifetime must be a positive integer',
-      );
-    }
-  }
-
-  get enabled(): boolean {
-    return this.configuration.enabled;
-  }
-
-  get sessionLifetimeMilliseconds(): number {
-    return this.configuration.sessionLifetimeSeconds * 1_000;
-  }
-
-  async login(username: string, password: string): Promise<string | null> {
-    if (!this.enabled || !this.usernameMatches(username)) {
       return null;
     }
 
-    if (!(await verifyPassword(password, this.configuration.passwordHash))) {
+    if (!(await verifyPassword(password, configuration.passwordHash))) {
       return null;
     }
 
     const token = randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + this.sessionLifetimeMilliseconds);
+    const lifetimeMilliseconds = configuration.sessionLifetimeSeconds * 1_000;
+    const expiresAt = new Date(Date.now() + lifetimeMilliseconds);
 
     await this.sessions.create(this.hashToken(token), expiresAt);
 
-    return token;
+    return { token, lifetimeMilliseconds };
   }
 
   async isAuthenticated(token: string | null): Promise<boolean> {
-    if (!this.enabled) {
+    const configuration = await this.getConfiguration();
+
+    if (!configuration?.enabled) {
       return true;
     }
 
@@ -82,11 +70,37 @@ export class AuthService {
     }
   }
 
-  private usernameMatches(username: string): boolean {
+  private async getConfiguration(): Promise<AuthConfiguration | null> {
+    const configuration = await this.configurations.find();
+
+    if (!configuration) {
+      return null;
+    }
+
+    if (
+      configuration.enabled &&
+      (!configuration.username || !configuration.passwordHash)
+    ) {
+      throw new Error(
+        'Enabled authentication requires a username and password hash',
+      );
+    }
+
+    if (
+      !Number.isSafeInteger(configuration.sessionLifetimeSeconds) ||
+      configuration.sessionLifetimeSeconds <= 0
+    ) {
+      throw new Error(
+        'Authentication session lifetime must be a positive integer',
+      );
+    }
+
+    return configuration;
+  }
+
+  private usernameMatches(username: string, expectedUsername: string): boolean {
     const actual = createHash('sha256').update(username).digest();
-    const expected = createHash('sha256')
-      .update(this.configuration.username)
-      .digest();
+    const expected = createHash('sha256').update(expectedUsername).digest();
 
     return timingSafeEqual(actual, expected);
   }
