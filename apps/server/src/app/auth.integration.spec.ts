@@ -111,13 +111,22 @@ describe('optional authentication', () => {
       .set('Cookie', cookie)
       .expect(200, { enabled: true, authenticated: true });
 
+    const command = await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Cookie', cookie)
+      .send({ steps: 1 })
+      .expect(201);
+    const commandId = command.body.commandId as string;
+
+    expect(commandId).toEqual(expect.any(String));
+
     await app.close();
     app = await createApplication();
 
     await request(app.getHttpServer())
-      .get('/api/commands/unknown')
+      .get(`/api/commands/${commandId}`)
       .set('Cookie', cookie)
-      .expect(404);
+      .expect(200);
   });
 
   it('invalidates the current session on logout', async () => {
