@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { DatabaseModule } from '@playlarr/shared-database';
+import { AuthModule } from '@playlarr/auth-server';
 import { CommandsModule } from '@playlarr/commands-server';
 import { SampleCommandModule } from '@playlarr/sample-command-server';
 import {
@@ -20,6 +21,7 @@ import { appConfig } from '../config/app.config.js';
       load: [appConfig],
     }),
     DatabaseModule,
+    AuthModule,
     ApplicationEventsModule,
     CommandsModule.register({
       imports: [ApplicationEventsModule],

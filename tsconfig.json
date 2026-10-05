@@ -29,6 +29,15 @@
     },
     {
       "path": "./libs/events/server"
+    },
+    {
+      "path": "./libs/auth/persistence"
+    },
+    {
+      "path": "./libs/auth/server"
+    },
+    {
+      "path": "./libs/settings/persistence"
     }
   ]
 }

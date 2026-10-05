@@ -1,0 +1,31 @@
+{
+  "name": "@playlarr/auth-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "tags": [
+      "type:feature",
+      "platform:server"
+    ]
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.2.1",
+    "@nestjs/core": "^11.2.1",
+    "@playlarr/auth-persistence": "workspace:*",
+    "@playlarr/settings-persistence": "workspace:*",
+    "tslib": "^2.3.0",
+    "zod": "^4.6.5"
+  }
+}

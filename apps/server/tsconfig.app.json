@@ -24,6 +24,12 @@
       "path": "../../libs/commands/persistence/tsconfig.lib.json"
     },
     {
+      "path": "../../libs/auth/server/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/settings/persistence/tsconfig.lib.json"
+    },
+    {
       "path": "../../libs/shared/database/tsconfig.lib.json"
     }
   ]

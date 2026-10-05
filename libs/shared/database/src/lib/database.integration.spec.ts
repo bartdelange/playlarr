@@ -153,6 +153,39 @@ describe('database integration', () => {
     expect(after).toEqual(before);
   });
 
+  it('adds settings storage without configuring authentication', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'playlarr-database-'));
+    orm = await MikroORM.init<SqliteDriver>(
+      createDatabaseConfig(join(directory, 'playlarr.db')),
+    );
+
+    const migrator = orm.migrator;
+
+    await migrator.up({ to: 'Migration20261004120000' });
+    await orm.em.getConnection().execute(
+      `insert into auth_sessions (token_hash, expires_at, created_at)
+       values (?, ?, ?)`,
+      [
+        'existing-session',
+        '2026-10-06T10:00:00.000Z',
+        '2026-10-05T10:00:00.000Z',
+      ],
+    );
+
+    await new DatabaseLifecycle(orm).onModuleInit();
+
+    const sessions = await orm.em
+      .getConnection()
+      .execute('select token_hash from auth_sessions');
+    const settings = await orm.em
+      .getConnection()
+      .execute('select key from settings');
+
+    expect(sessions).toEqual([{ token_hash: 'existing-session' }]);
+    expect(settings).toEqual([]);
+    await expect(migrator.getPending()).resolves.toEqual([]);
+  });
+
   it('rejects startup and rolls back partial changes when a migration fails', async () => {
     directory = await mkdtemp(join(tmpdir(), 'playlarr-database-'));
 
