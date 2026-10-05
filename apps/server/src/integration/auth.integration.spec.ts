@@ -77,6 +77,11 @@ describe('optional authentication', () => {
       passwordHash: '',
       sessionLifetimeSeconds: 2_592_000,
     });
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .send({ steps: 1 })
+      .expect(201);
   });
 
   it('rejects unauthenticated access and invalid credentials', async () => {
@@ -87,11 +92,50 @@ describe('optional authentication', () => {
 
     const invalidLogin = await request(app.getHttpServer())
       .post('/api/auth/login')
+      .set('Origin', serverOrigin(app))
       .send({ username: 'operator', password: 'incorrect' })
       .expect(401);
 
     expect(invalidLogin.headers['set-cookie']).toBeUndefined();
     await request(app.getHttpServer()).get('/api/commands/unknown').expect(401);
+  });
+
+  it('rejects direct mutation calls without a session', async () => {
+    app = await createApplication();
+    await enableAuthentication(app);
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Origin', serverOrigin(app))
+      .send({ steps: 1 })
+      .expect(401);
+  });
+
+  it('rejects cross-origin mutations with a valid session', async () => {
+    app = await createApplication();
+    await enableAuthentication(app);
+
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .set('Origin', serverOrigin(app))
+      .send({ username: 'operator', password: 'secret' })
+      .expect(201);
+    const cookie = sessionCookie(
+      login.headers['set-cookie'] as unknown as string[],
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Cookie', cookie)
+      .set('Origin', 'https://attacker.example')
+      .send({ steps: 1 })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Cookie', cookie)
+      .send({ steps: 1 })
+      .expect(403);
   });
 
   it('keeps the operational health endpoint public when authentication is enabled', async () => {
@@ -109,6 +153,7 @@ describe('optional authentication', () => {
 
     const login = await request(app.getHttpServer())
       .post('/api/auth/login')
+      .set('Origin', serverOrigin(app))
       .send({ username: 'operator', password: 'secret' })
       .expect(201, { authenticated: true });
     const setCookie = login.headers['set-cookie'] as unknown as string[];
@@ -131,6 +176,7 @@ describe('optional authentication', () => {
     const command = await request(app.getHttpServer())
       .post('/api/sample-command')
       .set('Cookie', cookie)
+      .set('Origin', serverOrigin(app))
       .send({ steps: 1 })
       .expect(201);
     const commandId = command.body.commandId as string;
@@ -152,6 +198,7 @@ describe('optional authentication', () => {
 
     const login = await request(app.getHttpServer())
       .post('/api/auth/login')
+      .set('Origin', serverOrigin(app))
       .send({ username: 'operator', password: 'secret' })
       .expect(201);
     const cookie = sessionCookie(
@@ -161,6 +208,7 @@ describe('optional authentication', () => {
     const logout = await request(app.getHttpServer())
       .post('/api/auth/logout')
       .set('Cookie', cookie)
+      .set('Origin', serverOrigin(app))
       .expect(201, { authenticated: false });
 
     expect(logout.headers['set-cookie']?.[0]).toContain('playlarr_session=;');
@@ -178,11 +226,22 @@ describe('optional authentication', () => {
     const logout = await request(app.getHttpServer())
       .post('/api/auth/logout')
       .set('Cookie', 'playlarr_session=invalid')
+      .set('Origin', serverOrigin(app))
       .expect(201, { authenticated: false });
 
     expect(logout.headers['set-cookie']?.[0]).toContain('playlarr_session=;');
   });
 });
+
+function serverOrigin(app: INestApplication): string {
+  const address = app.getHttpServer().address();
+
+  if (!address || typeof address === 'string') {
+    throw new Error('Nest application does not have a TCP address');
+  }
+
+  return `http://127.0.0.1:${address.port}`;
+}
 
 async function enableAuthentication(app: INestApplication): Promise<void> {
   const passwordHash = await hashPassword('secret');
