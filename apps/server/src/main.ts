@@ -14,11 +14,8 @@ async function bootstrap(): Promise<void> {
 
     const config = app.get(ConfigService);
     const logger = new Logger('Bootstrap');
-    const publicOrigin = config.get<string>('app.publicOrigin');
 
-    app.enableCsrfProtection(
-      publicOrigin ? { trustedOrigins: [publicOrigin] } : undefined,
-    );
+    app.enableCsrfProtection();
 
     app.setGlobalPrefix('api');
     app.enableShutdownHooks();

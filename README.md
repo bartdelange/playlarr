@@ -14,11 +14,6 @@ stored only as scrypt hashes, and session tokens are stored only as hashes with
 their expiry timestamps. When authentication is enabled, its Secure session cookie
 requires HTTPS on the public Playlarr origin.
 
-Set `PLAYLARR_PUBLIC_ORIGIN` to that origin (for example,
-`https://playlarr.example.com`) when a reverse proxy rewrites the request host.
-This lets CSRF protection validate older browsers that do not send Fetch Metadata
-headers. The value must be an origin without a trailing slash or path.
-
 Onboarding and settings controls for managing authentication settings are not
 implemented yet.
 

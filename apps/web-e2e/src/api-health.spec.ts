@@ -18,7 +18,10 @@ test('preserves same-origin CSRF protection through the web proxy', async ({
 
   const sameOriginMutation = await request.post('/api/sample-command', {
     data: { steps: 1 },
-    headers: { Origin: publicOrigin },
+    headers: {
+      Origin: publicOrigin,
+      'Sec-Fetch-Site': 'same-origin',
+    },
   });
 
   expect(sameOriginMutation.status()).toBe(201);
@@ -26,12 +29,21 @@ test('preserves same-origin CSRF protection through the web proxy', async ({
   const crossOriginMutation = await request.post('/api/sample-command', {
     data: { steps: 1 },
     headers: {
+      Host: 'attacker.example',
       Origin: 'https://attacker.example',
+      'Sec-Fetch-Site': 'cross-site',
       'X-Forwarded-Host': 'attacker.example',
     },
   });
 
   expect(crossOriginMutation.status()).toBe(403);
+
+  const legacySameOriginMutation = await request.post('/api/sample-command', {
+    data: { steps: 1 },
+    headers: { Origin: publicOrigin },
+  });
+
+  expect(legacySameOriginMutation.status()).toBe(403);
 });
 
 function requireBaseUrl(value: string | undefined): string {
