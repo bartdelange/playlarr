@@ -17,6 +17,7 @@ const createApplication = async (): Promise<INestApplication> => {
   }).compile();
   const app = moduleRef.createNestApplication();
 
+  app.enableCsrfProtection();
   app.setGlobalPrefix('api');
   await app.listen(0, '127.0.0.1');
 
@@ -77,6 +78,17 @@ describe('optional authentication', () => {
       passwordHash: '',
       sessionLifetimeSeconds: 2_592_000,
     });
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .send({ steps: 1 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Sec-Fetch-Site', 'cross-site')
+      .send({ steps: 1 })
+      .expect(403);
   });
 
   it('rejects unauthenticated access and invalid credentials', async () => {
@@ -92,6 +104,64 @@ describe('optional authentication', () => {
 
     expect(invalidLogin.headers['set-cookie']).toBeUndefined();
     await request(app.getHttpServer()).get('/api/commands/unknown').expect(401);
+  });
+
+  it('rejects direct mutation calls without a session', async () => {
+    app = await createApplication();
+    await enableAuthentication(app);
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ steps: 1 })
+      .expect(401);
+  });
+
+  it('applies native CSRF protection to browser mutations', async () => {
+    app = await createApplication();
+    await enableAuthentication(app);
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .set('Sec-Fetch-Site', 'cross-site')
+      .send({ username: 'operator', password: 'secret' })
+      .expect(403);
+
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ username: 'operator', password: 'secret' })
+      .expect(201);
+    const cookie = sessionCookie(
+      login.headers['set-cookie'] as unknown as string[],
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Cookie', cookie)
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ steps: 1 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Cookie', cookie)
+      .set('Sec-Fetch-Site', 'cross-site')
+      .send({ steps: 1 })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/api/sample-command')
+      .set('Cookie', cookie)
+      .set('Host', 'playlarr.example')
+      .set('Origin', 'https://attacker.example')
+      .set('X-Forwarded-Host', 'attacker.example')
+      .send({ steps: 1 })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/api/auth/status')
+      .set('Sec-Fetch-Site', 'cross-site')
+      .expect(200, { enabled: true, authenticated: false });
   });
 
   it('keeps the operational health endpoint public when authentication is enabled', async () => {
@@ -131,6 +201,7 @@ describe('optional authentication', () => {
     const command = await request(app.getHttpServer())
       .post('/api/sample-command')
       .set('Cookie', cookie)
+      .set('Sec-Fetch-Site', 'same-origin')
       .send({ steps: 1 })
       .expect(201);
     const commandId = command.body.commandId as string;
@@ -158,9 +229,16 @@ describe('optional authentication', () => {
       login.headers['set-cookie'] as unknown as string[],
     );
 
+    await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .set('Cookie', cookie)
+      .set('Sec-Fetch-Site', 'cross-site')
+      .expect(403);
+
     const logout = await request(app.getHttpServer())
       .post('/api/auth/logout')
       .set('Cookie', cookie)
+      .set('Sec-Fetch-Site', 'same-origin')
       .expect(201, { authenticated: false });
 
     expect(logout.headers['set-cookie']?.[0]).toContain('playlarr_session=;');

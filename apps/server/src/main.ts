@@ -15,6 +15,8 @@ async function bootstrap(): Promise<void> {
     const config = app.get(ConfigService);
     const logger = new Logger('Bootstrap');
 
+    app.enableCsrfProtection();
+
     app.setGlobalPrefix('api');
     app.enableShutdownHooks();
 
