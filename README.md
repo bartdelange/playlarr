@@ -1,5 +1,21 @@
 # Playlarr
 
+## Docker
+
+Build and run the production application with one public port and one persistent
+data mount:
+
+```sh
+docker build --tag playlarr .
+docker run --name playlarr --publish 3000:3000 --volume playlarr-data:/data playlarr
+```
+
+The container runs the Next.js frontend and NestJS backend together. Only port
+`3000` is public; browser API and SSE requests use the same origin under `/api`.
+SQLite state is stored at `/data/playlarr.db`. The built-in health check and
+`GET /api/health` report application health without depending on optional
+external integrations.
+
 ## Optional authentication
 
 Application and integration settings are stored as feature-owned documents in a
