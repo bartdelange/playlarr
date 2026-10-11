@@ -529,6 +529,19 @@ For React components, generally separate:
 
 Use whitespace to communicate structure rather than mechanically inserting blank lines between every statement.
 
+### Environment variables
+
+Treat environment variables as part of Playlarr's deployment interface, not as a convenient mechanism for passing internal implementation details.
+
+- Introduce a new environment variable only when users or deployment environments have a genuine reason to configure the value.
+- Prefer deterministic paths, existing configuration, or explicit application composition for values fixed by Playlarr's production packaging.
+- Do not add environment variables solely to make tests easier or to accommodate an internal build-artifact layout.
+- Before introducing one, check whether an existing setting or configuration mechanism already owns the concern.
+- Keep the supported deployment interface small and document intentional environment variables.
+
+Do not replace unnecessary environment variables with additional configuration abstractions.
+
+
 ## Testing
 
 Use:
@@ -606,6 +619,21 @@ pnpm nx affected -t lint,typecheck,test,build
 Run workflow validation through the repository's `actionlint` Nx target.
 
 Do not claim validation passed unless the relevant command actually completed successfully.
+
+## Docker validation
+
+Changes to the Dockerfile, runtime packaging, production supervisor or startup,
+native runtime dependencies, or container persistence require building and
+exercising the actual production image before completion. Validate the behavior
+affected by the change rather than mechanically repeating every container scenario.
+
+For packaging changes, verify real startup, public UI and API reachability,
+non-root execution, and clean shutdown. Persistence changes must exercise `/data`
+through a real bind mount and verify state survives container recreation.
+Supervisor or lifecycle changes must verify the relevant process-failure and
+shutdown behavior. Report what actually ran; Nx builds alone are not Docker
+validation. Unrelated application changes do not require an image build, and
+Docker-backed Playwright E2E testing must not be introduced.
 
 ## Engineering style
 

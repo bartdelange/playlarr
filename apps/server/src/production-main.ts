@@ -1,20 +1,17 @@
 import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   ProductionSupervisor,
   type ShutdownSignal,
 } from './production-supervisor.js';
 
-const server = spawn(
-  'pnpm',
-  ['--filter', '@playlarr/server', 'exec', 'node', 'dist/main.js'],
-  { stdio: 'inherit' },
-);
-const web = spawn(
-  'pnpm',
-  ['--filter', '@playlarr/web', 'exec', 'next', 'start'],
-  { stdio: 'inherit' },
-);
+const serverPath = fileURLToPath(new URL('./main.js', import.meta.url));
+const webPath = resolve('apps/web/.next/standalone/apps/web/server.js');
+
+const server = spawn(process.execPath, [serverPath], { stdio: 'inherit' });
+const web = spawn(process.execPath, [webPath], { stdio: 'inherit' });
 
 const supervisor = new ProductionSupervisor([
   { name: 'server', child: server },
