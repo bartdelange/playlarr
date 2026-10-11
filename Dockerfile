@@ -31,19 +31,18 @@ ENV NODE_ENV=production \
     PLAYLARR_SERVER_PORT=3001 \
     PLAYLARR_WEB_SERVER_PATH=/app/web/apps/web/server.js
 
-RUN groupadd --gid 10001 playlarr \
-    && useradd --uid 10001 --gid playlarr --create-home playlarr \
+RUN usermod --uid 99 --gid 100 nobody \
     && mkdir -p /app /data \
-    && chown playlarr:playlarr /app /data
+    && chown nobody:users /app /data
 
 WORKDIR /app
 
-COPY --from=build --chown=playlarr:playlarr /build/node_modules /app/node_modules
-COPY --from=build --chown=playlarr:playlarr /build/apps/server /app/apps/server
-COPY --from=build --chown=playlarr:playlarr /build/libs /app/libs
-COPY --from=build --chown=playlarr:playlarr /out/web /app/web
+COPY --from=build --chown=nobody:users /build/node_modules /app/node_modules
+COPY --from=build --chown=nobody:users /build/apps/server /app/apps/server
+COPY --from=build --chown=nobody:users /build/libs /app/libs
+COPY --from=build --chown=nobody:users /out/web /app/web
 
-USER playlarr
+USER nobody:users
 
 VOLUME ["/data"]
 EXPOSE 3000

@@ -7,7 +7,9 @@ data mount:
 
 ```sh
 docker build --tag playlarr .
-docker run --name playlarr --publish 3000:3000 --volume playlarr-data:/data playlarr
+install -d -o 99 -g 100 -m 0775 /mnt/user/appdata/playlarr
+docker run --name playlarr --publish 3000:3000 \
+  --volume /mnt/user/appdata/playlarr:/data playlarr
 ```
 
 The container runs the Next.js frontend and NestJS backend together. Only port
@@ -15,6 +17,9 @@ The container runs the Next.js frontend and NestJS backend together. Only port
 SQLite state is stored at `/data/playlarr.db`. The built-in health check and
 `GET /api/health` report application health without depending on optional
 external integrations.
+
+The container runs as the Unraid-compatible `nobody:users` identity (UID 99,
+GID 100). A host directory mounted at `/data` must be writable by that identity.
 
 ## Optional authentication
 

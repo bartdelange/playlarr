@@ -607,6 +607,21 @@ Run workflow validation through the repository's `actionlint` Nx target.
 
 Do not claim validation passed unless the relevant command actually completed successfully.
 
+## Docker validation
+
+Changes to the Dockerfile, runtime packaging, production supervisor or startup,
+native runtime dependencies, or container persistence require building and
+exercising the actual production image before completion. Validate the behavior
+affected by the change rather than mechanically repeating every container scenario.
+
+For packaging changes, verify real startup, public UI and API reachability,
+non-root execution, and clean shutdown. Persistence changes must exercise `/data`
+through a real bind mount and verify state survives container recreation.
+Supervisor or lifecycle changes must verify the relevant process-failure and
+shutdown behavior. Report what actually ran; Nx builds alone are not Docker
+validation. Unrelated application changes do not require an image build, and
+Docker-backed Playwright E2E testing must not be introduced.
+
 ## Engineering style
 
 Prefer the smallest implementation that correctly solves the current requirement.
