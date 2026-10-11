@@ -8,9 +8,7 @@ import {
 } from './production-supervisor.js';
 
 const serverPath = fileURLToPath(new URL('./main.js', import.meta.url));
-const webPath =
-  process.env['PLAYLARR_WEB_SERVER_PATH'] ??
-  resolve('apps/web/.next/standalone/apps/web/server.js');
+const webPath = resolve('apps/web/.next/standalone/apps/web/server.js');
 
 const server = spawn(process.execPath, [serverPath], { stdio: 'inherit' });
 const web = spawn(process.execPath, [webPath], { stdio: 'inherit' });

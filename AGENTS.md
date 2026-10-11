@@ -529,6 +529,19 @@ For React components, generally separate:
 
 Use whitespace to communicate structure rather than mechanically inserting blank lines between every statement.
 
+### Environment variables
+
+Treat environment variables as part of Playlarr's deployment interface, not as a convenient mechanism for passing internal implementation details.
+
+- Introduce a new environment variable only when users or deployment environments have a genuine reason to configure the value.
+- Prefer deterministic paths, existing configuration, or explicit application composition for values fixed by Playlarr's production packaging.
+- Do not add environment variables solely to make tests easier or to accommodate an internal build-artifact layout.
+- Before introducing one, check whether an existing setting or configuration mechanism already owns the concern.
+- Keep the supported deployment interface small and document intentional environment variables.
+
+Do not replace unnecessary environment variables with additional configuration abstractions.
+
+
 ## Testing
 
 Use:

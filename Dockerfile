@@ -28,8 +28,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     PLAYLARR_DATABASE_PATH=/data/playlarr.db \
     PLAYLARR_SERVER_HOST=127.0.0.1 \
-    PLAYLARR_SERVER_PORT=3001 \
-    PLAYLARR_WEB_SERVER_PATH=/app/web/apps/web/server.js
+    PLAYLARR_SERVER_PORT=3001
 
 RUN usermod --uid 99 --gid 100 nobody \
     && mkdir -p /app /data \
@@ -40,7 +39,7 @@ WORKDIR /app
 COPY --from=build --chown=nobody:users /build/node_modules /app/node_modules
 COPY --from=build --chown=nobody:users /build/apps/server /app/apps/server
 COPY --from=build --chown=nobody:users /build/libs /app/libs
-COPY --from=build --chown=nobody:users /out/web /app/web
+COPY --from=build --chown=nobody:users /out/web /app/apps/web/.next/standalone
 
 USER nobody:users
 
