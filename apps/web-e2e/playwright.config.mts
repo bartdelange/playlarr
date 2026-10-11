@@ -50,6 +50,7 @@ export default defineConfig({
         PLAYLARR_SERVER_HOST: serverHost,
         PLAYLARR_SERVER_PORT: String(serverPort),
         PLAYLARR_DATABASE_PATH: e2eDatabasePath,
+        PLAYLARR_PUBLIC_ORIGIN: baseURL,
       },
     },
     {

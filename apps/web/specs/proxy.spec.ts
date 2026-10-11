@@ -1,6 +1,7 @@
+import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server';
 import { NextRequest } from 'next/server';
 
-import { proxy } from '../src/proxy';
+import { config, proxy } from '../src/proxy';
 
 describe('protected frontend navigation', () => {
   afterEach(() => {
@@ -27,6 +28,18 @@ describe('protected frontend navigation', () => {
     );
   });
 
+  it.each([
+    '/api/health',
+    '/login',
+    '/login/help',
+    '/_next/static/app.js',
+    '/favicon.ico',
+  ])('leaves the public path %s outside the proxy', (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url })).toBe(
+      false,
+    );
+  });
+
   it('continues navigation when authentication is disabled', async () => {
     vi.stubGlobal(
       'fetch',
@@ -34,6 +47,21 @@ describe('protected frontend navigation', () => {
         .fn()
         .mockResolvedValue(
           Response.json({ enabled: false, authenticated: true }),
+        ),
+    );
+
+    const response = await proxy(new NextRequest('http://playlarr.test/'));
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('continues navigation for an authenticated request', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ enabled: true, authenticated: true }),
         ),
     );
 
@@ -68,5 +96,36 @@ describe('protected frontend navigation', () => {
     const response = await proxy(new NextRequest('http://playlarr.test/'));
 
     expect(response.status).toBe(503);
+  });
+
+  it.each([
+    Response.json({ enabled: true }),
+    Response.json({ enabled: 'yes', authenticated: true }),
+    new Response('not json'),
+  ])('fails closed for a malformed authentication status', async (status) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(status));
+
+    const response = await proxy(new NextRequest('http://playlarr.test/'));
+
+    expect(response.status).toBe(503);
+  });
+
+  it('does not create a protocol-relative return destination', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ enabled: true, authenticated: false }),
+        ),
+    );
+
+    const response = await proxy(
+      new NextRequest('http://playlarr.test//attacker.example'),
+    );
+
+    expect(response.headers.get('location')).toBe(
+      'http://playlarr.test/login?next=%2F',
+    );
   });
 });

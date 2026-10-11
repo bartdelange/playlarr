@@ -1,11 +1,7 @@
 export interface AuthRequest {
   headers: {
     cookie?: string;
-    host?: string;
-    origin?: string;
-    'x-forwarded-host'?: string;
   };
-  method: string;
 }
 
 export interface AuthResponse {
