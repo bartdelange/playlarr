@@ -6,11 +6,27 @@ import { AuthSessionRepository } from '@playlarr/auth-persistence';
 import { SettingsRepository } from '@playlarr/settings-persistence';
 
 import { type AuthSettings, authSettingsSchema } from './auth-settings.js';
-import { verifyPassword } from './password.js';
+import { hashPassword, verifyPassword } from './password.js';
 
 interface LoginSession {
   token: string;
   lifetimeMilliseconds: number;
+}
+
+export interface AuthConfiguration {
+  enabled: boolean;
+  username: string;
+}
+
+interface AuthConfigurationInput {
+  enabled: boolean;
+  username: string;
+  password?: string;
+}
+
+interface AuthConfigurationResult {
+  configuration: AuthConfiguration;
+  session: LoginSession | null;
 }
 
 const authSettingsKey = 'auth';
@@ -26,6 +42,63 @@ export class AuthService {
     const authSettings = await this.getAuthSettings();
 
     return authSettings?.enabled ?? false;
+  }
+
+  async getConfiguration(): Promise<AuthConfiguration> {
+    const authSettings = await this.getAuthSettings();
+
+    return {
+      enabled: authSettings?.enabled ?? false,
+      username: authSettings?.username ?? '',
+    };
+  }
+
+  async configure(
+    input: AuthConfigurationInput,
+  ): Promise<AuthConfigurationResult | null> {
+    const current = await this.getAuthSettings();
+
+    if (!input.enabled) {
+      await this.settings.set(authSettingsKey, {
+        enabled: false,
+        username: input.username,
+        passwordHash: current?.passwordHash ?? '',
+        sessionLifetimeSeconds: current?.sessionLifetimeSeconds ?? 2_592_000,
+      });
+      await this.sessions.deleteAll();
+
+      return {
+        configuration: { enabled: false, username: input.username },
+        session: null,
+      };
+    }
+
+    if (!input.password && !current?.enabled) {
+      return null;
+    }
+
+    const passwordHash = input.password
+      ? await hashPassword(input.password)
+      : current?.passwordHash;
+
+    if (!passwordHash) {
+      return null;
+    }
+
+    const sessionLifetimeSeconds = current?.sessionLifetimeSeconds ?? 2_592_000;
+
+    await this.settings.set(authSettingsKey, {
+      enabled: true,
+      username: input.username,
+      passwordHash,
+      sessionLifetimeSeconds,
+    });
+    await this.sessions.deleteAll();
+
+    return {
+      configuration: { enabled: true, username: input.username },
+      session: await this.createSession(sessionLifetimeSeconds),
+    };
   }
 
   async login(
@@ -45,13 +118,7 @@ export class AuthService {
       return null;
     }
 
-    const token = randomBytes(32).toString('base64url');
-    const lifetimeMilliseconds = authSettings.sessionLifetimeSeconds * 1_000;
-    const expiresAt = new Date(Date.now() + lifetimeMilliseconds);
-
-    await this.sessions.create(this.hashToken(token), expiresAt);
-
-    return { token, lifetimeMilliseconds };
+    return this.createSession(authSettings.sessionLifetimeSeconds);
   }
 
   async isAuthenticated(token: string | null): Promise<boolean> {
@@ -72,6 +139,16 @@ export class AuthService {
 
   private async getAuthSettings(): Promise<AuthSettings | null> {
     return this.settings.get(authSettingsKey, authSettingsSchema);
+  }
+
+  private async createSession(lifetimeSeconds: number): Promise<LoginSession> {
+    const token = randomBytes(32).toString('base64url');
+    const lifetimeMilliseconds = lifetimeSeconds * 1_000;
+    const expiresAt = new Date(Date.now() + lifetimeMilliseconds);
+
+    await this.sessions.create(this.hashToken(token), expiresAt);
+
+    return { token, lifetimeMilliseconds };
   }
 
   private usernameMatches(username: string, expectedUsername: string): boolean {
