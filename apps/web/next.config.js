@@ -1,8 +1,7 @@
 //@ts-check
 const path = require('node:path');
 
-const backendHost = process.env.PLAYLARR_SERVER_HOST ?? '127.0.0.1';
-const backendPort = process.env.PLAYLARR_SERVER_PORT ?? '3001';
+const { backendOrigin } = require('./src/server/backend-config');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -12,7 +11,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `http://${backendHost}:${backendPort}/api/:path*`,
+        destination: `${backendOrigin}/api/:path*`,
       },
     ];
   },

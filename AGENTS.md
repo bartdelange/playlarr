@@ -28,9 +28,9 @@ SQLite
 
 Production remains one Docker/Unraid container and one public Playlarr origin.
 
-Next.js owns rendering, UI, frontend composition, and browser-facing concerns.
+Next.js owns rendering, route composition, global frontend integration, and browser-facing concerns.
 
-NestJS owns API transport, backend orchestration, long-running work, persistence composition, and backend lifecycle.
+NestJS owns the backend composition root, global HTTP setup, and process lifecycle. Capability libraries own feature transport, orchestration, and persistence.
 
 ### Current repository structure
 
@@ -48,8 +48,8 @@ libs/
 
 Current project ownership is:
 
-- `@playlarr/web` — Next.js App Router application, rendering, layouts, routes, frontend composition, and same-origin `/api/*` proxy configuration
-- `@playlarr/server` — NestJS backend application, API transport, backend composition, configuration, and process lifecycle
+- `@playlarr/web` — thin Next.js App Router composition root, application-level framework integration, and same-origin `/api/*` proxy configuration
+- `@playlarr/server` — thin NestJS composition root, global configuration, and process lifecycle
 - `@playlarr/shared-database` — global MikroORM/SQLite setup, migrations, and database infrastructure
 
 The repository is intentionally still being decomposed into capabilities. Do not create placeholder libraries merely to match the intended architecture.
@@ -58,7 +58,7 @@ The repository is intentionally still being decomposed into capabilities. Do not
 
 Prefer vertical capabilities.
 
-When functionality becomes substantial enough to warrant extraction from an application, organize it under:
+Substantial feature implementation belongs in capability libraries, including when it currently has only one application consumer. Organize real capability code under:
 
 ```text
 libs/<capability>/contracts
@@ -77,6 +77,8 @@ Before creating a new library, determine:
 1. whether an existing capability already owns the concern
 2. whether the new boundary provides real architectural value
 3. whether the code has enough independent responsibility to justify another Nx project
+
+The application projects are not fallback feature locations. In particular, `apps/web/src/features` is not an alternative to an owning capability library. Keep trivial framework glue in an application, but move feature-specific components, forms, controllers, services, rules, and persistence to the appropriate capability layer. Do not relocate unrelated existing code merely to make application directories smaller.
 
 Cross-feature code belongs under `libs/shared` only when it has multiple genuine consumers.
 
@@ -123,6 +125,8 @@ Relevant project-type tags are:
 Follow the dependency constraints defined in `eslint.config.mjs`.
 
 Do not bypass them using relative imports, path aliases, inappropriate project placement, or weakened lint rules merely to make an implementation pass.
+
+Resolve buildability and dependency-boundary failures at the owning project boundary. Do not move substantial feature code into an application to avoid making its capability library correctly consumable.
 
 ### Web
 
@@ -196,6 +200,8 @@ Use the App Router.
 
 Keep `apps/web/src/app` intentionally small.
 
+`apps/web` is a composition root, not a feature implementation directory.
+
 Route files should primarily:
 
 - define routes
@@ -220,9 +226,13 @@ The Next.js application proxies `/api/*` to the internal NestJS server.
 
 Do not make browser code aware of the internal NestJS host or port.
 
+Centralize server-side Next.js-to-NestJS transport configuration at the application boundary. Server Components and other Next.js server code should use that boundary so cookies and internal connection details are handled consistently without routing through the public internet. Capability UI must not assemble backend URLs.
+
 ## NestJS backend
 
 `apps/server` is the NestJS application and backend composition root.
+
+Keep it intentionally thin. Feature-specific controllers, services, orchestration, and repositories belong in capability libraries; application code primarily bootstraps NestJS and composes capability modules.
 
 It owns:
 

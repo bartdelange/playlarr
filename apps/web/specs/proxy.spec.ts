@@ -1,6 +1,8 @@
 import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server';
 import { NextRequest } from 'next/server';
 
+vi.mock('server-only', () => ({}));
+
 import { config, proxy } from '../src/proxy';
 
 describe('protected frontend navigation', () => {

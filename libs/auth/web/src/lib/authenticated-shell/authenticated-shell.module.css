@@ -1,0 +1,73 @@
+.shell {
+  min-height: 100vh;
+  background: #f7f8fa;
+  color: #172033;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 4rem;
+  padding: 0 2rem;
+  border-bottom: 1px solid #dfe3ea;
+  background: #ffffff;
+}
+
+.brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navigation a {
+  color: #3f4d63;
+  font-weight: 600;
+}
+
+.logout {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #c6ccd7;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #172033;
+  cursor: pointer;
+  font: inherit;
+}
+
+.logout:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.error {
+  max-width: 72rem;
+  margin: 1rem auto 0;
+  padding: 0 2rem;
+  color: #a51d2d;
+}
+
+.content {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+.content h1 {
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .header,
+  .content {
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+  }
+}

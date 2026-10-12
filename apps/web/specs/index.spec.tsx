@@ -1,10 +1,14 @@
 import React from 'react';
-import { render } from '@testing-library/react';
-import Page from '../src/app/page';
+import { render, screen } from '@testing-library/react';
 
-describe('Page', () => {
-  it('should render successfully', () => {
-    const { baseElement } = render(<Page />);
-    expect(baseElement).toBeTruthy();
+import HomePage from '../src/app/(app)/page';
+
+describe('home page', () => {
+  it('identifies the Playlarr workspace', () => {
+    render(<HomePage />);
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Playlarr' }),
+    ).toBeTruthy();
   });
 });

@@ -74,3 +74,5 @@ vitest.config.*.timestamp*
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+vite.config.*.timestamp*
