@@ -1,17 +1,7 @@
 'use client';
 
-import styles from './login.module.css';
+import { LoginUnavailable } from '@playlarr/auth-web';
 
 export default function LoginError({ reset }: { reset: () => void }) {
-  return (
-    <main className={styles.page}>
-      <section className={styles.card}>
-        <h1>Unable to load login</h1>
-        <p className={styles.intro}>Playlarr could not check authentication.</p>
-        <button onClick={reset} type="button">
-          Try again
-        </button>
-      </section>
-    </main>
-  );
+  return <LoginUnavailable reset={reset} />;
 }

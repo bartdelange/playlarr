@@ -1,3 +1,4 @@
 export * from './lib/auth-session.entity.js';
 export * from './lib/auth-session.repository.js';
+export * from './lib/auth-state.repository.js';
 export * from './lib/auth-persistence.module.js';

@@ -51,6 +51,7 @@ export class AuthController {
   @Post('configuration')
   async configure(
     @Body() body: ConfigurationBody,
+    @Req() request: AuthRequest,
     @Res({ passthrough: true }) response: AuthResponse,
   ) {
     if (typeof body.enabled !== 'boolean') {
@@ -73,11 +74,14 @@ export class AuthController {
       throw new BadRequestException('password must be 1024 characters or less');
     }
 
-    const result = await this.auth.configure({
-      enabled: body.enabled,
-      username: body.username.trim(),
-      ...(body.password ? { password: body.password } : {}),
-    });
+    const result = await this.auth.configure(
+      {
+        enabled: body.enabled,
+        username: body.username.trim(),
+        ...(body.password ? { password: body.password } : {}),
+      },
+      readCookie(request, authCookieName),
+    );
 
     if (!result) {
       throw new BadRequestException(

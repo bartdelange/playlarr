@@ -1,9 +1,5 @@
-import styles from './login.module.css';
+import { LoginLoading as AuthenticationLoading } from '@playlarr/auth-web';
 
 export default function LoginLoading() {
-  return (
-    <main className={styles.page}>
-      <p>Loading Playlarr…</p>
-    </main>
-  );
+  return <AuthenticationLoading />;
 }

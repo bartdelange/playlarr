@@ -35,6 +35,12 @@
     },
     {
       "path": "./libs/settings/persistence"
+    },
+    {
+      "path": "./libs/auth/web"
+    },
+    {
+      "path": "./libs/settings/web"
     }
   ]
 }

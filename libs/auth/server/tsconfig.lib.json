@@ -19,6 +19,9 @@
     },
     {
       "path": "../persistence/tsconfig.lib.json"
+    },
+    {
+      "path": "../../shared/database/tsconfig.lib.json"
     }
   ],
   "exclude": [

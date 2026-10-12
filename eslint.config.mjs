@@ -11,6 +11,7 @@ export default [
       '**/test-output',
       '**/src/generated/**',
       '**/vitest.config.*.timestamp*',
+      '**/vite.config.*.timestamp*',
     ],
   },
   {

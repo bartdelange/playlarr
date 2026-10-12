@@ -30,8 +30,4 @@ export class AuthSessionRepository {
   async delete(tokenHash: string): Promise<void> {
     await this.orm.em.fork().nativeDelete(AuthSessionEntity, { tokenHash });
   }
-
-  async deleteAll(): Promise<void> {
-    await this.orm.em.fork().nativeDelete(AuthSessionEntity, {});
-  }
 }

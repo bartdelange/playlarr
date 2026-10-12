@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 
-import styles from '../login.module.css';
+import styles from './login.module.css';
 
 export function LoginForm({ destination }: { destination: string }) {
   const [error, setError] = useState<string | null>(null);

@@ -1,7 +1,9 @@
+import { AuthenticatedShell } from '@playlarr/auth-web';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { getAuthStatus } from '../auth-status';
-import { AuthenticatedShell } from './authenticated-shell/authenticated-shell';
+import { safeReturnPath } from '../../server/safe-return-path';
+import { getAuthStatus } from '../../server/auth-api';
 
 export default async function AppLayout({
   children,
@@ -11,7 +13,11 @@ export default async function AppLayout({
   const auth = await getAuthStatus();
 
   if (auth.enabled && !auth.authenticated) {
-    redirect('/login');
+    const destination = safeReturnPath(
+      (await headers()).get('x-playlarr-path') ?? undefined,
+    );
+
+    redirect(`/login?next=${encodeURIComponent(destination)}`);
   }
 
   return (

@@ -1,4 +1,4 @@
-import { safeReturnPath } from '../src/app/login/return-path';
+import { safeReturnPath } from '../src/server/safe-return-path';
 
 describe('login return paths', () => {
   it('preserves an internal application destination', () => {

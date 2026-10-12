@@ -18,6 +18,8 @@ export function AuthenticationSettings({
   const router = useRouter();
   const [configuration, setConfiguration] = useState(initialConfiguration);
   const [enabled, setEnabled] = useState(initialConfiguration.enabled);
+  const [username, setUsername] = useState(initialConfiguration.username);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -28,16 +30,14 @@ export function AuthenticationSettings({
     setSaved(false);
     setIsSubmitting(true);
 
-    const form = new FormData(event.currentTarget);
-
     try {
       const response = await fetch('/api/auth/configuration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           enabled,
-          username: form.get('username'),
-          password: form.get('password') || undefined,
+          username,
+          password: password || undefined,
         }),
       });
 
@@ -56,14 +56,29 @@ export function AuthenticationSettings({
         return;
       }
 
-      const username = String(form.get('username'));
+      const savedConfiguration: unknown = await response.json();
 
-      setConfiguration({ enabled, username });
+      if (
+        typeof savedConfiguration !== 'object' ||
+        savedConfiguration === null ||
+        !('enabled' in savedConfiguration) ||
+        typeof savedConfiguration.enabled !== 'boolean' ||
+        !('username' in savedConfiguration) ||
+        typeof savedConfiguration.username !== 'string'
+      ) {
+        setError('Authentication settings returned an invalid response.');
+        return;
+      }
+
+      setConfiguration(savedConfiguration as AuthConfiguration);
+      setEnabled(savedConfiguration.enabled);
+      setUsername(savedConfiguration.username);
       setSaved(true);
       router.refresh();
     } catch {
       setError('Unable to save authentication settings. Please try again.');
     } finally {
+      setPassword('');
       setIsSubmitting(false);
     }
   }
@@ -78,8 +93,10 @@ export function AuthenticationSettings({
           </p>
         </div>
 
-        <span className={enabled ? styles.enabled : styles.disabled}>
-          {enabled ? 'Enabled' : 'Disabled'}
+        <span
+          className={configuration.enabled ? styles.enabled : styles.disabled}
+        >
+          {configuration.enabled ? 'Enabled' : 'Disabled'}
         </span>
       </div>
 
@@ -97,12 +114,13 @@ export function AuthenticationSettings({
         <label htmlFor="auth-username">Username</label>
         <input
           autoComplete="username"
-          defaultValue={initialConfiguration.username}
           id="auth-username"
           maxLength={128}
           name="username"
+          onChange={(event) => setUsername(event.target.value)}
           required
           type="text"
+          value={username}
         />
 
         <label htmlFor="auth-password">
@@ -114,8 +132,10 @@ export function AuthenticationSettings({
           id="auth-password"
           maxLength={1024}
           name="password"
+          onChange={(event) => setPassword(event.target.value)}
           required={enabled && !configuration.enabled}
           type="password"
+          value={password}
         />
         <p className={styles.help} id="password-help">
           {configuration.enabled

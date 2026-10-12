@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-const backendHost = process.env['PLAYLARR_SERVER_HOST'] ?? '127.0.0.1';
-const backendPort = process.env['PLAYLARR_SERVER_PORT'] ?? '3001';
+import { fetchAuthStatus } from './server/auth-api';
+
 const unavailableResponse = () =>
   NextResponse.json(
     { message: 'Authentication status is unavailable' },
@@ -10,55 +10,29 @@ const unavailableResponse = () =>
   );
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
-  let response: Response;
+  let status: Awaited<ReturnType<typeof fetchAuthStatus>>;
 
   try {
-    const cookie = request.headers.get('cookie');
-    response = await fetch(
-      `http://${backendHost}:${backendPort}/api/auth/status`,
-      {
-        cache: 'no-store',
-        headers: cookie ? { cookie } : undefined,
-      },
-    );
+    status = await fetchAuthStatus(request.headers.get('cookie'));
   } catch {
     return unavailableResponse();
   }
 
-  if (!response.ok) {
-    return unavailableResponse();
-  }
-
-  let status: unknown;
-
-  try {
-    status = await response.json();
-  } catch {
-    return unavailableResponse();
-  }
-
-  if (
-    typeof status !== 'object' ||
-    status === null ||
-    !('enabled' in status) ||
-    typeof status.enabled !== 'boolean' ||
-    !('authenticated' in status) ||
-    typeof status.authenticated !== 'boolean'
-  ) {
-    return unavailableResponse();
-  }
+  const destination = request.nextUrl.pathname.startsWith('//')
+    ? '/'
+    : `${request.nextUrl.pathname}${request.nextUrl.search}`;
 
   if (status.enabled && !status.authenticated) {
     const loginUrl = new URL('/login', request.url);
-    const destination = request.nextUrl.pathname.startsWith('//')
-      ? '/'
-      : `${request.nextUrl.pathname}${request.nextUrl.search}`;
     loginUrl.searchParams.set('next', destination);
 
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-playlarr-path', destination);
+
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
