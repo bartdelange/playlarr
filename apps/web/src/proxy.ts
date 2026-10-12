@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { fetchAuthStatus } from './server/auth-api';
+import { fetchAuthStatus } from '@playlarr/auth-web/server';
 
 const unavailableResponse = () =>
   NextResponse.json(

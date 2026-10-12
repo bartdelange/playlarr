@@ -28,10 +28,13 @@ export default defineConfig(() => ({
       transformMixedEsModules: true,
     },
     lib: {
-      // Could also be a dictionary or array of multiple entry points.
-      entry: 'src/index.ts',
+      entry: {
+        index: 'src/index.ts',
+        'return-path': 'src/return-path.ts',
+        server: 'src/server.ts',
+      },
       name: 'auth-web',
-      fileName: 'index',
+      fileName: (_format, entryName) => `${entryName}.js`,
       cssFileName: 'styles',
       // Change this to the formats you want to support.
       // Don't forget to update your package.json as well.
@@ -39,10 +42,15 @@ export default defineConfig(() => ({
     },
     rolldownOptions: {
       // External packages that should not be bundled into your library.
-      external: ['next/navigation', 'react', 'react-dom', 'react/jsx-runtime'],
-      output: {
-        banner: "'use client';",
-      },
+      external: [
+        '@playlarr/shared-web-infrastructure',
+        'next/headers',
+        'next/navigation',
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'server-only',
+      ],
     },
   },
   test: {

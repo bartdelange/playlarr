@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { nestApiUrl } from './backend-config.js';
+import { nestApiUrl } from '../backend-config.js';
 
 export function fetchNestApi(
   path: string,

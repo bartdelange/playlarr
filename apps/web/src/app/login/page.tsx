@@ -1,8 +1,8 @@
 import { Login } from '@playlarr/auth-web';
 import { redirect } from 'next/navigation';
 
-import { getAuthStatus } from '../../server/auth-api';
-import { safeReturnPath } from '../../server/safe-return-path';
+import { safeReturnPath } from '@playlarr/auth-web/return-path';
+import { getAuthStatus } from '@playlarr/auth-web/server';
 
 export default async function LoginPage({
   searchParams,
