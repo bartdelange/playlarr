@@ -440,8 +440,6 @@ export default function Index() {
                 nx affected:graph
                 <span># run tests for current changes</span>
                 nx affected:test
-                <span># run e2e tests for current changes</span>
-                nx affected:e2e
               </pre>
             </details>
           </div>
