@@ -10,6 +10,8 @@ describe('login return paths', () => {
     ['/', '/settings'],
     'https://attacker.example',
     '//attacker.example',
+    '/\\attacker.example',
+    '/settings\\..\\login',
     '/login',
     '/login?next=/settings',
     '/login/help',
