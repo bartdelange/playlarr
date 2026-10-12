@@ -1,0 +1,35 @@
+.header h1 {
+  margin: 0;
+}
+
+.header p {
+  margin: 0.5rem 0 0;
+  color: #59657a;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.navigation a {
+  display: block;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.5rem;
+  background: #e8edf9;
+  color: #244b9b;
+  font-weight: 700;
+}
+
+.content {
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+}

@@ -19,6 +19,17 @@
   font-weight: 700;
 }
 
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navigation a {
+  color: #3f4d63;
+  font-weight: 600;
+}
+
 .logout {
   padding: 0.55rem 0.9rem;
   border: 1px solid #c6ccd7;

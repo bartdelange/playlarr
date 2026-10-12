@@ -46,16 +46,20 @@ export function AuthenticatedShell({
           Playlarr
         </a>
 
-        {showLogout ? (
-          <button
-            className={styles.logout}
-            disabled={!isReady || isLoggingOut}
-            onClick={() => void logout()}
-            type="button"
-          >
-            {isLoggingOut ? 'Logging out…' : 'Log out'}
-          </button>
-        ) : null}
+        <nav aria-label="Primary" className={styles.navigation}>
+          <a href="/settings">Settings</a>
+
+          {showLogout ? (
+            <button
+              className={styles.logout}
+              disabled={!isReady || isLoggingOut}
+              onClick={() => void logout()}
+              type="button"
+            >
+              {isLoggingOut ? 'Logging out…' : 'Log out'}
+            </button>
+          ) : null}
+        </nav>
       </header>
 
       {error ? (
