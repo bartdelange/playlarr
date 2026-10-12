@@ -1,848 +1,101 @@
-# Repository guidance
-
-## Project purpose and architecture
-
-Playlarr is a self-hosted playlist acquisition and library orchestration application.
-
-The application imports playlists from Spotify and TIDAL, matches source tracks against MusicBrainz, plans and executes Lidarr operations, resolves resulting media through OpenSubsonic/Navidrome-compatible libraries, and exports deterministic playlists while preserving user intent, playlist ordering, and duplicates.
-
-Playlarr is a strict-TypeScript Nx monorepo.
-
-The application architecture is:
-
-```text
-User
-  ↓
-Next.js
-  ↓
-same-origin /api/* proxy
-  ↓
-NestJS
-  ↓
-feature logic
-  ↓
-feature persistence
-  ↓
-SQLite
-```
-
-Production remains one Docker/Unraid container and one public Playlarr origin.
-
-Next.js owns rendering, route composition, global frontend integration, and browser-facing concerns.
-
-NestJS owns the backend composition root, global HTTP setup, and process lifecycle. Capability libraries own feature transport, orchestration, and persistence.
-
-### Current repository structure
-
-The current top-level application and library structure is:
-
-```text
-apps/
-  web/
-  server/
-
-libs/
-  shared/
-    database/
-```
-
-Current project ownership is:
-
-- `@playlarr/web` — thin Next.js App Router composition root, application-level framework integration, and same-origin `/api/*` proxy configuration
-- `@playlarr/server` — thin NestJS composition root, global configuration, and process lifecycle
-- `@playlarr/shared-database` — global MikroORM/SQLite setup, migrations, and database infrastructure
-
-The repository is intentionally still being decomposed into capabilities. Do not create placeholder libraries merely to match the intended architecture.
-
-## Capability and library organization
-
-Prefer vertical capabilities.
-
-Substantial feature implementation belongs in capability libraries, including when it currently has only one application consumer. Organize real capability code under:
-
-```text
-libs/<capability>/contracts
-libs/<capability>/domain
-libs/<capability>/web
-libs/<capability>/server
-libs/<capability>/persistence
-```
-
-Only create layers that contain real code.
-
-Do not scaffold empty `contracts`, `domain`, `web`, `server`, or `persistence` libraries in anticipation of future work.
-
-Before creating a new library, determine:
-
-1. whether an existing capability already owns the concern
-2. whether the new boundary provides real architectural value
-3. whether the code has enough independent responsibility to justify another Nx project
-
-The application projects are not fallback feature locations. In particular, `apps/web/src/features` is not an alternative to an owning capability library. Keep trivial framework glue in an application, but move feature-specific components, forms, controllers, services, rules, and persistence to the appropriate capability layer. Do not relocate unrelated existing code merely to make application directories smaller.
-
-Cross-feature code belongs under `libs/shared` only when it has multiple genuine consumers.
-
-Examples of appropriate shared libraries include:
-
-```text
-libs/shared/ui
-libs/shared/database
-libs/shared/contracts
-libs/shared/testing
-```
-
-These examples describe valid ownership locations, not libraries that must exist.
-
-Do not use `shared` as a dumping ground for code whose owning capability is unclear.
-
-Feature-specific DTOs, entities, repositories, components, domain rules, and transport code belong to their owning capability.
-
-During the migration, prioritize completing usable application behavior over expanding architecture or test infrastructure. A capability is complete only when users can configure and operate it where configuration is required; keep its UI, backend behavior, validation, and persistence together under the owning capability rather than deferring configuration to a later cross-cutting phase.
-
-## Dependency boundaries
-
-Nx module-boundary rules are authoritative.
-
-The workspace uses project tags to enforce both platform and architectural dependencies.
-
-Relevant platform tags are:
-
-- `platform:web`
-- `platform:server`
-- `platform:shared`
-
-Relevant project-type tags are:
-
-- `type:app`
-- `type:feature`
-- `type:ui`
-- `type:domain`
-- `type:contracts`
-- `type:config`
-- `type:infrastructure`
-- `type:persistence`
-
-Follow the dependency constraints defined in `eslint.config.mjs`.
-
-Do not bypass them using relative imports, path aliases, inappropriate project placement, or weakened lint rules merely to make an implementation pass.
-
-Resolve buildability and dependency-boundary failures at the owning project boundary. Do not move substantial feature code into an application to avoid making its capability library correctly consumable.
-
-### Web
-
-Frontend code belongs on the web platform.
-
-Web code must not import server-only or persistence/database implementation libraries.
-
-Next.js communicates with backend capabilities through NestJS HTTP or SSE APIs.
-
-Do not import repositories, MikroORM entities, database infrastructure, or backend provider implementations into frontend code.
-
-Shared API request and response models belong in capability contracts where such contracts are needed.
-
-### Server
-
-Backend code belongs on the server platform.
-
-Server code may compose capability server, domain, contracts, persistence, configuration, and infrastructure libraries where allowed by the Nx dependency rules.
-
-NestJS modules, controllers, and providers are composition and transport boundaries.
-
-Keep pure business and domain logic framework-independent where practical.
-
-Infrastructure such as repositories, adapters, and lifecycle services may use NestJS dependency injection when appropriate.
-
-### Persistence
-
-Feature persistence belongs with the capability that owns the data.
-
-For example:
-
-```text
-libs/imports/persistence
-libs/matching/persistence
-libs/lidarr/persistence
-```
-
-These paths are examples of the intended organization and do not imply that those libraries currently exist.
-
-`libs/shared/database` owns only global database concerns such as:
-
-- MikroORM root configuration
-- SQLite connection configuration
-- migration infrastructure
-- database startup lifecycle
-- genuinely shared database infrastructure
-
-Do not move feature entities or repositories into `shared/database` merely because they use SQLite.
-
-### Contracts and domain
-
-Contracts and domain libraries should remain framework-independent.
-
-Do not expose ORM entities directly as API contracts.
-
-Domain and contracts code should not depend on framework or infrastructure implementation details such as:
-
-- React
-- Next.js
-- NestJS
-- MikroORM
-- SQLite drivers
-- provider SDKs
-- persistence implementations
-
-unless the project explicitly belongs to an infrastructure-facing layer.
-
-## Next.js application
-
-Use the App Router.
-
-Keep `apps/web/src/app` intentionally small.
-
-`apps/web` is a composition root, not a feature implementation directory.
-
-Route files should primarily:
-
-- define routes
-- receive route and search parameters
-- compose feature entrypoints
-- define layouts and framework boundaries
-- implement genuinely Next.js-specific behavior
-
-Prefer Server Components.
-
-Use Client Components only when browser interaction requires them.
-
-Use Suspense and loading states for asynchronous UI where appropriate.
-
-Do not move normal feature implementation into `apps/web/src/app` merely because Next.js permits it.
-
-Next.js communicates with backend capabilities through NestJS APIs.
-
-Browser-facing backend requests use the same Playlarr origin through `/api/*`.
-
-The Next.js application proxies `/api/*` to the internal NestJS server.
-
-Do not make browser code aware of the internal NestJS host or port.
-
-Centralize server-side Next.js-to-NestJS transport configuration at the application boundary. Server Components and other Next.js server code should use that boundary so cookies and internal connection details are handled consistently without routing through the public internet. Capability UI must not assemble backend URLs.
-
-## NestJS backend
-
-`apps/server` is the NestJS application and backend composition root.
-
-Keep it intentionally thin. Feature-specific controllers, services, orchestration, and repositories belong in capability libraries; application code primarily bootstraps NestJS and composes capability modules.
-
-It owns:
-
-- NestJS application bootstrap
-- global backend configuration
-- API transport setup
-- composition of backend capability modules
-- startup and shutdown lifecycle
-
-The NestJS HTTP API uses the `/api` global prefix.
-
-Keep controllers thin.
-
-Controllers should primarily:
-
-- receive and validate transport input
-- invoke capability-level orchestration
-- translate results into HTTP responses
-
-Do not place substantial business logic directly in controllers.
-
-NestJS modules should compose capabilities rather than becoming large feature implementations themselves.
-
-Long-running operations must not depend on the lifetime of an HTTP request or browser connection.
-
-## Logging
-
-Use NestJS `Logger` with a meaningful class or subsystem context. Keep production logs concise and searchable, prefer contextual fields over prose-only messages, and log an exception once at the layer that owns the operation.
-
-- `ERROR`: failed authoritative work, unexpected infrastructure failures, or unreachable invariants; include useful context and the underlying error or stack when available.
-- `WARN`: abnormal but recoverable or safely ignored failures, including failed optional event publication and interrupted-command recovery; never use warnings for normal control flow.
-- `INFO`: meaningful application, database, integration, and durable-command lifecycle milestones; do not log per-request, per-item, progress, query, or SSE activity at this level.
-- `DEBUG`: diagnostic details such as command claims and progress, event filtering, safe provider metadata, reconciliation, retries, and fallbacks. Do not add `TRACE` without a concrete need.
-
-Choose severity by operational impact rather than by whether an exception was caught. Expected input errors should not produce `ERROR` logs. Never log secrets, credentials, authorization data, cookies, command payloads, or other potentially sensitive payloads. Logging must not change authoritative behavior or duplicate the same failure as it propagates.
-
-## Long-running work and durable commands
-
-Use durable SQLite-backed commands for work that must survive application restarts or continue independently of the initiating request.
-
-Examples include:
-
-- large matching jobs
-- long-running imports
-- multi-step Lidarr execution
-- tasks with meaningful progress or restart recovery
-
-Ordinary provider calls and normal API requests should remain ordinary requests.
-
-Do not model every operation as a background command merely because it performs I/O or takes several seconds.
-
-Persist authoritative command state.
-
-Appropriate command states may include:
-
-```text
-pending
-running
-completed
-failed
-skipped
-```
-
-or equivalent capability-specific states.
-
-Command processing may use in-process scheduling or event mechanisms, but persisted SQLite state remains authoritative.
-
-Do not introduce Redis, RabbitMQ, Kafka, another external queue, or another required infrastructure service unless the architecture is deliberately changed.
-
-A restart must be able to distinguish completed work from work requiring retry, reconciliation, or failure handling.
-
-Do not blindly repeat uncertain external side effects.
-
-## SSE and application state
-
-Persisted backend state is authoritative.
-
-Server-Sent Events communicate changes and progress.
-
-SSE is not authoritative state.
-
-A reconnecting client must be able to reconstruct current state from persisted backend data.
-
-Do not require an active browser connection to keep long-running operations alive.
-
-## SQLite and MikroORM
-
-SQLite is the production database.
-
-MikroORM is the ORM.
-
-Production database initialization must configure SQLite with:
-
-- foreign keys enabled
-- WAL journal mode
-- busy timeout
-
-Run committed pending migrations programmatically during NestJS startup before the application begins normal operation.
-
-Do not use destructive automatic schema synchronization in production.
-
-Databases created by the legacy Python Playlarr application are not part of the compatibility contract. The rewritten TypeScript application may establish a fresh database baseline.
-
-After that baseline, schema changes must use forward migrations that preserve data created by the rewritten application whenever feasible.
-
-Prefer migrations that remain stable independently of the current entity implementation.
-
-Feature entities and repositories belong to their capability persistence libraries.
-
-`libs/shared/database` must not accumulate feature-specific persistence.
-
-When SQLite-specific behavior matters, persistence tests should use real temporary SQLite databases for:
-
-- migrations
-- transactions
-- locking
-- constraints
-- SQLite-specific behavior
-- repository behavior that depends on database semantics
-
-Do not replace such tests with mocks.
-
-## Playlist and matching semantics
-
-Preserve playlist ordering.
-
-Preserve duplicate playlist entries.
-
-Do not silently deduplicate imported tracks.
-
-Explicit manual matching decisions are authoritative.
-
-Do not silently replace a manual match with a later automatic result.
-
-Automatic MusicBrainz matching may only override an explicit decision when the user intentionally requests rematching or unlinking.
-
-Keep Lidarr planning separate from Lidarr execution.
-
-A plan should describe explicit intended operations based on known persisted state.
-
-Execution should act on that plan rather than silently recalculating a different plan during mutation.
-
-## External integrations
-
-Relevant integrations include:
-
-- Spotify
-- TIDAL
-- MusicBrainz
-- Lidarr
-- OpenSubsonic/Navidrome-compatible servers
-
-External provider implementations belong on the server side.
-
-Keep secrets server-side.
-
-Never expose provider credentials, tokens, private server addresses, or sensitive configuration in:
-
-- browser bundles
-- public API responses
-- logs
-- committed fixtures
-
-Provider adapters should:
-
-- encapsulate transport and authentication details
-- validate external responses
-- normalize third-party data into Playlarr-owned models
-- implement provider-specific retry or error behavior where appropriate
-
-Do not leak raw provider response shapes throughout the application.
-
-Automated tests should use deterministic fixtures, fakes, or mocked external responses.
-
-Do not rely on live external services or personal credentials in normal automated test suites.
-
-## Nx workspace conventions
-
-Nx is the canonical project graph and task runner.
-
-Use pnpm for dependency installation and workspace management.
-
-Use Nx for task orchestration.
-
-Prefer:
-
-```bash
-pnpm nx run <project>:<target>
-pnpm nx run-many -t <targets>
-pnpm nx affected -t <targets>
-pnpm nx show project <project>
-pnpm nx show projects
-pnpm nx graph
-pnpm nx graph --affected
-```
-
-Prefer inferred targets from official Nx plugins where appropriate.
-
-Keep `nx.json` and project configuration minimal.
-
-Use explicit project targets where plugin inference or package metadata cannot express a genuine project requirement.
-
-Add explicit or implicit project dependencies only where Nx cannot infer a real relationship from imports, package relationships, or configuration.
-
-Deterministic tasks such as:
-
-- lint
-- typecheck
-- test
-- build
-- formatting checks
-- workflow validation
-
-should remain cacheable when their inputs and outputs can be represented accurately.
-
-Operations with external side effects must not be treated as cacheable.
-
-Do not weaken Nx module-boundary enforcement to make an implementation easier.
-
-## Dependency installation
-
-Use pnpm.
-
-Workspace-wide development tooling:
-
-```bash
-pnpm add -w -D <package>
-```
-
-Application or library runtime dependencies:
-
-```bash
-pnpm --filter <package> add <dependency>
-```
-
-Package-specific development tooling:
-
-```bash
-pnpm --filter <package> add -D <dependency>
-```
-
-Keep Nx plugin versions aligned with the workspace Nx version.
-
-Avoid installing feature runtime dependencies at the workspace root when they belong to one project.
-
-## TypeScript
-
-Keep TypeScript strict.
-
-Do not silence type errors with broad casts, `any`, or `@ts-ignore` when the underlying type can be modeled correctly.
-
-Prefer:
-
-- explicit domain types
-- validated external input
-- discriminated unions for meaningful states
-- exhaustive handling where practical
-- narrow interfaces at architectural boundaries
-
-Use explicit `.js` extensions for ESM/NodeNext relative imports where required.
-
-Avoid premature generic infrastructure abstractions.
-
-## Code organization
-
-Organize code around capability ownership and cohesion rather than arbitrary file-size limits.
-
-Keep types and helpers with the narrowest capability that owns them.
-
-Use `index.ts` only as a small public export barrel.
-
-Do not place implementations, unrelated constants, or domain logic in barrel files.
-
-Avoid generic catch-all files such as:
-
-```text
-common.ts
-helpers.ts
-utils.ts
-misc.ts
-types.ts
-```
-
-when they mix unrelated concerns.
-
-Small supporting definitions may remain beside the implementation they exist to support when they have no meaningful independent use.
-
-For React components, use a same-named folder when the component has supporting files such as tests, helper modules, or component-specific types.
-
-### Vertical whitespace and logical boundaries
-
-Use blank lines to separate distinct logical sections within a file, function, component, or JSX tree.
-
-For React components, generally separate:
-
-- state and hook declarations from callbacks and derived values
-- callbacks and effects from one another
-- setup logic from the component return
-- distinct sibling sections in JSX
-- guard clauses, mutation setup, execution, and cleanup
-
-Use whitespace to communicate structure rather than mechanically inserting blank lines between every statement.
-
-### Environment variables
-
-Treat environment variables as part of Playlarr's deployment interface, not as a convenient mechanism for passing internal implementation details.
-
-- Introduce a new environment variable only when users or deployment environments have a genuine reason to configure the value.
-- Prefer deterministic paths, existing configuration, or explicit application composition for values fixed by Playlarr's production packaging.
-- Do not add environment variables solely to make tests easier or to accommodate an internal build-artifact layout.
-- Before introducing one, check whether an existing setting or configuration mechanism already owns the concern.
-- Keep the supported deployment interface small and document intentional environment variables.
-
-Do not replace unnecessary environment variables with additional configuration abstractions.
-
-
-## Testing
-
-Use:
-
-- Vitest for focused domain, persistence, integration, and security behavior
-- Testing Library for React behavior
-
-Test coverage is not a goal by itself. Tests should protect meaningful Playlarr-owned behavior, decisions, invariants, realistic failure modes, architectural boundaries, or regressions. Before adding a test, identify a concrete failure it would catch that matters to Playlarr.
-
-Do not add tests primarily to prove that SQLite, MikroORM, NestJS, Next.js, React, or another dependency behaves as documented, unless Playlarr relies on that behavior in an unusual or particularly important way. Existing tests, architectural enforcement, production behavior, or a stronger test at another layer may already provide sufficient confidence.
-
-Acceptance criteria describe required behavior and confidence; they do not imply one test per criterion. It is valid for a change to add few or no tests when existing coverage already protects the behavior and additional tests would not materially increase confidence. Do not chase coverage percentages or add trivial cases solely to increase coverage.
-
-Prefer the smallest test layer that protects the risk. Avoid redundant tests, speculative test infrastructure, generic mocking abstractions, exhaustive combinations, and tests that primarily restate acceptance criteria or framework behavior.
-
-Prioritize tests for:
-
-- domain and business rules
-- playlist ordering and duplicates
-- MusicBrainz matching
-- explicit manual decisions
-- persistence
-- migrations
-- long-running command behavior
-- restart recovery
-- provider normalization
-- external input validation
-- authentication and authorization
-- error handling
-- security-sensitive behavior
-
-Persistence integration tests that depend on database semantics must use real temporary SQLite databases.
-
-Use deterministic provider fixtures and mocks.
-
-Critical restart-sensitive workflows should be tested through interruption and recovery, not only internal state transitions.
-
-For hardening work, inspect the current implementation and coverage first, then identify the remaining realistic risks. Prefer a small number of adversarial tests for Playlarr-owned concurrency, recovery, state transitions, side effects, and failure handling over broad coverage of framework or database mechanics.
-
-Do not weaken, skip, or remove existing tests merely to make a new implementation pass.
-
-## Canonical validation
-
-Use Nx targets rather than package-by-package task orchestration.
-
-Typical repository-wide validation is:
-
-```bash
-pnpm nx run-many -t lint,typecheck,test
-pnpm nx run @playlarr/web:build
-pnpm nx run @playlarr/server:build
-pnpm nx format:check
-```
-
-Use affected validation where appropriate:
-
-```bash
-pnpm nx affected -t lint,typecheck,test,build
-```
-
-Run workflow validation through the repository's `actionlint` Nx target.
-
-Do not claim validation passed unless the relevant command actually completed successfully.
-
-## Docker validation
-
-Changes to the Dockerfile, runtime packaging, production supervisor or startup,
-native runtime dependencies, or container persistence require building and
-exercising the actual production image before completion. Validate the behavior
-affected by the change rather than mechanically repeating every container scenario.
-
-For packaging changes, verify real startup, public UI and API reachability,
-non-root execution, and clean shutdown. Persistence changes must exercise `/data`
-through a real bind mount and verify state survives container recreation.
-Supervisor or lifecycle changes must verify the relevant process-failure and
-shutdown behavior. Report what actually ran; Nx builds alone are not Docker
-validation. Unrelated application changes do not require an image build, and
-
-## Engineering style
-
-Prefer the smallest implementation that correctly solves the current requirement.
-
-- Do not introduce abstractions, interfaces, wrappers, services, tokens, or generic infrastructure unless they represent a real architectural boundary or have multiple meaningful consumers/implementations.
-- Do not create an interface solely to make a dependency mockable. Prefer testing through real boundaries or simple concrete fakes when practical.
-- Do not generalize code for hypothetical future requirements. Implement the current requirement and refactor when a second real use case establishes the abstraction.
-- Before adding a new class/module/provider, ask whether the behavior can remain in the component that already owns the responsibility.
-- Avoid classes that merely wrap one boolean, function, or dependency unless the wrapper establishes a meaningful boundary.
-- Do not mirror issue or acceptance-criteria wording mechanically into production types, methods, or tests.
-- Prefer deterministic controlled promises/fakes and fake timers over sleeps or timing-dependent tests.
-- Do not make shared test fixtures depend on test execution order or have individual tests perform suite-level cleanup.
-- When an existing framework lifecycle or primitive already provides the required behavior, use it rather than recreating it behind a Playlarr abstraction.
-- Keep feature-specific concepts feature-specific until another genuine consumer proves they are shared.
-- A requirement being important does not imply it needs its own class or abstraction.
-
-Before considering a change complete, perform a simplification pass:
-1. Identify every new abstraction introduced by the change.
-2. For each one, state what concrete problem it solves today.
-3. Remove it if the answer is only "clean architecture", "future flexibility", "testability", or mirroring terminology from the issue.
-4. Look for remaining realistic risks around concurrency boundaries, partial failures, shutdown races, retries, and interrupted operations.
-5. Prefer fewer concepts and a small number of stronger behavioral tests over more structure or superficial coverage.
-
-## General implementation principles
-
-Keep changes focused, reviewable, and easy to reason about.
-
-For non-trivial work:
-
-- inspect the relevant existing code before changing it
-- understand current ownership and conventions before introducing abstractions
-- prefer extending an existing capability over creating a parallel implementation
-- avoid unrelated cleanup, renaming, formatting, or refactoring
-- remove obsolete code once its replacement is complete and verified
-- preserve unrelated user work
-- do not silently change behavior outside the requested scope
-
-Do not add a dependency when the existing stack already provides an appropriate solution.
-
-Do not create libraries just because the intended architecture contains a possible place for them.
-
-Create architectural boundaries when real code makes those boundaries valuable.
-
-## Git workflow
-
-For non-trivial tasks, work on a dedicated branch rather than directly on the default branch.
-
-Before making changes:
-
-1. ensure the working tree is clean
-2. fetch the latest remote state
-3. start from the latest default branch
-4. create a focused branch using an appropriate prefix such as:
-
-```text
-feat/
-fix/
-chore/
-```
-
-During implementation:
-
-- follow the repository commit strategy
-- keep commits small, logical, and independently reviewable
-- do not merge or rebase unrelated work into the task branch
-- do not push directly to the default branch
-
-After implementation:
-
-1. run the relevant final validation
-2. review the complete branch diff against the default branch
-3. push the task branch
-4. create a non-draft pull request using `.github/pull_request_template.md`
-5. complete the pull request description based on the actual implementation and validation
-6. do not merge the pull request unless explicitly requested
-
-## Commit strategy
-
-Split substantial work into small, logical, independently reviewable commits.
-
-Before starting a large implementation or refactor, identify sensible commit boundaries based on functional or architectural units.
-
-Good commit boundaries include:
-
-- foundational domain models
-- persistence schema or migrations
-- provider implementation
-- command infrastructure
-- feature implementation
-- runtime integration
-- tests belonging to completed behavior
-- deployment or repository infrastructure
-- removal of superseded code
-
-Prefer several focused commits over one large final commit.
-
-Do not:
-
-- create arbitrary checkpoint commits
-- create commits named `WIP`, `progress`, or similar
-- split commits merely to reduce file count
-- mix unrelated changes in the same commit
-- intentionally leave the repository broken between commits when avoidable
-
-Each commit should represent one understandable change and leave the repository valid whenever practical.
-
-## Commit messages
-
-Commit messages must follow the repository's `commitlint.config.ts`.
-
-Use:
-
-```text
-<gitmoji> <type>(<optional-scope>): <subject>
-```
-
-The complete first line must not exceed 100 characters.
-
-### Types
-
-Allowed types are:
-
-- `feat`
-- `fix`
-- `chore`
-- `test`
-
-### Scopes
-
-When a scope is used, it must be one of:
-
-- `web`
-- `server`
-- `ui`
-- `database`
-- `imports`
-- `settings`
-- `lidarr`
-- `musicbrainz`
-- `domain`
-- `contracts`
-- `persistence`
-- `config`
-- `repo`
-
-Use the narrowest applicable scope.
-
-The scope may be omitted when no listed scope accurately describes the change.
-
-Do not invent new types or scopes without updating `commitlint.config.ts`.
-
-### Gitmoji
-
-Every commit message begins with a Gitmoji matching the repository parser.
-
-### Subject style
-
-Use sentence case for commit subjects.
-
-Keep subjects concise and use imperative wording where practical.
-
-Describe the resulting change rather than the implementation process.
-
-Do not end the subject with a period.
-
-Examples:
-
-```text
-✨ feat(imports): Add Spotify playlist selection
-🐛 fix(lidarr): Avoid replaying completed plan items
-🗃️ feat(database): Add persisted command state
-♻️ chore(server): Extract command processing
-✅ test(imports): Add duplicate playlist coverage
-👷 chore(repo): Align Nx validation targets
-```
-
-`commitlint.config.ts` is authoritative if these instructions and the enforced commit-message rules ever disagree.
-
-## Pull requests
-
-Pull request titles follow the same basic format as commit messages:
-
-```text
-<gitmoji> <type>(<optional-scope>): <subject>
-```
-
-Use `.github/pull_request_template.md` when creating pull requests, and structure the description according to that template. Complete it based on the actual implementation and validation performed.
-
-Keep the description proportional to the change. Small changes should have small descriptions; larger or operationally risky changes may justify more explanation. Prefer short, factual descriptions written for a maintainer who can read the diff. Explain what changed and, when it is not obvious, why. Mention important behavioral, migration, compatibility, recovery, or operational consequences only when they actually exist.
-
-Do not narrate the implementation process, investigation history, every implementation detail, or the diff file-by-file or method-by-method. Do not repeat issue acceptance criteria as claims about the implementation. Avoid generated-looking prose, excessive headings, exhaustive bullet lists, repeated statements, long validation inventories, and ceremonial lists of everything the change does not affect.
-
-Keep optional template sections brief or omit them when the template permits and they add no useful information. Summarize testing and validation compactly; list individual commands or tests only when that detail helps reviewers.
-
-Do not claim tests, builds, compatibility, or manual verification that was not actually performed.
-
-<!-- nx configuration start-->
-<!-- Leave the start & end comments to automatically receive updates. -->
-
-## General Guidelines for working with Nx
-
-- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
-- When running tasks (for example build, lint, test, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
-- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
-- You have access to the Nx MCP server and its tools, use them to help the user
-- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
-- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
-
-## Scaffolding & Generators
-
-- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
-
-## When to use nx_docs
-
-- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
-- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
-- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
-
-<!-- nx configuration end-->
+# Playlarr repository guidance
+
+## Architecture
+
+- Playlarr is a strict-TypeScript Nx monorepo for self-hosted playlist acquisition and library orchestration.
+- The production application is one Docker/Unraid container with one public origin.
+- The request path is `Next.js -> same-origin /api/* proxy -> NestJS -> capability -> SQLite`.
+- `apps/web` and `apps/server` are intentionally thin composition roots. They are not fallback feature locations.
+- Next.js owns App Router routes, rendering composition, global frontend integration, and browser-facing framework concerns.
+- NestJS owns API transport, backend composition, global configuration, orchestration boundaries, and process lifecycle.
+- Substantial feature implementation belongs in `libs/<capability>/*`, even with one application consumer.
+- Do not put substantial feature code in `apps/web/src/features`, application controllers, or equivalent application directories to avoid fixing a library boundary.
+- Organize capabilities vertically using only the layers containing real code: `contracts`, `domain`, `web`, `server`, and `persistence`.
+- Do not create empty or speculative capability layers.
+- Feature-specific DTOs, rules, components, controllers, services, entities, repositories, and adapters stay with their owning capability.
+- Use `libs/shared/*` only for concerns with multiple genuine consumers. `shared` is not a holding area for unclear ownership.
+
+## Boundaries and communication
+
+- Nx project tags and the module-boundary rules in `eslint.config.mjs` are authoritative.
+- Do not bypass a boundary with relative imports, path aliases, application placement, or weakened lint rules.
+- Resolve buildability failures at the owning project boundary. Do not move capability code into an app to make a build pass.
+- Web code must not import server or persistence implementations.
+- Browser requests use relative same-origin `/api/*` URLs. Next.js proxies them to internal NestJS services.
+- Centralize server-side Next.js-to-NestJS transport configuration at the application boundary. Capability UI must not assemble internal backend URLs.
+- Contracts and domain code remain framework-independent and must not expose ORM entities as API contracts.
+- Keep provider credentials, tokens, private addresses, and other secrets server-side and out of logs, responses, fixtures, and browser bundles.
+
+## Persistence and durable work
+
+- SQLite and MikroORM are the production persistence stack.
+- `libs/shared/database` owns root ORM configuration, migrations, startup, and genuinely shared database infrastructure only.
+- Feature entities and repositories belong to the owning capability persistence library.
+- Production startup enables foreign keys, WAL, and a busy timeout, then runs committed migrations before normal operation.
+- Use forward migrations and preserve data created by the TypeScript application whenever feasible. Do not use destructive production schema synchronization.
+- Use persisted SQLite-backed commands for long-running work that must survive restarts or outlive a request.
+- Persisted command state is authoritative. In-process scheduling and SSE may communicate or trigger work but are not authoritative state.
+- Recovery must distinguish completed work from work requiring retry, reconciliation, or failure handling. Never blindly replay uncertain external side effects.
+
+## Product invariants
+
+- Preserve playlist ordering and duplicate entries; never silently deduplicate imports.
+- Explicit manual matching decisions are authoritative unless the user intentionally rematches or unlinks.
+- Keep Lidarr planning separate from execution. Execution acts on the persisted or explicit plan rather than silently recalculating it.
+- External provider adapters stay server-side, validate responses, normalize them into Playlarr-owned models, and encapsulate provider-specific transport behavior.
+
+## Runtime conventions
+
+- Use NestJS `Logger` with a meaningful class or subsystem context and log an exception once at the layer owning the operation.
+- `ERROR` is for failed authoritative work, unexpected infrastructure failures, or unreachable invariants.
+- `WARN` is for abnormal but recoverable or safely ignored failures, never normal control flow.
+- `INFO` is for meaningful application, database, integration, and durable-command lifecycle milestones, not per-request or per-item activity.
+- `DEBUG` is for diagnostic claims, progress, filtering, retries, reconciliation, and fallbacks.
+- Never log secrets, authorization data, cookies, command payloads, or other sensitive values.
+- Treat environment variables as a small deployment interface. Add one only when users or deployment environments genuinely need to configure the value.
+- Prefer deterministic paths, existing configuration, or application composition for internal implementation details.
+
+## Engineering approach
+
+- Inspect the relevant implementation and existing coverage before changing it.
+- Prefer extending the capability that already owns the concern.
+- Implement the smallest complete behavior that solves the current requirement.
+- Avoid speculative interfaces, wrappers, services, tokens, shared infrastructure, and generic abstractions.
+- A capability requiring configuration is complete only when users can configure and operate it; keep UI, validation, backend behavior, and persistence together under its ownership.
+- Prefer a small number of strong behavioral tests for Playlarr-owned decisions, failures, concurrency, and recovery.
+- Do not add tests mainly to restate acceptance criteria, increase coverage, or prove framework behavior.
+- Use real temporary SQLite databases when behavior depends on migrations, transactions, locking, constraints, or repository semantics.
+- Use deterministic fixtures and fakes for providers. Normal automated tests must not require live services or personal credentials.
+- Preserve unrelated user work and avoid unrelated cleanup, renaming, formatting, or refactoring.
+- Remove obsolete code when its replacement is complete.
+
+## Repository skills
+
+Use the focused repository skill matching the task. Codex may select skills implicitly from their descriptions.
+
+- `playlarr-feature`: implementing or changing a capability, its API, or its Nx library ownership.
+- `playlarr-frontend`: implementing or changing Playlarr UI or App Router composition.
+- `playlarr-persistence`: migrations, repositories, transactions, durable commands, or restart recovery.
+- `playlarr-review`: reviewing a PR, branch, diff, or completed implementation for merge readiness.
+
+Reuse the existing Nx skills for workspace exploration, generation, linking, task execution, and CI monitoring. Playlarr-specific skill guidance takes precedence when generic generation defaults conflict with this repository's enforced buildability or ownership rules.
+
+## Tooling and validation
+
+- Use pnpm for dependency management and keep runtime dependencies with the consuming package.
+- Use Nx for project inspection and task orchestration. Prefer resolved project configuration over guessing from files.
+- Keep TypeScript strict. Model types accurately rather than using broad casts, `any`, `@ts-ignore`, or framework leakage.
+- Use Vitest for focused domain, persistence, integration, and security behavior; use Testing Library for React behavior.
+- Validate proportionally through existing Nx targets. Typical checks are `pnpm nx affected -t lint,typecheck,test,build`, `pnpm nx format:check`, and the workspace `actionlint` target when workflows change.
+- Do not claim a check passed unless that command completed successfully.
+- Changes to Docker packaging, native runtime dependencies, container persistence, or supervisor lifecycle require exercising the production image and affected runtime behavior.
+- Treat ESLint, TypeScript, Nx, commitlint, and CI configuration as authoritative instead of copying their complete rules into instructions.
+
+## Delivery
+
+- For non-trivial work, start from the latest `master` on a focused `feat/`, `fix/`, or `chore/` branch with a clean tree.
+- Keep commits small, logical, independently understandable, and valid whenever practical.
+- Commit and PR titles follow the enforced format: `<gitmoji> <type>(<optional-scope>): <subject>`.
+- Run relevant final validation, review the complete diff against `master`, push the task branch, and open one non-draft PR using `.github/pull_request_template.md`.
+- Keep PR descriptions concise and factual. Report only validation actually performed.
+- Do not merge unless explicitly requested.
