@@ -97,6 +97,8 @@ Do not use `shared` as a dumping ground for code whose owning capability is uncl
 
 Feature-specific DTOs, entities, repositories, components, domain rules, and transport code belong to their owning capability.
 
+During the migration, prioritize completing usable application behavior over expanding architecture or test infrastructure. A capability is complete only when users can configure and operate it where configuration is required; keep its UI, backend behavior, validation, and persistence together under the owning capability rather than deferring configuration to a later cross-cutting phase.
+
 ## Dependency boundaries
 
 Nx module-boundary rules are authoritative.
@@ -546,7 +548,7 @@ Do not replace unnecessary environment variables with additional configuration a
 
 Use:
 
-- Vitest for unit and integration tests
+- Vitest for focused domain, persistence, integration, and security behavior
 - Testing Library for React behavior
 - Playwright for meaningful end-to-end user flows
 
@@ -555,6 +557,8 @@ Test coverage is not a goal by itself. Tests should protect meaningful Playlarr-
 Do not add tests primarily to prove that SQLite, MikroORM, NestJS, Next.js, React, or another dependency behaves as documented, unless Playlarr relies on that behavior in an unusual or particularly important way. Existing tests, architectural enforcement, production behavior, or a stronger test at another layer may already provide sufficient confidence.
 
 Acceptance criteria describe required behavior and confidence; they do not imply one test per criterion. It is valid for a change to add few or no tests when existing coverage already protects the behavior and additional tests would not materially increase confidence. Do not chase coverage percentages or add trivial cases solely to increase coverage.
+
+Prefer the smallest test layer that protects the risk. Avoid redundant tests, speculative test infrastructure, generic mocking abstractions, exhaustive combinations, and tests that primarily restate acceptance criteria or framework behavior.
 
 Prioritize tests for:
 
@@ -826,7 +830,7 @@ Use `.github/pull_request_template.md` when creating pull requests, and structur
 
 Keep the description proportional to the change. Small changes should have small descriptions; larger or operationally risky changes may justify more explanation. Prefer short, factual descriptions written for a maintainer who can read the diff. Explain what changed and, when it is not obvious, why. Mention important behavioral, migration, compatibility, recovery, or operational consequences only when they actually exist.
 
-Do not narrate the implementation process, investigation history, every implementation detail, or the diff file-by-file or method-by-method. Do not repeat issue acceptance criteria as claims about the implementation. Avoid generated-looking prose, excessive headings, exhaustive bullet lists, repeated statements, and ceremonial lists of everything the change does not affect.
+Do not narrate the implementation process, investigation history, every implementation detail, or the diff file-by-file or method-by-method. Do not repeat issue acceptance criteria as claims about the implementation. Avoid generated-looking prose, excessive headings, exhaustive bullet lists, repeated statements, long validation inventories, and ceremonial lists of everything the change does not affect.
 
 Keep optional template sections brief or omit them when the template permits and they add no useful information. Summarize testing and validation compactly; list individual commands or tests only when that detail helps reviewers.
 
