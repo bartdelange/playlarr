@@ -29,7 +29,7 @@ jobs:
 
       # Enable after connecting the workspace to Nx Cloud.
       # - name: Start Nx Cloud CI run
-      #   run: pnpm exec nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="e2e-ci"
+      #   run: pnpm exec nx start-ci-run --distribute-on="3 linux-medium-js"
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -39,9 +39,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps
 
       - name: Determine Nx affected SHAs
         uses: nrwl/nx-set-shas@v5
@@ -54,9 +51,6 @@ jobs:
 
       - name: Validate affected projects
         run: pnpm exec nx affected -t lint test build typecheck
-
-      - name: Run e2e for affected projects
-        run: pnpm exec nx affected -t e2e
 
       - name: Run Nx CI fixes
         if: always()

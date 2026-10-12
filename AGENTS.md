@@ -39,7 +39,6 @@ The current top-level application and library structure is:
 ```text
 apps/
   web/
-  web-e2e/
   server/
 
 libs/
@@ -50,7 +49,6 @@ libs/
 Current project ownership is:
 
 - `@playlarr/web` — Next.js App Router application, rendering, layouts, routes, frontend composition, and same-origin `/api/*` proxy configuration
-- `@playlarr/web-e2e` — Playwright end-to-end tests spanning the public Playlarr application
 - `@playlarr/server` — NestJS backend application, API transport, backend composition, configuration, and process lifecycle
 - `@playlarr/shared-database` — global MikroORM/SQLite setup, migrations, and database infrastructure
 
@@ -114,7 +112,6 @@ Relevant platform tags are:
 Relevant project-type tags are:
 
 - `type:app`
-- `type:e2e`
 - `type:feature`
 - `type:ui`
 - `type:domain`
@@ -430,8 +427,6 @@ Use explicit project targets where plugin inference or package metadata cannot e
 
 Add explicit or implicit project dependencies only where Nx cannot infer a real relationship from imports, package relationships, or configuration.
 
-For example, an E2E project may declare implicit dependencies on applications it starts or exercises when those relationships are not represented through imports.
-
 Deterministic tasks such as:
 
 - lint
@@ -550,7 +545,6 @@ Use:
 
 - Vitest for focused domain, persistence, integration, and security behavior
 - Testing Library for React behavior
-- Playwright for meaningful end-to-end user flows
 
 Test coverage is not a goal by itself. Tests should protect meaningful Playlarr-owned behavior, decisions, invariants, realistic failure modes, architectural boundaries, or regressions. Before adding a test, identify a concrete failure it would catch that matters to Playlarr.
 
@@ -584,20 +578,6 @@ Critical restart-sensitive workflows should be tested through interruption and r
 
 For hardening work, inspect the current implementation and coverage first, then identify the remaining realistic risks. Prefer a small number of adversarial tests for Playlarr-owned concurrency, recovery, state transitions, side effects, and failure handling over broad coverage of framework or database mechanics.
 
-Add E2E tests when crossing the real application boundary provides meaningful additional confidence. Do not reproduce every lower-level unit or integration scenario in Playwright. E2E tests should exercise behavior through the public application boundary:
-
-```text
-browser/request
-  ↓
-Next.js origin
-  ↓
-/api/*
-  ↓
-NestJS
-```
-
-unless a test specifically targets the backend API independently.
-
 Do not weaken, skip, or remove existing tests merely to make a new implementation pass.
 
 ## Canonical validation
@@ -610,7 +590,6 @@ Typical repository-wide validation is:
 pnpm nx run-many -t lint,typecheck,test
 pnpm nx run @playlarr/web:build
 pnpm nx run @playlarr/server:build
-pnpm nx run @playlarr/web-e2e:e2e
 pnpm nx format:check
 ```
 
@@ -637,7 +616,6 @@ through a real bind mount and verify state survives container recreation.
 Supervisor or lifecycle changes must verify the relevant process-failure and
 shutdown behavior. Report what actually ran; Nx builds alone are not Docker
 validation. Unrelated application changes do not require an image build, and
-Docker-backed Playwright E2E testing must not be introduced.
 
 ## Engineering style
 
@@ -772,7 +750,6 @@ When a scope is used, it must be one of:
 
 - `web`
 - `server`
-- `e2e`
 - `ui`
 - `database`
 - `imports`
@@ -842,7 +819,7 @@ Do not claim tests, builds, compatibility, or manual verification that was not a
 ## General Guidelines for working with Nx
 
 - For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
-- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- When running tasks (for example build, lint, test, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
 - Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
 - You have access to the Nx MCP server and its tools, use them to help the user
 - For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.

@@ -58,16 +58,6 @@ export default [
               ],
             },
             {
-              sourceTag: 'type:e2e',
-              onlyDependOnLibsWithTags: [
-                'type:app',
-                'type:feature',
-                'type:ui',
-                'type:domain',
-                'type:contracts',
-              ],
-            },
-            {
               sourceTag: 'type:ui',
               onlyDependOnLibsWithTags: [
                 'type:ui',
