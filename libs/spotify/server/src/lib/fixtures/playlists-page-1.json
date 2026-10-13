@@ -1,0 +1,15 @@
+{
+  "items": [
+    {
+      "id": "playlist-one",
+      "name": "First playlist",
+      "owner": { "id": "owner-one", "display_name": "Listener" },
+      "snapshot_id": "snapshot-one",
+      "tracks": { "total": 5 }
+    }
+  ],
+  "limit": 1,
+  "offset": 0,
+  "next": "https://api.spotify.com/v1/me/playlists?limit=1&offset=1",
+  "total": 2
+}

@@ -1,0 +1,37 @@
+{
+  "items": [
+    {
+      "is_local": false,
+      "track": {
+        "id": "track-one",
+        "name": "Repeated song",
+        "type": "track",
+        "is_local": false,
+        "artists": [{ "name": "Artist one" }, { "name": "Artist two" }],
+        "album": { "name": "Album one" },
+        "duration_ms": 123456,
+        "disc_number": 1,
+        "track_number": 4
+      }
+    },
+    {
+      "is_local": false,
+      "track": {
+        "id": "track-one",
+        "name": "Repeated song",
+        "type": "track",
+        "is_local": false,
+        "artists": [{ "name": "Artist one" }, { "name": "Artist two" }],
+        "album": { "name": "Album one" },
+        "duration_ms": 123456,
+        "disc_number": 1,
+        "track_number": 4
+      }
+    },
+    { "is_local": false, "track": null }
+  ],
+  "limit": 3,
+  "offset": 0,
+  "next": "https://api.spotify.com/v1/playlists/selected/items?limit=3&offset=3",
+  "total": 6
+}

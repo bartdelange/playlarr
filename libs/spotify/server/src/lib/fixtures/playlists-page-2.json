@@ -1,0 +1,15 @@
+{
+  "items": [
+    {
+      "id": "playlist-two",
+      "name": "Second playlist",
+      "owner": { "id": "owner-two", "display_name": null },
+      "snapshot_id": "snapshot-two",
+      "items": { "total": 2 }
+    }
+  ],
+  "limit": 1,
+  "offset": 1,
+  "next": null,
+  "total": 2
+}
