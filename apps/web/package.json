@@ -13,6 +13,7 @@
     "@playlarr/settings-web": "workspace:*",
     "@playlarr/shared-web-infrastructure": "workspace:*",
     "@playlarr/spotify-web": "workspace:*",
+    "@playlarr/tidal-web": "workspace:*",
     "next": "~16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

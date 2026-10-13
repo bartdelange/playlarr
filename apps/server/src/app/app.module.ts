@@ -6,6 +6,7 @@ import { AuthModule } from '@playlarr/auth-server';
 import { CommandsModule } from '@playlarr/commands-server';
 import { SampleCommandModule } from '@playlarr/sample-command-server';
 import { SpotifyModule } from '@playlarr/spotify-server';
+import { TidalModule } from '@playlarr/tidal-server';
 import {
   ApplicationCommandEventPublisher,
   ApplicationEventsModule,
@@ -30,6 +31,7 @@ import { appConfig } from '../config/app.config.js';
     }),
     SampleCommandModule,
     SpotifyModule,
+    TidalModule,
   ],
   controllers: [HealthController],
 })

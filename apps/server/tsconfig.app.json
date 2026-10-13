@@ -12,6 +12,9 @@
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
   "references": [
     {
+      "path": "../../libs/tidal/server/tsconfig.lib.json"
+    },
+    {
       "path": "../../libs/spotify/server/tsconfig.lib.json"
     },
     {

@@ -1,6 +1,7 @@
 import './global.css';
 import '@playlarr/auth-web/styles.css';
 import '@playlarr/settings-web/styles.css';
+import '@playlarr/tidal-web/styles.css';
 
 export const metadata = {
   title: 'Playlarr',

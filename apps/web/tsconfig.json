@@ -48,6 +48,9 @@
   ],
   "references": [
     {
+      "path": "../../libs/tidal/web"
+    },
+    {
       "path": "../../libs/spotify/web"
     },
     {

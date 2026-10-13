@@ -56,6 +56,18 @@
     },
     {
       "path": "./libs/spotify/web"
+    },
+    {
+      "path": "./libs/tidal/contracts"
+    },
+    {
+      "path": "./libs/tidal/persistence"
+    },
+    {
+      "path": "./libs/tidal/server"
+    },
+    {
+      "path": "./libs/tidal/web"
     }
   ]
 }
