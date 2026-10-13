@@ -19,7 +19,7 @@ Deliver usable behavior through the capability that owns it while preserving Pla
    - `server` for transport and orchestration
    - `persistence` for feature-owned data
 
-Application projects remain thin composition roots. Route files, bootstrap modules, proxy configuration, and provider registration may live there; feature components, controllers, services, rules, and repositories do not.
+Application projects remain thin composition roots. Route files, bootstrap modules, rewrite configuration, and provider registration may live there; feature components, controllers, services, rules, and repositories do not.
 
 ## Preserve communication boundaries
 
@@ -27,7 +27,7 @@ Application projects remain thin composition roots. Route files, bootstrap modul
 - Keep NestJS controllers thin: validate transport input, invoke capability orchestration, and translate the result.
 - Put request and response models in capability contracts only when they are genuinely shared across the HTTP boundary.
 - Never expose ORM entities as contracts or import persistence into web code.
-- Browser code calls relative `/api/*` endpoints. Server Components use the centralized application transport boundary so cookies and internal connection details remain consistent.
+- Browser code calls relative `/api/*` endpoints. Shared server-only transport and internal backend configuration come from `libs/shared/web-infrastructure`; feature-specific server API integrations belong in the owning capability web library, such as `libs/auth/web`.
 - Keep provider clients and secrets on the server and normalize external response shapes at the adapter boundary.
 
 ## Use Nx without abandoning ownership

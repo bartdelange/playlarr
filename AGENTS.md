@@ -22,7 +22,7 @@
 - Resolve buildability failures at the owning project boundary. Do not move capability code into an app to make a build pass.
 - Web code must not import server or persistence implementations.
 - Browser requests use relative same-origin `/api/*` URLs. Next.js proxies them to internal NestJS services.
-- Centralize server-side Next.js-to-NestJS transport configuration at the application boundary. Capability UI must not assemble internal backend URLs.
+- Keep shared server-only Next.js-to-NestJS transport and internal backend configuration in `libs/shared/web-infrastructure`, and feature-specific server API integrations in their owning capability web libraries. `apps/web` owns application composition such as routes and rewrite configuration.
 - Contracts and domain code remain framework-independent and must not expose ORM entities as API contracts.
 - Keep provider credentials, tokens, private addresses, and other secrets server-side and out of logs, responses, fixtures, and browser bundles.
 

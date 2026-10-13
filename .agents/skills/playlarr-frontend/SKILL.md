@@ -18,7 +18,7 @@ Do not introduce a design system, generic component layer, or arbitrary visual c
 - Put feature components, forms, UI state, and feature-specific presentation in `libs/<capability>/web`.
 - Keep `apps/web/src/app` focused on routes, layouts, metadata, framework boundaries, parameters, and composing capability entrypoints.
 - Do not move capability UI into `apps/web/src/features` to avoid an Nx build or import problem. Use `playlarr-feature` and `nx-workspace` to correct the project boundary.
-- Keep global frontend integration and centralized server-to-NestJS transport in the application-owned web infrastructure.
+- Keep shared server-only transport and internal backend configuration in `libs/shared/web-infrastructure`, feature-specific server API integrations in their capability web libraries, and application composition such as routes and rewrites in `apps/web`.
 
 ## Choose the rendering boundary deliberately
 
@@ -26,7 +26,7 @@ Do not introduce a design system, generic component layer, or arbitrary visual c
 - Add `'use client'` only where browser state, effects, event handlers, or browser APIs require it, and keep the client boundary narrow.
 - Use Suspense and route or component loading states when asynchronous rendering would otherwise leave an unclear wait.
 - Browser requests use relative `/api/*` URLs. Never expose or assemble the internal NestJS host or port in capability UI.
-- Server-side requests use the centralized application transport boundary rather than calling the public origin or duplicating cookie forwarding.
+- Server-side feature requests use their owning capability's server API integration rather than calling the public origin or duplicating shared transport behavior.
 
 ## Protect user behavior
 
