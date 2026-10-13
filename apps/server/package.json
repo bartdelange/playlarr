@@ -114,6 +114,7 @@
     "@playlarr/sample-command-server": "workspace:*",
     "@playlarr/shared-database": "workspace:*",
     "@playlarr/spotify-server": "workspace:*",
+    "@playlarr/tidal-server": "workspace:*",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tslib": "^2.3.0"
