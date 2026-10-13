@@ -13,7 +13,7 @@ export function SettingsShell({ children }: { children: ReactNode }) {
       <div className={styles.layout}>
         <nav aria-label="Settings" className={styles.navigation}>
           <a aria-current="page" href="/settings">
-            Authentication
+            General
           </a>
         </nav>
 

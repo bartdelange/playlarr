@@ -10,6 +10,7 @@ packages:
   - 'libs/events/*'
   - 'libs/auth/*'
   - 'libs/settings/*'
+  - 'libs/spotify/*'
 autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': true

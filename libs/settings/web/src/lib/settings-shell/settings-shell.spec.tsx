@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SettingsShell } from './settings-shell';
 
 describe('SettingsShell', () => {
-  it('shows only the implemented authentication destination', () => {
+  it('shows the general settings destination', () => {
     render(
       <SettingsShell>
         <p>Capability settings</p>
@@ -16,7 +16,7 @@ describe('SettingsShell', () => {
     ).toBeTruthy();
     expect(screen.getAllByRole('link')).toHaveLength(1);
     expect(
-      screen.getByRole('link', { name: 'Authentication' }).getAttribute('href'),
+      screen.getByRole('link', { name: 'General' }).getAttribute('href'),
     ).toBe('/settings');
     expect(screen.getByText('Capability settings')).toBeTruthy();
   });

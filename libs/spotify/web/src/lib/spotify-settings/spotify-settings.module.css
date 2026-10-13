@@ -1,0 +1,111 @@
+.card {
+  padding: 1.5rem;
+  border: 1px solid #dfe3ea;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.heading h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.heading p,
+.help {
+  color: #59657a;
+}
+.heading p {
+  margin: 0.35rem 0 0;
+}
+.connected,
+.inactive,
+.problem {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.connected {
+  background: #dcf4e6;
+  color: #17633a;
+}
+.inactive {
+  background: #eceff3;
+  color: #536070;
+}
+.problem {
+  background: #fbe5e7;
+  color: #8b1724;
+}
+.account {
+  margin: 1rem 0 0;
+}
+.form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+}
+.form > label {
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+.form > input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #b8c0cd;
+  border-radius: 0.5rem;
+  color: #172033;
+}
+.form > input:focus {
+  border-color: #315eca;
+  outline: 3px solid rgba(49, 94, 202, 0.18);
+}
+.help,
+.error,
+.success {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.error {
+  color: #a51d2d;
+}
+.success {
+  color: #17633a;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 0.85rem;
+}
+.actions button,
+.actions a {
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #315eca;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  text-decoration: none;
+}
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+@media (max-width: 600px) {
+  .heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .connected,
+  .inactive,
+  .problem {
+    align-self: flex-start;
+  }
+}
