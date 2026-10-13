@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-import { BadGatewayException } from '@nestjs/common';
+import { BadGatewayException, UnauthorizedException } from '@nestjs/common';
 
 import { SpotifyApiClient } from './spotify-api.client.js';
 import type { SpotifyService } from './spotify.service.js';
@@ -124,6 +124,31 @@ describe('SpotifyApiClient', () => {
     ]);
   });
 
+  it('fetches current metadata for one selected playlist', async () => {
+    const { api } = client();
+    const provider = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({
+        id: 'selected',
+        name: 'Selected playlist',
+        owner: { id: 'owner-one', display_name: 'Listener' },
+        snapshot_id: 'snapshot-current',
+        tracks: { total: 6 },
+      }),
+    );
+
+    await expect(api.getPlaylist('selected')).resolves.toEqual({
+      id: 'selected',
+      name: 'Selected playlist',
+      owner: { id: 'owner-one', displayName: 'Listener' },
+      itemCount: 6,
+      snapshotId: 'snapshot-current',
+    });
+    expect(provider).toHaveBeenCalledWith(
+      'https://api.spotify.com/v1/playlists/selected?fields=id,name,owner(id,display_name),snapshot_id,tracks(total)',
+      { headers: { Authorization: 'Bearer access-one' } },
+    );
+  });
+
   it('refreshes rejected authorization and retries rate limits as directed', async () => {
     const { api, spotify } = client();
     const provider = vi
@@ -150,6 +175,17 @@ describe('SpotifyApiClient', () => {
       { Authorization: 'Bearer access-two' },
       { Authorization: 'Bearer access-two' },
     ]);
+  });
+
+  it('reports actionable authorization failure when a refreshed token is rejected', async () => {
+    const { api } = client();
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({}, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({}, { status: 401 }));
+
+    await expect(api.getPlaylists()).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('rejects malformed provider responses at the boundary', async () => {

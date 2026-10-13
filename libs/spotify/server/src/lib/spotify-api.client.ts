@@ -1,6 +1,11 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type {
   SourcePlaylist,
   SourcePlaylistContents,
@@ -75,7 +80,25 @@ export class SpotifyApiClient {
       '/me/playlists',
       playlistPageSchema,
     );
-    return playlists.map((playlist) => ({
+    return playlists.map((playlist) => this.normalizePlaylist(playlist));
+  }
+
+  async getPlaylist(playlistId: string): Promise<SourcePlaylist> {
+    const response = await this.request(
+      `/playlists/${encodeURIComponent(playlistId)}?fields=id,name,owner(id,display_name),snapshot_id,tracks(total)`,
+    );
+    const parsed = spotifyPlaylistSchema.safeParse(
+      await response.json().catch(() => null),
+    );
+    if (!parsed.success)
+      throw new BadGatewayException('Spotify returned an invalid playlist');
+    return this.normalizePlaylist(parsed.data);
+  }
+
+  private normalizePlaylist(
+    playlist: z.infer<typeof spotifyPlaylistSchema>,
+  ): SourcePlaylist {
+    return {
       id: playlist.id,
       name: playlist.name,
       owner: {
@@ -84,7 +107,7 @@ export class SpotifyApiClient {
       },
       itemCount: playlist.items?.total ?? playlist.tracks?.total ?? 0,
       snapshotId: playlist.snapshot_id,
-    }));
+    };
   }
 
   async getPlaylistContents(
@@ -212,6 +235,10 @@ export class SpotifyApiClient {
         refreshed = true;
         continue;
       }
+      if (response.status === 401)
+        throw new UnauthorizedException(
+          'Spotify authorization is no longer valid',
+        );
       if (response.status === 429 && rateLimitRetries < maxRateLimitRetries) {
         const retryAfter = this.retryAfterSeconds(response);
         rateLimitRetries += 1;

@@ -9,6 +9,31 @@ import {
 
 import styles from './spotify-import.module.css';
 
+const authorizationErrorMessages: Record<string, string> = {
+  access_denied: 'Spotify authorization was cancelled.',
+  configuration_changed:
+    'Spotify settings changed during authorization. Start authorization again.',
+  missing_code: 'Spotify did not return an authorization code.',
+  provider_error: 'Spotify could not complete authorization.',
+};
+
+function AuthorizationResult({
+  result,
+}: {
+  result?: { status?: string; error?: string };
+}) {
+  if (result?.status === 'connected')
+    return <p className={styles.success}>Spotify connected successfully.</p>;
+  if (result?.status !== 'error') return null;
+  return (
+    <p className={styles.error} role="alert">
+      {authorizationErrorMessages[result.error ?? 'provider_error'] ??
+        authorizationErrorMessages.provider_error}{' '}
+      Try authorizing Spotify again.
+    </p>
+  );
+}
+
 export function NewImportSources() {
   return (
     <main className={styles.flow}>
@@ -24,13 +49,16 @@ export function NewImportSources() {
 
 export function SpotifyAuthorizationRequired({
   configured,
+  authorizationResult,
 }: {
   configured: boolean;
+  authorizationResult?: { status?: string; error?: string };
 }) {
   const returnTo = encodeURIComponent('/imports/new?source=spotify');
   return (
     <main className={styles.flow}>
       <h1>Choose a Spotify playlist</h1>
+      <AuthorizationResult result={authorizationResult} />
       <div className={styles.notice} role="status">
         <p>
           {configured
@@ -53,8 +81,10 @@ export function SpotifyAuthorizationRequired({
 
 export function SpotifyPlaylistSelection({
   playlists,
+  authorizationResult,
 }: {
   playlists: SourcePlaylist[];
+  authorizationResult?: { status?: string; error?: string };
 }) {
   const [creating, setCreating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +119,7 @@ export function SpotifyPlaylistSelection({
     <main className={styles.flow}>
       <h1>Choose a Spotify playlist</h1>
       <p>Select a playlist to create an import and open its workspace.</p>
+      <AuthorizationResult result={authorizationResult} />
       {error ? (
         <p className={styles.error} role="alert">
           {error}

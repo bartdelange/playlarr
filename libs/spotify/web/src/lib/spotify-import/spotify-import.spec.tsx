@@ -30,6 +30,20 @@ describe('Spotify import flow', () => {
     );
   });
 
+  it('explains controlled OAuth callback failures without exposing provider details', () => {
+    render(
+      <SpotifyAuthorizationRequired
+        authorizationResult={{ status: 'error', error: 'private_detail' }}
+        configured
+      />,
+    );
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Spotify could not complete authorization.',
+    );
+    expect(screen.queryByText(/private_detail/)).toBeNull();
+  });
+
   it('shows an intentional empty state', () => {
     render(<SpotifyPlaylistSelection playlists={[]} />);
 

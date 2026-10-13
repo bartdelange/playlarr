@@ -570,24 +570,15 @@ describe('Spotify authorization', () => {
   it('persists a normalized playlist snapshot with source order and duplicates', async () => {
     await configure(app).expect(201);
     await seedCredential();
+    const playlist = {
+      id: 'playlist-one',
+      name: 'Repeated favorites',
+      owner: { id: 'owner-one', display_name: 'Listener' },
+      snapshot_id: 'snapshot-one',
+      tracks: { total: 2 },
+    };
     vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(
-        Response.json({
-          items: [
-            {
-              id: 'playlist-one',
-              name: 'Repeated favorites',
-              owner: { id: 'owner-one', display_name: 'Listener' },
-              snapshot_id: 'snapshot-one',
-              tracks: { total: 2 },
-            },
-          ],
-          limit: 50,
-          offset: 0,
-          next: null,
-          total: 1,
-        }),
-      )
+      .mockResolvedValueOnce(Response.json(playlist))
       .mockResolvedValueOnce(
         Response.json({
           items: [
@@ -625,7 +616,8 @@ describe('Spotify authorization', () => {
           next: null,
           total: 2,
         }),
-      );
+      )
+      .mockResolvedValueOnce(Response.json(playlist));
 
     const created = await request(app.getHttpServer())
       .post('/api/spotify/imports')
@@ -650,6 +642,43 @@ describe('Spotify authorization', () => {
       .get(`/api/spotify/imports/${created.body.id as string}`)
       .expect(200);
     expect(persisted.body).toEqual(created.body);
+  });
+
+  it('does not persist contents when the Spotify snapshot changes while reading them', async () => {
+    await configure(app).expect(201);
+    await seedCredential();
+    const repository = app.get(SpotifyRepository);
+    const persist = vi.spyOn(repository, 'createImport');
+    const playlist = {
+      id: 'playlist-one',
+      name: 'Changing playlist',
+      owner: { id: 'owner-one', display_name: 'Listener' },
+      tracks: { total: 0 },
+    };
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({ ...playlist, snapshot_id: 'snapshot-before' }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          items: [],
+          limit: 50,
+          offset: 0,
+          next: null,
+          total: 0,
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ ...playlist, snapshot_id: 'snapshot-after' }),
+      );
+
+    await request(app.getHttpServer())
+      .post('/api/spotify/imports')
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ playlistId: 'playlist-one' })
+      .expect(409);
+
+    expect(persist).not.toHaveBeenCalled();
   });
 
   it('maps provider callback errors to controlled result codes', async () => {

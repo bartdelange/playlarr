@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { SpotifyImport } from '@playlarr/spotify-contracts';
 import { SpotifyRepository } from '@playlarr/spotify-persistence';
 
@@ -12,14 +16,15 @@ export class SpotifyImportService {
   ) {}
 
   async create(playlistId: string): Promise<SpotifyImport> {
-    const [playlists, contents] = await Promise.all([
-      this.api.getPlaylists(),
-      this.api.getPlaylistContents(playlistId),
-    ]);
-    const playlist = playlists.find((candidate) => candidate.id === playlistId);
-    if (!playlist) throw new NotFoundException('Spotify playlist not found');
+    const playlist = await this.api.getPlaylist(playlistId);
+    const contents = await this.api.getPlaylistContents(playlistId);
+    const currentPlaylist = await this.api.getPlaylist(playlistId);
+    if (currentPlaylist.snapshotId !== playlist.snapshotId)
+      throw new ConflictException(
+        'Spotify playlist changed during import; try again',
+      );
     const imported = await this.repository.createImport(
-      playlist,
+      currentPlaylist,
       contents.tracks,
     );
     return this.toContract(imported);
