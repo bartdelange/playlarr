@@ -4,12 +4,13 @@ import { SpotifyPersistenceModule } from '@playlarr/spotify-persistence';
 import { SettingsPersistenceModule } from '@playlarr/settings-persistence';
 
 import { SpotifyController } from './spotify.controller.js';
+import { SpotifyApiClient } from './spotify-api.client.js';
 import { SpotifyService } from './spotify.service.js';
 
 @Module({
   imports: [AuthModule, SpotifyPersistenceModule, SettingsPersistenceModule],
   controllers: [SpotifyController],
-  providers: [SpotifyService],
-  exports: [SpotifyService],
+  providers: [SpotifyService, SpotifyApiClient],
+  exports: [SpotifyService, SpotifyApiClient],
 })
 export class SpotifyModule {}

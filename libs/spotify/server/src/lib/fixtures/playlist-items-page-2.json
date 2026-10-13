@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "is_local": true,
+      "track": { "name": "Local song", "type": "track", "is_local": true }
+    },
+    {
+      "is_local": false,
+      "track": { "id": "episode-one", "name": "An episode", "type": "episode" }
+    },
+    {
+      "is_local": false,
+      "item": {
+        "id": null,
+        "name": "Unavailable song",
+        "type": "track",
+        "is_local": false,
+        "artists": [{ "name": "Artist" }],
+        "album": { "name": "Album" },
+        "duration_ms": 1,
+        "disc_number": 1,
+        "track_number": 1
+      }
+    }
+  ],
+  "limit": 3,
+  "offset": 3,
+  "next": null,
+  "total": 6
+}

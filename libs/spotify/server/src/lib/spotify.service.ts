@@ -263,6 +263,10 @@ export class SpotifyService {
     };
   }
 
+  refreshRejectedAccessToken(failedAccessToken: string): Promise<string> {
+    return this.refreshAccessToken(failedAccessToken);
+  }
+
   private refreshAccessToken(failedAccessToken?: string): Promise<string> {
     return this.serialize(async () => {
       const latest = await this.spotify.getCredential();

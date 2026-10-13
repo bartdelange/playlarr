@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   Req,
@@ -17,6 +18,7 @@ import {
 } from '@playlarr/auth-server';
 
 import { SpotifyService } from './spotify.service.js';
+import { SpotifyApiClient } from './spotify-api.client.js';
 
 interface RedirectResponse {
   cookie(
@@ -47,7 +49,22 @@ const spotifyCallbackPath = '/api/spotify/callback';
 
 @Controller('spotify')
 export class SpotifyController {
-  constructor(private readonly spotify: SpotifyService) {}
+  constructor(
+    private readonly spotify: SpotifyService,
+    private readonly api: SpotifyApiClient,
+  ) {}
+
+  @Get('playlists')
+  playlists() {
+    return this.api.getPlaylists();
+  }
+
+  @Get('playlists/:playlistId/tracks')
+  playlistTracks(@Param('playlistId') playlistId: string) {
+    if (!playlistId || playlistId.length > 256)
+      throw new BadRequestException('Invalid Spotify playlist ID');
+    return this.api.getPlaylistContents(playlistId);
+  }
 
   @Get('configuration')
   configuration() {
