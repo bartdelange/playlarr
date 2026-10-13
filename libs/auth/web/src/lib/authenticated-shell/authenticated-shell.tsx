@@ -47,6 +47,7 @@ export function AuthenticatedShell({
         </a>
 
         <nav aria-label="Primary" className={styles.navigation}>
+          <a href="/imports/new">New import</a>
           <a href="/settings">Settings</a>
 
           {showLogout ? (

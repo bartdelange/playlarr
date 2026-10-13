@@ -564,6 +564,9 @@ importers:
       '@playlarr/settings-persistence':
         specifier: workspace:*
         version: link:../../settings/persistence
+      '@playlarr/spotify-contracts':
+        specifier: workspace:*
+        version: link:../contracts
       tslib:
         specifier: ^2.3.0
         version: 2.8.1

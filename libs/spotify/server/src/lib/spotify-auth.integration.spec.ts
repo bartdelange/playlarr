@@ -567,6 +567,91 @@ describe('Spotify authorization', () => {
     ).toBe(true);
   });
 
+  it('persists a normalized playlist snapshot with source order and duplicates', async () => {
+    await configure(app).expect(201);
+    await seedCredential();
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({
+          items: [
+            {
+              id: 'playlist-one',
+              name: 'Repeated favorites',
+              owner: { id: 'owner-one', display_name: 'Listener' },
+              snapshot_id: 'snapshot-one',
+              tracks: { total: 2 },
+            },
+          ],
+          limit: 50,
+          offset: 0,
+          next: null,
+          total: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          items: [
+            {
+              is_local: false,
+              track: {
+                id: 'track-one',
+                name: 'Same song',
+                type: 'track',
+                is_local: false,
+                artists: [{ name: 'Artist' }],
+                album: { name: 'Album' },
+                duration_ms: 123,
+                disc_number: 1,
+                track_number: 1,
+              },
+            },
+            {
+              is_local: false,
+              track: {
+                id: 'track-one',
+                name: 'Same song',
+                type: 'track',
+                is_local: false,
+                artists: [{ name: 'Artist' }],
+                album: { name: 'Album' },
+                duration_ms: 123,
+                disc_number: 1,
+                track_number: 1,
+              },
+            },
+          ],
+          limit: 50,
+          offset: 0,
+          next: null,
+          total: 2,
+        }),
+      );
+
+    const created = await request(app.getHttpServer())
+      .post('/api/spotify/imports')
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ playlistId: 'playlist-one' })
+      .expect(201);
+
+    expect(created.body.playlist).toMatchObject({
+      id: 'playlist-one',
+      name: 'Repeated favorites',
+      snapshotId: 'snapshot-one',
+    });
+    expect(created.body.tracks).toHaveLength(2);
+    expect(
+      created.body.tracks.map((track: { sourceId: string }) => track.sourceId),
+    ).toEqual(['track-one', 'track-one']);
+    expect(
+      created.body.tracks.map((track: { position: number }) => track.position),
+    ).toEqual([0, 1]);
+
+    const persisted = await request(app.getHttpServer())
+      .get(`/api/spotify/imports/${created.body.id as string}`)
+      .expect(200);
+    expect(persisted.body).toEqual(created.body);
+  });
+
   it('maps provider callback errors to controlled result codes', async () => {
     await configure(app).expect(201);
     const denied = await startAuthorization(app);

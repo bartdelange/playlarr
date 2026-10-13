@@ -80,3 +80,12 @@ export const sourcePlaylistContentsSchema = z.object({
 export type SourcePlaylistContents = z.infer<
   typeof sourcePlaylistContentsSchema
 >;
+
+export const spotifyImportSchema = z.object({
+  id: z.uuid(),
+  playlist: sourcePlaylistSchema,
+  tracks: z.array(sourcePlaylistTrackSchema),
+  createdAt: z.iso.datetime(),
+});
+
+export type SpotifyImport = z.infer<typeof spotifyImportSchema>;

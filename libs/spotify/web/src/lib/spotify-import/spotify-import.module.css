@@ -1,0 +1,95 @@
+.flow {
+  display: grid;
+  gap: 1rem;
+}
+.flow h1,
+.flow p {
+  margin: 0;
+}
+.source,
+.notice,
+.playlists li,
+.tracks li {
+  border: 1px solid #dfe3ea;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+.source {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.25rem;
+}
+.source span,
+.playlists span,
+.tracks span {
+  color: #59657a;
+}
+.notice {
+  padding: 1.25rem;
+}
+.notice a {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: #315eca;
+  font-weight: 700;
+}
+.playlists,
+.tracks {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.playlists li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+.playlists li div,
+.tracks li {
+  display: grid;
+  gap: 0.2rem;
+}
+.playlists button {
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #315eca;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+.playlists button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.error {
+  color: #a51d2d;
+}
+.eyebrow {
+  color: #315eca;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.tracks {
+  counter-reset: tracks;
+}
+.tracks li {
+  position: relative;
+  padding: 1rem 1.25rem 1rem 3.5rem;
+}
+.tracks li::before {
+  position: absolute;
+  left: 1.25rem;
+  content: counter(list-item);
+  color: #59657a;
+}
+@media (max-width: 600px) {
+  .playlists li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
