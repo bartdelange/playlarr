@@ -57,6 +57,27 @@ export class SpotifyRepository {
     });
   }
 
+  async saveRefreshedCredentialIfCurrent(
+    credential: SpotifyCredentialWrite,
+    configurationRevision: string,
+    credentialRevision: string,
+  ): Promise<boolean> {
+    return this.orm.em.transactional(async (em) => {
+      const settings = await em.findOne(SettingsEntity, { key: 'spotify' });
+      if (
+        this.configurationRevision(settings?.value) !== configurationRevision
+      ) {
+        return false;
+      }
+      const changed = await em.nativeUpdate(
+        SpotifyCredentialEntity,
+        { id: 'spotify', revision: credentialRevision },
+        { ...credential, revision: randomUUID() },
+      );
+      return changed > 0;
+    });
+  }
+
   async markReconnectRequiredIfCurrent(revision: string): Promise<boolean> {
     const changed = await this.orm.em
       .fork()

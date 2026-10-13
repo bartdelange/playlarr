@@ -392,6 +392,57 @@ describe('Spotify authorization', () => {
     ).toBe(false);
   });
 
+  it('does not overwrite newer credentials with a stale refresh result', async () => {
+    await configure(app).expect(201);
+    await seedCredential({ expiresAt: new Date(0) });
+    const settings = await app
+      .get(SettingsRepository)
+      .get(spotifySettingsKey, spotifySettingsSchema);
+    if (!settings) throw new Error('Spotify is not configured');
+
+    let releaseRefresh!: () => void;
+    const refreshBlocked = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    let refreshRequested!: () => void;
+    const refreshStarted = new Promise<void>((resolve) => {
+      refreshRequested = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+      refreshRequested();
+      await refreshBlocked;
+      return Response.json({
+        access_token: 'stale-access',
+        refresh_token: 'stale-rotated-refresh',
+        expires_in: 3600,
+      });
+    });
+
+    const staleRefresh = app.get(SpotifyService).getAccessToken();
+    await refreshStarted;
+    await app.get(SpotifyRepository).saveCredentialIfConfigurationCurrent(
+      {
+        accessToken: 'newer-access',
+        refreshToken: 'newer-refresh',
+        expiresAt: new Date(Date.now() + 3_600_000),
+        scope: 'playlist-read-private',
+        accountId: 'account-2',
+        displayName: 'Replacement',
+        reconnectRequired: false,
+      },
+      settings.revision,
+    );
+    releaseRefresh();
+
+    await expect(staleRefresh).resolves.toBe('newer-access');
+    expect(await app.get(SpotifyRepository).getCredential()).toMatchObject({
+      accessToken: 'newer-access',
+      refreshToken: 'newer-refresh',
+      accountId: 'account-2',
+      reconnectRequired: false,
+    });
+  });
+
   it('preserves newer credentials when a stale refresh grant is rejected', async () => {
     await configure(app).expect(201);
     await seedCredential({ expiresAt: new Date(0) });
@@ -430,7 +481,7 @@ describe('Spotify authorization', () => {
     );
     releaseRefresh();
 
-    await expect(staleRefresh).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(staleRefresh).resolves.toBe('access-one');
     expect(await app.get(SpotifyRepository).getCredential()).toMatchObject({
       accessToken: 'access-one',
       refreshToken: 'replacement-refresh',
@@ -477,7 +528,7 @@ describe('Spotify authorization', () => {
     );
     releaseRefresh();
 
-    await expect(staleRefresh).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(staleRefresh).resolves.toBe('access-one');
     expect(await app.get(SpotifyRepository).getCredential()).toMatchObject({
       accessToken: 'access-one',
       refreshToken: 'replacement-refresh',

@@ -287,18 +287,30 @@ export class SpotifyService {
             refresh_token: latest.refreshToken,
           }),
         );
-        const saved = await this.spotify.saveCredentialIfConfigurationCurrent(
+        const saved = await this.spotify.saveRefreshedCredentialIfCurrent(
           this.updatedCredential(latest, token),
           settings.revision,
+          latest.revision,
         );
-        if (!saved)
+        if (!saved) {
+          const current = await this.spotify.getCredential();
+          if (current && !current.reconnectRequired) return current.accessToken;
           throw new UnauthorizedException(
             'Spotify configuration changed; authorize again in Settings',
           );
+        }
         return token.access_token;
       } catch (error) {
-        if (error instanceof SpotifyGrantRejectedException)
-          await this.spotify.markReconnectRequiredIfCurrent(latest.revision);
+        if (error instanceof SpotifyGrantRejectedException) {
+          const marked = await this.spotify.markReconnectRequiredIfCurrent(
+            latest.revision,
+          );
+          if (!marked) {
+            const current = await this.spotify.getCredential();
+            if (current && !current.reconnectRequired)
+              return current.accessToken;
+          }
+        }
         throw error;
       }
     });
