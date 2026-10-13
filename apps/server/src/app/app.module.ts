@@ -5,6 +5,7 @@ import { DatabaseModule } from '@playlarr/shared-database';
 import { AuthModule } from '@playlarr/auth-server';
 import { CommandsModule } from '@playlarr/commands-server';
 import { SampleCommandModule } from '@playlarr/sample-command-server';
+import { SpotifyModule } from '@playlarr/spotify-server';
 import {
   ApplicationCommandEventPublisher,
   ApplicationEventsModule,
@@ -28,6 +29,7 @@ import { appConfig } from '../config/app.config.js';
       eventPublisher: ApplicationCommandEventPublisher,
     }),
     SampleCommandModule,
+    SpotifyModule,
   ],
   controllers: [HealthController],
 })

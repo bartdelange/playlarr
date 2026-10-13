@@ -48,6 +48,9 @@
   ],
   "references": [
     {
+      "path": "../../libs/spotify/web"
+    },
+    {
       "path": "../../libs/settings/web"
     },
     {

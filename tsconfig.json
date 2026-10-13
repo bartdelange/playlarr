@@ -44,6 +44,18 @@
     },
     {
       "path": "./libs/shared/web-infrastructure"
+    },
+    {
+      "path": "./libs/spotify/contracts"
+    },
+    {
+      "path": "./libs/spotify/persistence"
+    },
+    {
+      "path": "./libs/spotify/server"
+    },
+    {
+      "path": "./libs/spotify/web"
     }
   ]
 }

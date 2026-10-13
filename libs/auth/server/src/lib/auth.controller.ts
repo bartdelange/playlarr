@@ -143,7 +143,7 @@ export class AuthController {
       httpOnly: true,
       maxAge: session.lifetimeMilliseconds,
       path: '/',
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: true,
     });
   }
@@ -152,7 +152,7 @@ export class AuthController {
     response.clearCookie(authCookieName, {
       httpOnly: true,
       path: '/',
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: true,
     });
   }
