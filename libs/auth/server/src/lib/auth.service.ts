@@ -162,6 +162,16 @@ export class AuthService {
     return token ? this.sessions.isValid(this.hashToken(token)) : false;
   }
 
+  async hasActiveSession(token: string | null): Promise<boolean> {
+    const authSettings = await this.getAuthSettings();
+
+    return Boolean(
+      authSettings?.enabled &&
+      token &&
+      (await this.sessions.isValid(this.hashToken(token))),
+    );
+  }
+
   async logout(token: string | null): Promise<void> {
     if (token) {
       await this.sessions.delete(this.hashToken(token));

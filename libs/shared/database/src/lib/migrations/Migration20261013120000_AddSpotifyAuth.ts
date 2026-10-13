@@ -8,6 +8,7 @@ export class Migration20261013120000_AddSpotifyAuth extends Migration {
       \`id\` text not null primary key,
       \`access_token\` text not null,
       \`refresh_token\` text not null,
+      \`revision\` text not null,
       \`expires_at\` datetime not null,
       \`scope\` text not null,
       \`account_id\` text not null,

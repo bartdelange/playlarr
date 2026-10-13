@@ -12,7 +12,7 @@ export interface AuthResponse {
       httpOnly: boolean;
       maxAge: number;
       path: string;
-      sameSite: 'strict';
+      sameSite: 'lax';
       secure: boolean;
     },
   ): void;
@@ -21,7 +21,7 @@ export interface AuthResponse {
     options: {
       httpOnly: boolean;
       path: string;
-      sameSite: 'strict';
+      sameSite: 'lax';
       secure: boolean;
     },
   ): void;

@@ -12,6 +12,9 @@ export class SpotifyCredentialEntity {
   refreshToken!: string;
 
   @Property()
+  revision!: string;
+
+  @Property()
   expiresAt!: Date;
 
   @Property()

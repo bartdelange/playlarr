@@ -79,7 +79,7 @@ export class SpotifyController {
       maxAge: 10 * 60_000,
       path: spotifyCallbackPath,
       sameSite: 'lax',
-      secure: true,
+      secure: authorization.secureCookie,
     });
     response.redirect(authorization.url);
   }
@@ -98,12 +98,13 @@ export class SpotifyController {
       httpOnly: true,
       path: spotifyCallbackPath,
       sameSite: 'lax',
-      secure: true,
+      secure: false,
     });
     response.redirect(
       await this.spotify.completeAuthorization(
         { state, code, error },
         bindingToken,
+        readCookie(request, authCookieName),
       ),
     );
   }

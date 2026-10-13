@@ -22,7 +22,6 @@
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",
-    "@playlarr/auth-persistence": "workspace:*",
     "@playlarr/auth-server": "workspace:*",
     "@playlarr/settings-persistence": "workspace:*",
     "@playlarr/spotify-contracts": "workspace:*",

@@ -186,7 +186,7 @@ describe('optional authentication', () => {
 
     expect(setCookie[0]).toContain('HttpOnly');
     expect(setCookie[0]).toContain('Secure');
-    expect(setCookie[0]).toContain('SameSite=Strict');
+    expect(setCookie[0]).toContain('SameSite=Lax');
     expect(setCookie[0]).toContain('Max-Age=3600');
 
     await request(app.getHttpServer())

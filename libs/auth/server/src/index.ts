@@ -1,4 +1,5 @@
 export * from './lib/auth.module.js';
+export { AuthService } from './lib/auth.service.js';
 export { authCookieName } from './lib/auth.constants.js';
 export { readCookie, type AuthRequest } from './lib/http.js';
 export * from './lib/auth-settings.js';

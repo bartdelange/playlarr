@@ -48,6 +48,14 @@ const cookie = (response: SupertestResponse, name: string): string => {
   return value.split(';', 1)[0];
 };
 
+const setCookie = (response: SupertestResponse, name: string): string => {
+  const cookies = response.headers['set-cookie'] as unknown as
+    string[] | undefined;
+  const value = cookies?.find((item) => item.startsWith(`${name}=`));
+  if (!value) throw new Error(`Response did not set ${name}`);
+  return value;
+};
+
 const configure = (
   app: INestApplication,
   overrides: Partial<{
@@ -85,6 +93,7 @@ const startAuthorization = async (
   );
   return {
     bindingCookie: cookie(response, 'playlarr_spotify_oauth'),
+    bindingSetCookie: setCookie(response, 'playlarr_spotify_oauth'),
     state: authorizationUrl.searchParams.get('state') as string,
   };
 };
@@ -172,24 +181,76 @@ describe('Spotify authorization', () => {
       .send({ enabled: true, username: 'operator', password: 'secret' })
       .expect(201);
     const sessionCookie = cookie(auth, 'playlarr_session');
-    const authorization = await startAuthorization(app, sessionCookie);
+    const wrongBrowser = await startAuthorization(app, sessionCookie);
     const provider = vi.spyOn(globalThis, 'fetch');
 
     await request(app.getHttpServer())
-      .get(`/api/spotify/callback?state=${authorization.state}&code=code`)
+      .get(`/api/spotify/callback?state=${wrongBrowser.state}&code=code`)
       .set('Cookie', 'playlarr_spotify_oauth=wrong-browser')
       .expect(400);
     expect(provider).not.toHaveBeenCalled();
 
+    const missingSession = await startAuthorization(app, sessionCookie);
+    await request(app.getHttpServer())
+      .get(`/api/spotify/callback?state=${missingSession.state}&code=code`)
+      .set('Cookie', missingSession.bindingCookie)
+      .expect(400);
+
+    const secondLogin = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ username: 'operator', password: 'secret' })
+      .expect(201);
+    const otherSessionCookie = cookie(secondLogin, 'playlarr_session');
+    const wrongSession = await startAuthorization(app, sessionCookie);
+    await request(app.getHttpServer())
+      .get(`/api/spotify/callback?state=${wrongSession.state}&code=code`)
+      .set('Cookie', [wrongSession.bindingCookie, otherSessionCookie])
+      .expect(400);
+
+    const owned = await startAuthorization(app, sessionCookie);
+    provider
+      .mockResolvedValueOnce(
+        Response.json({
+          access_token: 'owned-access',
+          refresh_token: 'owned-refresh',
+          expires_in: 3600,
+          scope: '',
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ id: 'account-1', display_name: 'Listener' }),
+      );
+    await request(app.getHttpServer())
+      .get(`/api/spotify/callback?state=${owned.state}&code=code`)
+      .set('Cookie', [owned.bindingCookie, sessionCookie])
+      .expect('Location', '/settings?spotify=connected')
+      .expect(302);
+
+    const loggedOut = await startAuthorization(app, sessionCookie);
     await request(app.getHttpServer())
       .post('/api/auth/logout')
       .set('Cookie', sessionCookie)
       .expect(201);
     await request(app.getHttpServer())
-      .get(`/api/spotify/callback?state=${authorization.state}&code=code`)
-      .set('Cookie', authorization.bindingCookie)
+      .get(`/api/spotify/callback?state=${loggedOut.state}&code=code`)
+      .set('Cookie', [loggedOut.bindingCookie, sessionCookie])
       .expect(400);
-    expect(provider).not.toHaveBeenCalled();
+    expect(provider).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps callback cookies secure except on supported HTTP loopback hosts', async () => {
+    await configure(app).expect(201);
+
+    const production = await startAuthorization(app);
+    expect(production.bindingSetCookie).toContain('Secure');
+
+    await configure(app, {
+      redirectUri: 'http://127.0.0.1:3000/api/spotify/callback',
+    }).expect(201);
+    const loopback = await startAuthorization(app);
+    expect(loopback.bindingSetCookie).not.toContain('Secure');
+    expect(loopback.bindingSetCookie).toContain('HttpOnly');
+    expect(loopback.bindingSetCookie).toContain('SameSite=Lax');
   });
 
   it('does not commit authorization completed under superseded configuration', async () => {
@@ -326,6 +387,115 @@ describe('Spotify authorization', () => {
     ]);
     expect(oldTokenCalls).toBe(2);
     expect(refreshCalls).toBe(1);
+    expect(
+      (await app.get(SpotifyRepository).getCredential())?.reconnectRequired,
+    ).toBe(false);
+  });
+
+  it('preserves newer credentials when a stale refresh grant is rejected', async () => {
+    await configure(app).expect(201);
+    await seedCredential({ expiresAt: new Date(0) });
+    const settings = await app
+      .get(SettingsRepository)
+      .get(spotifySettingsKey, spotifySettingsSchema);
+    if (!settings) throw new Error('Spotify is not configured');
+
+    let releaseRefresh!: () => void;
+    const refreshBlocked = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    let refreshRequested!: () => void;
+    const refreshStarted = new Promise<void>((resolve) => {
+      refreshRequested = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+      refreshRequested();
+      await refreshBlocked;
+      return Response.json({ error: 'invalid_grant' }, { status: 400 });
+    });
+
+    const staleRefresh = app.get(SpotifyService).getAccessToken();
+    await refreshStarted;
+    await app.get(SpotifyRepository).saveCredentialIfConfigurationCurrent(
+      {
+        accessToken: 'access-one',
+        refreshToken: 'replacement-refresh',
+        expiresAt: new Date(Date.now() + 3_600_000),
+        scope: 'playlist-read-private',
+        accountId: 'account-1',
+        displayName: 'Listener',
+        reconnectRequired: false,
+      },
+      settings.revision,
+    );
+    releaseRefresh();
+
+    await expect(staleRefresh).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(await app.get(SpotifyRepository).getCredential()).toMatchObject({
+      accessToken: 'access-one',
+      refreshToken: 'replacement-refresh',
+      reconnectRequired: false,
+    });
+  });
+
+  it('does not replace or invalidate credentials after configuration changes during refresh', async () => {
+    await configure(app).expect(201);
+    await seedCredential({ expiresAt: new Date(0) });
+    let releaseRefresh!: () => void;
+    const refreshBlocked = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    let refreshRequested!: () => void;
+    const refreshStarted = new Promise<void>((resolve) => {
+      refreshRequested = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+      refreshRequested();
+      await refreshBlocked;
+      return Response.json({ access_token: 'stale-result', expires_in: 3600 });
+    });
+
+    const staleRefresh = app.get(SpotifyService).getAccessToken();
+    await refreshStarted;
+    await app.get(SpotifyRepository).replaceConfiguration({
+      clientId: 'replacement-client',
+      clientSecret: 'replacement-secret',
+      redirectUri: 'https://playlarr.example/api/spotify/callback',
+      revision: 'replacement-revision',
+    });
+    await app.get(SpotifyRepository).saveCredentialIfConfigurationCurrent(
+      {
+        accessToken: 'access-one',
+        refreshToken: 'replacement-refresh',
+        expiresAt: new Date(Date.now() + 3_600_000),
+        scope: 'playlist-read-private',
+        accountId: 'account-2',
+        displayName: 'Replacement',
+        reconnectRequired: false,
+      },
+      'replacement-revision',
+    );
+    releaseRefresh();
+
+    await expect(staleRefresh).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(await app.get(SpotifyRepository).getCredential()).toMatchObject({
+      accessToken: 'access-one',
+      refreshToken: 'replacement-refresh',
+      accountId: 'account-2',
+      reconnectRequired: false,
+    });
+  });
+
+  it('does not require reconnection for non-grant token endpoint failures', async () => {
+    await configure(app).expect(201);
+    await seedCredential({ expiresAt: new Date(0) });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({ error: 'invalid_client' }, { status: 401 }),
+    );
+
+    await expect(app.get(SpotifyService).getAccessToken()).rejects.toThrow(
+      'Spotify token service is unavailable',
+    );
     expect(
       (await app.get(SpotifyRepository).getCredential())?.reconnectRequired,
     ).toBe(false);

@@ -10,7 +10,7 @@ import type {
   SpotifyConfiguration,
   SpotifyConfigurationInput,
 } from '@playlarr/spotify-contracts';
-import { AuthSessionRepository } from '@playlarr/auth-persistence';
+import { AuthService } from '@playlarr/auth-server';
 import {
   SpotifyRepository,
   type SpotifyCredential,
@@ -35,13 +35,17 @@ const profileSchema = z.object({
   id: z.string(),
   display_name: z.string().nullable().default(null),
 });
+const tokenErrorSchema = z.object({ error: z.string() });
 const spotifyScopes =
   'playlist-read-private playlist-read-collaborative user-read-private';
 
 interface AuthorizationStart {
   bindingToken: string;
+  secureCookie: boolean;
   url: string;
 }
+
+class SpotifyGrantRejectedException extends UnauthorizedException {}
 
 @Injectable()
 export class SpotifyService {
@@ -50,7 +54,7 @@ export class SpotifyService {
   constructor(
     private readonly settings: SettingsRepository,
     private readonly spotify: SpotifyRepository,
-    private readonly authSessions: AuthSessionRepository,
+    private readonly auth: AuthService,
   ) {}
 
   async getConfiguration(): Promise<SpotifyConfiguration> {
@@ -115,6 +119,8 @@ export class SpotifyService {
     authSessionToken: string | null,
   ): Promise<AuthorizationStart> {
     const settings = await this.requireSettings();
+    const authEnabled = await this.auth.isEnabled();
+    if (authEnabled && !authSessionToken) throw new UnauthorizedException();
     const safeReturnPath = this.safeReturnPath(returnPath);
     const state = randomBytes(32).toString('base64url');
     const bindingToken = randomBytes(32).toString('base64url');
@@ -126,7 +132,8 @@ export class SpotifyService {
       stateHash: this.hash(state),
       codeVerifier,
       bindingHash: this.hash(bindingToken),
-      authSessionHash: authSessionToken ? this.hash(authSessionToken) : null,
+      authSessionHash:
+        authEnabled && authSessionToken ? this.hash(authSessionToken) : null,
       configurationRevision: settings.revision,
       returnPath: safeReturnPath,
       expiresAt: new Date(Date.now() + 10 * 60_000),
@@ -141,7 +148,11 @@ export class SpotifyService {
       code_challenge_method: 'S256',
       code_challenge: codeChallenge,
     }).toString();
-    return { bindingToken, url: url.toString() };
+    return {
+      bindingToken,
+      secureCookie: new URL(settings.redirectUri).protocol === 'https:',
+      url: url.toString(),
+    };
   }
 
   async completeAuthorization(
@@ -151,6 +162,7 @@ export class SpotifyService {
       error?: string;
     },
     bindingToken: string | null,
+    authSessionToken: string | null,
   ): Promise<string> {
     if (!input.state)
       throw new BadRequestException('Spotify authorization state is missing');
@@ -165,11 +177,13 @@ export class SpotifyService {
         'Spotify authorization session is invalid or expired',
       );
     if (
-      attempt.authSessionHash &&
-      !(await this.authSessions.isValid(attempt.authSessionHash))
+      !(await this.ownsAuthorizationAttempt(
+        attempt.authSessionHash,
+        authSessionToken,
+      ))
     )
       throw new BadRequestException(
-        'The Playlarr session that started Spotify authorization has expired',
+        'Spotify authorization belongs to a different or expired Playlarr session',
       );
     if (input.error)
       return this.resultPath(
@@ -283,8 +297,8 @@ export class SpotifyService {
           );
         return token.access_token;
       } catch (error) {
-        if (error instanceof UnauthorizedException)
-          await this.spotify.markReconnectRequiredIfCurrent(latest.accessToken);
+        if (error instanceof SpotifyGrantRejectedException)
+          await this.spotify.markReconnectRequiredIfCurrent(latest.revision);
         throw error;
       }
     });
@@ -316,12 +330,16 @@ export class SpotifyService {
       },
       body,
     });
-    if (response.status === 400 || response.status === 401)
-      throw new UnauthorizedException(
-        'Spotify authorization is invalid; reconnect in Settings',
+    if (!response.ok) {
+      const errorResponse = tokenErrorSchema.safeParse(
+        await response.json().catch(() => null),
       );
-    if (!response.ok)
+      if (errorResponse.success && errorResponse.data.error === 'invalid_grant')
+        throw new SpotifyGrantRejectedException(
+          'Spotify authorization is invalid; reconnect in Settings',
+        );
       throw new BadGatewayException('Spotify token service is unavailable');
+    }
     const parsed = tokenSchema.safeParse(await response.json());
     if (!parsed.success)
       throw new BadGatewayException(
@@ -355,7 +373,20 @@ export class SpotifyService {
     return settings;
   }
   private hash(value: string) {
+    // These inputs are high-entropy random bearer tokens, not passwords; a fast
+    // one-way lookup hash is intentional and does not need password stretching.
     return createHash('sha256').update(value).digest('hex');
+  }
+  private async ownsAuthorizationAttempt(
+    expectedSessionHash: string | null,
+    sessionToken: string | null,
+  ): Promise<boolean> {
+    if (!expectedSessionHash) return !(await this.auth.isEnabled());
+    return (
+      sessionToken !== null &&
+      this.hash(sessionToken) === expectedSessionHash &&
+      (await this.auth.hasActiveSession(sessionToken))
+    );
   }
   private safeReturnPath(value: string) {
     return value.startsWith('/') && !value.startsWith('//')

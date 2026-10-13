@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { MikroORM } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 
@@ -9,12 +11,15 @@ import { SpotifyOAuthAttemptEntity } from './spotify-oauth-attempt.entity.js';
 export interface SpotifyCredential {
   accessToken: string;
   refreshToken: string;
+  revision: string;
   expiresAt: Date;
   scope: string;
   accountId: string;
   displayName: string | null;
   reconnectRequired: boolean;
 }
+
+type SpotifyCredentialWrite = Omit<SpotifyCredential, 'revision'>;
 
 @Injectable()
 export class SpotifyRepository {
@@ -33,7 +38,7 @@ export class SpotifyRepository {
   }
 
   async saveCredentialIfConfigurationCurrent(
-    credential: SpotifyCredential,
+    credential: SpotifyCredentialWrite,
     configurationRevision: string,
   ): Promise<boolean> {
     return this.orm.em.transactional(async (em) => {
@@ -46,17 +51,18 @@ export class SpotifyRepository {
       await em.upsert(SpotifyCredentialEntity, {
         id: 'spotify',
         ...credential,
+        revision: randomUUID(),
       });
       return true;
     });
   }
 
-  async markReconnectRequiredIfCurrent(accessToken: string): Promise<boolean> {
+  async markReconnectRequiredIfCurrent(revision: string): Promise<boolean> {
     const changed = await this.orm.em
       .fork()
       .nativeUpdate(
         SpotifyCredentialEntity,
-        { id: 'spotify', accessToken },
+        { id: 'spotify', revision },
         { reconnectRequired: true },
       );
     return changed > 0;
