@@ -561,6 +561,9 @@ importers:
       '@nestjs/common':
         specifier: ^12.1.2
         version: 12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
+      '@playlarr/settings-persistence':
+        specifier: workspace:*
+        version: link:../../settings/persistence
       tslib:
         specifier: ^2.3.0
         version: 2.8.1
@@ -570,6 +573,9 @@ importers:
       '@nestjs/common':
         specifier: ^12.1.2
         version: 12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
+      '@playlarr/auth-persistence':
+        specifier: workspace:*
+        version: link:../../auth/persistence
       '@playlarr/auth-server':
         specifier: workspace:*
         version: link:../../auth/server

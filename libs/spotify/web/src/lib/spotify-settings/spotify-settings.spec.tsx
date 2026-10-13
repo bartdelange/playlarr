@@ -72,10 +72,31 @@ describe('SpotifySettings', () => {
     );
 
     expect(screen.getByRole('alert').textContent).toContain('Reconnect');
+    expect(screen.getByText('Previously connected as account-1.')).toBeTruthy();
     expect(
       screen
         .getByRole('link', { name: 'Authorize Spotify' })
         .getAttribute('href'),
     ).toBe('/api/spotify/authorize?returnTo=%2Fsettings');
+  });
+
+  it('does not display arbitrary provider error values', () => {
+    render(
+      <SpotifySettings
+        authorizationResult={{ status: 'error', error: 'private_detail' }}
+        initialConfiguration={{
+          clientId: 'client-id',
+          redirectUri: 'https://playlarr.example/api/spotify/callback',
+          clientSecretConfigured: true,
+          status: 'not_connected',
+          account: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Spotify could not complete authorization.',
+    );
+    expect(screen.queryByText(/private_detail/)).toBeNull();
   });
 });

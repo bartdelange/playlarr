@@ -27,6 +27,9 @@
       "path": "../../auth/server/tsconfig.lib.json"
     },
     {
+      "path": "../../auth/persistence/tsconfig.lib.json"
+    },
+    {
       "path": "../../shared/database/tsconfig.lib.json"
     }
   ],

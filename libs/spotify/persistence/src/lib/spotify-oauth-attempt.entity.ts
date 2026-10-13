@@ -9,6 +9,15 @@ export class SpotifyOAuthAttemptEntity {
   codeVerifier!: string;
 
   @Property()
+  bindingHash!: string;
+
+  @Property({ nullable: true })
+  authSessionHash!: string | null;
+
+  @Property()
+  configurationRevision!: string;
+
+  @Property()
   returnPath!: string;
 
   @Property()

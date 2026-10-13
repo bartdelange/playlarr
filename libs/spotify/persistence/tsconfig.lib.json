@@ -13,5 +13,9 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "references": []
+  "references": [
+    {
+      "path": "../../settings/persistence/tsconfig.lib.json"
+    }
+  ]
 }

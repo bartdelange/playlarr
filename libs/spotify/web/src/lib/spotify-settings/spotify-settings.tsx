@@ -15,6 +15,14 @@ const statusLabels = {
   reconnect_required: 'Reconnect required',
 } as const;
 
+const authorizationErrorMessages: Record<string, string> = {
+  access_denied: 'Spotify authorization was cancelled.',
+  configuration_changed:
+    'Spotify settings changed during authorization. Start authorization again.',
+  missing_code: 'Spotify did not return an authorization code.',
+  provider_error: 'Spotify could not complete authorization.',
+};
+
 export function SpotifySettings({
   initialConfiguration,
   authorizationResult,
@@ -99,7 +107,9 @@ export function SpotifySettings({
 
       {configuration.account ? (
         <p className={styles.account}>
-          Connected as{' '}
+          {status === 'reconnect_required'
+            ? 'Previously connected as '
+            : 'Connected as '}
           {configuration.account.displayName ?? configuration.account.id}.
         </p>
       ) : null}
@@ -108,9 +118,10 @@ export function SpotifySettings({
       ) : null}
       {authorizationResult?.status === 'error' ? (
         <p className={styles.error} role="alert">
-          Spotify authorization failed (
-          {authorizationResult.error ?? 'unknown error'}). Check the app
-          settings and reconnect.
+          {authorizationErrorMessages[
+            authorizationResult.error ?? 'provider_error'
+          ] ?? authorizationErrorMessages.provider_error}{' '}
+          Check the app settings and reconnect.
         </p>
       ) : null}
       {status === 'reconnect_required' ? (

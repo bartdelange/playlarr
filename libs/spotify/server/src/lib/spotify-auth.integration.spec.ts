@@ -2,14 +2,16 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { MikroORM } from '@mikro-orm/core';
 import type { INestApplication } from '@nestjs/common';
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { AuthModule } from '@playlarr/auth-server';
 import { DatabaseModule } from '@playlarr/shared-database';
 import { SpotifyRepository } from '@playlarr/spotify-persistence';
 import { SettingsRepository } from '@playlarr/settings-persistence';
-import request from 'supertest';
+import request, { type Response as SupertestResponse } from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SpotifyModule } from './spotify.module.js';
@@ -27,6 +29,7 @@ async function createApplication(databasePath: string) {
         load: [() => ({ app: { database: { path: databasePath } } })],
       }),
       DatabaseModule,
+      AuthModule,
       SpotifyModule,
     ],
   }).compile();
@@ -37,26 +40,53 @@ async function createApplication(databasePath: string) {
   return app;
 }
 
-const configure = (app: INestApplication, clientSecret = 'server-secret') =>
-  request(app.getHttpServer())
+const cookie = (response: SupertestResponse, name: string): string => {
+  const cookies = response.headers['set-cookie'] as unknown as
+    string[] | undefined;
+  const value = cookies?.find((item) => item.startsWith(`${name}=`));
+  if (!value) throw new Error(`Response did not set ${name}`);
+  return value.split(';', 1)[0];
+};
+
+const configure = (
+  app: INestApplication,
+  overrides: Partial<{
+    clientId: string;
+    clientSecret: string;
+    redirectUri: string;
+  }> = {},
+  sessionCookie?: string,
+) => {
+  const operation = request(app.getHttpServer())
     .post('/api/spotify/configuration')
     .set('Sec-Fetch-Site', 'same-origin')
     .send({
       clientId: 'client-id',
-      clientSecret,
+      clientSecret: 'server-secret',
       redirectUri: 'https://playlarr.example/api/spotify/callback',
+      ...overrides,
     });
+  return sessionCookie ? operation.set('Cookie', sessionCookie) : operation;
+};
 
-const fetchState = async (app: INestApplication) => {
-  const response = await request(app.getHttpServer())
-    .get('/api/spotify/authorize?returnTo=%2Fsettings')
-    .expect(302);
+const startAuthorization = async (
+  app: INestApplication,
+  sessionCookie?: string,
+) => {
+  let operation = request(app.getHttpServer()).get(
+    '/api/spotify/authorize?returnTo=%2Fsettings',
+  );
+  if (sessionCookie) operation = operation.set('Cookie', sessionCookie);
+  const response = await operation.expect(302);
   const authorizationUrl = new URL(response.headers.location as string);
   expect(authorizationUrl.origin).toBe('https://accounts.spotify.com');
   expect(authorizationUrl.searchParams.get('code_challenge_method')).toBe(
     'S256',
   );
-  return authorizationUrl.searchParams.get('state') as string;
+  return {
+    bindingCookie: cookie(response, 'playlarr_spotify_oauth'),
+    state: authorizationUrl.searchParams.get('state') as string,
+  };
 };
 
 describe('Spotify authorization', () => {
@@ -74,25 +104,39 @@ describe('Spotify authorization', () => {
     await rm(directory, { recursive: true, force: true });
   });
 
-  it('configures and authorizes Spotify without exposing the client secret', async () => {
-    const configured = await configure(app).expect(201);
-    expect(configured.body).toEqual({
-      clientId: 'client-id',
-      redirectUri: 'https://playlarr.example/api/spotify/callback',
-      clientSecretConfigured: true,
-      status: 'not_connected',
-      account: null,
-    });
-    expect(JSON.stringify(configured.body)).not.toContain('server-secret');
-    expect(
-      await app
-        .get(SettingsRepository)
-        .get(spotifySettingsKey, spotifySettingsSchema),
-    ).toMatchObject({ clientSecret: 'server-secret' });
+  async function seedCredential(
+    overrides: Partial<{
+      accessToken: string;
+      expiresAt: Date;
+      refreshToken: string;
+    }> = {},
+  ) {
+    const settings = await app
+      .get(SettingsRepository)
+      .get(spotifySettingsKey, spotifySettingsSchema);
+    if (!settings) throw new Error('Spotify is not configured');
+    const saved = await app
+      .get(SpotifyRepository)
+      .saveCredentialIfConfigurationCurrent(
+        {
+          accessToken: 'access-one',
+          refreshToken: 'refresh-one',
+          expiresAt: new Date(Date.now() + 3_600_000),
+          scope: 'playlist-read-private',
+          accountId: 'account-1',
+          displayName: 'Listener',
+          reconnectRequired: false,
+          ...overrides,
+        },
+        settings.revision,
+      );
+    expect(saved).toBe(true);
+  }
 
-    const state = await fetchState(app);
-    const provider = vi
-      .spyOn(globalThis, 'fetch')
+  it('completes a browser-bound authorization and stores the account', async () => {
+    await configure(app).expect(201);
+    const authorization = await startAuthorization(app);
+    vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(
         Response.json({
           access_token: 'access-one',
@@ -102,58 +146,132 @@ describe('Spotify authorization', () => {
         }),
       )
       .mockResolvedValueOnce(
-        Response.json({
-          account_id: 'account-1',
-          id: 'legacy-id',
-          display_name: 'Listener',
-        }),
+        Response.json({ id: 'account-1', display_name: 'Listener' }),
       );
 
     await request(app.getHttpServer())
-      .get(`/api/spotify/callback?state=${state}&code=authorization-code`)
+      .get(`/api/spotify/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', authorization.bindingCookie)
       .expect('Location', '/settings?spotify=connected')
       .expect(302);
 
-    const tokenRequest = provider.mock.calls[0];
-    expect(tokenRequest?.[1]?.headers).toMatchObject({
-      Authorization: `Basic ${Buffer.from('client-id:server-secret').toString('base64')}`,
-    });
-    expect(String(tokenRequest?.[1]?.body)).toContain('code_verifier=');
-    await request(app.getHttpServer())
-      .get('/api/spotify/configuration')
-      .expect(200, {
-        clientId: 'client-id',
-        redirectUri: 'https://playlarr.example/api/spotify/callback',
-        clientSecretConfigured: true,
-        status: 'connected',
-        account: { id: 'account-1', displayName: 'Listener' },
-      });
-  });
-
-  it('refreshes an expired token and uses it for a subsequent Spotify API call', async () => {
-    await configure(app).expect(201);
-    await app.get(SpotifyRepository).saveCredential({
-      accessToken: 'expired',
+    expect(await app.get(SpotifyRepository).getCredential()).toMatchObject({
+      accessToken: 'access-one',
       refreshToken: 'refresh-one',
-      expiresAt: new Date(Date.now() - 1_000),
-      scope: 'playlist-read-private',
       accountId: 'account-1',
       displayName: 'Listener',
       reconnectRequired: false,
     });
+  });
+
+  it('authorizes only from the browser and Playlarr session that started the flow', async () => {
+    await configure(app).expect(201);
+    const auth = await request(app.getHttpServer())
+      .post('/api/auth/configuration')
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ enabled: true, username: 'operator', password: 'secret' })
+      .expect(201);
+    const sessionCookie = cookie(auth, 'playlarr_session');
+    const authorization = await startAuthorization(app, sessionCookie);
+    const provider = vi.spyOn(globalThis, 'fetch');
+
+    await request(app.getHttpServer())
+      .get(`/api/spotify/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', 'playlarr_spotify_oauth=wrong-browser')
+      .expect(400);
+    expect(provider).not.toHaveBeenCalled();
+
+    await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .set('Cookie', sessionCookie)
+      .expect(201);
+    await request(app.getHttpServer())
+      .get(`/api/spotify/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', authorization.bindingCookie)
+      .expect(400);
+    expect(provider).not.toHaveBeenCalled();
+  });
+
+  it('does not commit authorization completed under superseded configuration', async () => {
+    await configure(app).expect(201);
+    const authorization = await startAuthorization(app);
+    let releaseToken!: () => void;
+    const tokenBlocked = new Promise<void>((resolve) => {
+      releaseToken = resolve;
+    });
+    let tokenRequested!: () => void;
+    const tokenStarted = new Promise<void>((resolve) => {
+      tokenRequested = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch')
+      .mockImplementationOnce(async () => {
+        tokenRequested();
+        await tokenBlocked;
+        return Response.json({
+          access_token: 'stale-access',
+          refresh_token: 'stale-refresh',
+          expires_in: 3600,
+          scope: '',
+        });
+      })
+      .mockResolvedValueOnce(
+        Response.json({ id: 'account-1', display_name: 'Listener' }),
+      );
+
+    const callbackResult = request(app.getHttpServer())
+      .get(`/api/spotify/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', authorization.bindingCookie)
+      .then((response) => response);
+    await tokenStarted;
+    await configure(app, {
+      clientId: 'replacement-client',
+      clientSecret: 'replacement-secret',
+    }).expect(201);
+    releaseToken();
+
+    const response = await callbackResult;
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe(
+      '/settings?spotify=error&spotify_error=configuration_changed',
+    );
+    expect(await app.get(SpotifyRepository).getCredential()).toBeNull();
+  });
+
+  it('rolls back configuration when credential invalidation fails', async () => {
+    await configure(app).expect(201);
+    await seedCredential();
+    const connection = app.get(MikroORM).em.getConnection();
+    await connection.execute(`
+      create trigger reject_spotify_credential_delete
+      before delete on spotify_credentials
+      begin
+        select raise(abort, 'credential invalidation rejected');
+      end;
+    `);
+
+    await configure(app, { clientId: 'replacement-client' }).expect(500);
+    const settings = await app
+      .get(SettingsRepository)
+      .get(spotifySettingsKey, spotifySettingsSchema);
+    expect(settings?.clientId).toBe('client-id');
+    expect(
+      (await app.get(SpotifyRepository).getCredential())?.accessToken,
+    ).toBe('access-one');
+  });
+
+  it('refreshes and retries once after a resource 401', async () => {
+    await configure(app).expect(201);
+    await seedCredential();
     const provider = vi
       .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({}, { status: 401 }))
       .mockResolvedValueOnce(
-        Response.json({
-          access_token: 'access-two',
-          expires_in: 3600,
-          scope: 'playlist-read-private',
-        }),
+        Response.json({ access_token: 'access-two', expires_in: 3600 }),
       )
       .mockResolvedValueOnce(
         Response.json({
           account_id: 'account-1',
-          id: 'legacy-id',
+          id: 'legacy',
           display_name: 'Listener',
         }),
       );
@@ -162,28 +280,60 @@ describe('Spotify authorization', () => {
       id: 'account-1',
       displayName: 'Listener',
     });
-    expect(String(provider.mock.calls[0]?.[1]?.body)).toContain(
+    expect(String(provider.mock.calls[1]?.[1]?.body)).toContain(
       'grant_type=refresh_token',
     );
-    expect(provider.mock.calls[1]?.[1]?.headers).toEqual({
+    expect(provider.mock.calls[2]?.[1]?.headers).toEqual({
       Authorization: 'Bearer access-two',
     });
     expect(
-      (await app.get(SpotifyRepository).getCredential())?.refreshToken,
-    ).toBe('refresh-one');
+      (await app.get(SpotifyRepository).getCredential())?.reconnectRequired,
+    ).toBe(false);
   });
 
-  it('turns revoked refresh credentials into an actionable reconnect state', async () => {
+  it('shares a forced refresh without letting one failed retry poison it', async () => {
     await configure(app).expect(201);
-    await app.get(SpotifyRepository).saveCredential({
-      accessToken: 'expired',
-      refreshToken: 'revoked',
-      expiresAt: new Date(0),
-      scope: '',
-      accountId: 'account-1',
-      displayName: null,
-      reconnectRequired: false,
+    await seedCredential();
+    let oldTokenCalls = 0;
+    let newTokenCalls = 0;
+    let refreshCalls = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (String(input).endsWith('/api/token')) {
+        refreshCalls += 1;
+        return Response.json({ access_token: 'access-two', expires_in: 3600 });
+      }
+      const headers = init?.headers as { Authorization?: string };
+      if (headers.Authorization === 'Bearer access-one') {
+        oldTokenCalls += 1;
+        return Response.json({}, { status: 401 });
+      }
+      newTokenCalls += 1;
+      if (newTokenCalls === 1) return Response.json({}, { status: 401 });
+      return Response.json({
+        account_id: 'account-1',
+        id: 'legacy',
+        display_name: 'Listener',
+      });
     });
+
+    const results = await Promise.allSettled([
+      app.get(SpotifyService).getCurrentUser(),
+      app.get(SpotifyService).getCurrentUser(),
+    ]);
+    expect(results.map((result) => result.status).sort()).toEqual([
+      'fulfilled',
+      'rejected',
+    ]);
+    expect(oldTokenCalls).toBe(2);
+    expect(refreshCalls).toBe(1);
+    expect(
+      (await app.get(SpotifyRepository).getCredential())?.reconnectRequired,
+    ).toBe(false);
+  });
+
+  it('requires reconnection only after refresh credentials are rejected', async () => {
+    await configure(app).expect(201);
+    await seedCredential({ expiresAt: new Date(0), refreshToken: 'revoked' });
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       Response.json({ error: 'invalid_grant' }, { status: 400 }),
     );
@@ -191,25 +341,28 @@ describe('Spotify authorization', () => {
     await expect(
       app.get(SpotifyService).getAccessToken(),
     ).rejects.toBeInstanceOf(UnauthorizedException);
-    await request(app.getHttpServer())
-      .get('/api/spotify/configuration')
-      .expect(200)
-      .expect(({ body }) => expect(body.status).toBe('reconnect_required'));
+    expect(
+      (await app.get(SpotifyRepository).getCredential())?.reconnectRequired,
+    ).toBe(true);
   });
 
-  it('rejects invalid state before contacting Spotify and reports provider denial', async () => {
+  it('maps provider callback errors to controlled result codes', async () => {
     await configure(app).expect(201);
-    const provider = vi.spyOn(globalThis, 'fetch');
+    const denied = await startAuthorization(app);
     await request(app.getHttpServer())
-      .get('/api/spotify/callback?state=invalid&code=code')
-      .expect(400);
-    expect(provider).not.toHaveBeenCalled();
-
-    const state = await fetchState(app);
-    await request(app.getHttpServer())
-      .get(`/api/spotify/callback?state=${state}&error=access_denied`)
+      .get(`/api/spotify/callback?state=${denied.state}&error=access_denied`)
+      .set('Cookie', denied.bindingCookie)
       .expect('Location', '/settings?spotify=error&spotify_error=access_denied')
       .expect(302);
-    expect(provider).not.toHaveBeenCalled();
+
+    const unknown = await startAuthorization(app);
+    await request(app.getHttpServer())
+      .get(`/api/spotify/callback?state=${unknown.state}&error=private_detail`)
+      .set('Cookie', unknown.bindingCookie)
+      .expect(
+        'Location',
+        '/settings?spotify=error&spotify_error=provider_error',
+      )
+      .expect(302);
   });
 });

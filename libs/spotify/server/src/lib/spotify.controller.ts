@@ -5,16 +5,45 @@ import {
   Get,
   Post,
   Query,
+  Req,
   Res,
 } from '@nestjs/common';
 import { spotifyConfigurationInputSchema } from '@playlarr/spotify-contracts';
-import { PublicAuthRoute } from '@playlarr/auth-server';
+import {
+  authCookieName,
+  type AuthRequest,
+  PublicAuthRoute,
+  readCookie,
+} from '@playlarr/auth-server';
 
 import { SpotifyService } from './spotify.service.js';
 
 interface RedirectResponse {
+  cookie(
+    name: string,
+    value: string,
+    options: {
+      httpOnly: boolean;
+      maxAge: number;
+      path: string;
+      sameSite: 'lax';
+      secure: boolean;
+    },
+  ): void;
+  clearCookie(
+    name: string,
+    options: {
+      httpOnly: boolean;
+      path: string;
+      sameSite: 'lax';
+      secure: boolean;
+    },
+  ): void;
   redirect(location: string): void;
 }
+
+const spotifyOAuthCookieName = 'playlarr_spotify_oauth';
+const spotifyCallbackPath = '/api/spotify/callback';
 
 @Controller('spotify')
 export class SpotifyController {
@@ -38,11 +67,21 @@ export class SpotifyController {
   @Get('authorize')
   async authorize(
     @Query('returnTo') returnTo: string | undefined,
+    @Req() request: AuthRequest,
     @Res() response: RedirectResponse,
   ) {
-    response.redirect(
-      await this.spotify.createAuthorizationUrl(returnTo ?? '/settings'),
+    const authorization = await this.spotify.createAuthorizationUrl(
+      returnTo ?? '/settings',
+      readCookie(request, authCookieName),
     );
+    response.cookie(spotifyOAuthCookieName, authorization.bindingToken, {
+      httpOnly: true,
+      maxAge: 10 * 60_000,
+      path: spotifyCallbackPath,
+      sameSite: 'lax',
+      secure: true,
+    });
+    response.redirect(authorization.url);
   }
 
   @Get('callback')
@@ -51,10 +90,21 @@ export class SpotifyController {
     @Query('state') state: string | undefined,
     @Query('code') code: string | undefined,
     @Query('error') error: string | undefined,
+    @Req() request: AuthRequest,
     @Res() response: RedirectResponse,
   ) {
+    const bindingToken = readCookie(request, spotifyOAuthCookieName);
+    response.clearCookie(spotifyOAuthCookieName, {
+      httpOnly: true,
+      path: spotifyCallbackPath,
+      sameSite: 'lax',
+      secure: true,
+    });
     response.redirect(
-      await this.spotify.completeAuthorization({ state, code, error }),
+      await this.spotify.completeAuthorization(
+        { state, code, error },
+        bindingToken,
+      ),
     );
   }
 }

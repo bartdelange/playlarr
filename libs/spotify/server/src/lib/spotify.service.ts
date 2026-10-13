@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import {
   BadGatewayException,
@@ -10,6 +10,7 @@ import type {
   SpotifyConfiguration,
   SpotifyConfigurationInput,
 } from '@playlarr/spotify-contracts';
+import { AuthSessionRepository } from '@playlarr/auth-persistence';
 import {
   SpotifyRepository,
   type SpotifyCredential,
@@ -37,6 +38,11 @@ const profileSchema = z.object({
 const spotifyScopes =
   'playlist-read-private playlist-read-collaborative user-read-private';
 
+interface AuthorizationStart {
+  bindingToken: string;
+  url: string;
+}
+
 @Injectable()
 export class SpotifyService {
   private mutationTail = Promise.resolve();
@@ -44,6 +50,7 @@ export class SpotifyService {
   constructor(
     private readonly settings: SettingsRepository,
     private readonly spotify: SpotifyRepository,
+    private readonly authSessions: AuthSessionRepository,
   ) {}
 
   async getConfiguration(): Promise<SpotifyConfiguration> {
@@ -83,26 +90,34 @@ export class SpotifyService {
       const clientSecret = input.clientSecret ?? current?.clientSecret;
       if (!clientSecret)
         throw new BadRequestException('clientSecret is required');
-      const next = {
+      const nextWithoutRevision = {
         clientId: input.clientId,
         clientSecret,
         redirectUri: input.redirectUri,
       };
       const changed =
         !current ||
-        Object.entries(next).some(
+        Object.entries(nextWithoutRevision).some(
           ([key, value]) => current[key as keyof SpotifySettings] !== value,
         );
-      await this.settings.set(spotifySettingsKey, next);
-      if (changed) await this.spotify.clearAuthorization();
+      if (changed) {
+        await this.spotify.replaceConfiguration({
+          ...nextWithoutRevision,
+          revision: randomUUID(),
+        });
+      }
       return this.getConfiguration();
     });
   }
 
-  async createAuthorizationUrl(returnPath: string): Promise<string> {
+  async createAuthorizationUrl(
+    returnPath: string,
+    authSessionToken: string | null,
+  ): Promise<AuthorizationStart> {
     const settings = await this.requireSettings();
     const safeReturnPath = this.safeReturnPath(returnPath);
     const state = randomBytes(32).toString('base64url');
+    const bindingToken = randomBytes(32).toString('base64url');
     const codeVerifier = randomBytes(64).toString('base64url');
     const codeChallenge = createHash('sha256')
       .update(codeVerifier)
@@ -110,6 +125,9 @@ export class SpotifyService {
     await this.spotify.createAttempt({
       stateHash: this.hash(state),
       codeVerifier,
+      bindingHash: this.hash(bindingToken),
+      authSessionHash: authSessionToken ? this.hash(authSessionToken) : null,
+      configurationRevision: settings.revision,
       returnPath: safeReturnPath,
       expiresAt: new Date(Date.now() + 10 * 60_000),
     });
@@ -123,27 +141,52 @@ export class SpotifyService {
       code_challenge_method: 'S256',
       code_challenge: codeChallenge,
     }).toString();
-    return url.toString();
+    return { bindingToken, url: url.toString() };
   }
 
-  async completeAuthorization(input: {
-    state?: string;
-    code?: string;
-    error?: string;
-  }): Promise<string> {
+  async completeAuthorization(
+    input: {
+      state?: string;
+      code?: string;
+      error?: string;
+    },
+    bindingToken: string | null,
+  ): Promise<string> {
     if (!input.state)
       throw new BadRequestException('Spotify authorization state is missing');
-    const attempt = await this.spotify.consumeAttempt(this.hash(input.state));
+    if (!bindingToken)
+      throw new BadRequestException('Spotify authorization session is missing');
+    const attempt = await this.spotify.consumeAttempt(
+      this.hash(input.state),
+      this.hash(bindingToken),
+    );
     if (!attempt || attempt.expiresAt <= new Date())
       throw new BadRequestException(
-        'Spotify authorization state is invalid or expired',
+        'Spotify authorization session is invalid or expired',
+      );
+    if (
+      attempt.authSessionHash &&
+      !(await this.authSessions.isValid(attempt.authSessionHash))
+    )
+      throw new BadRequestException(
+        'The Playlarr session that started Spotify authorization has expired',
       );
     if (input.error)
-      return this.resultPath(attempt.returnPath, 'error', input.error);
+      return this.resultPath(
+        attempt.returnPath,
+        'error',
+        input.error === 'access_denied' ? 'access_denied' : 'provider_error',
+      );
     if (!input.code)
       return this.resultPath(attempt.returnPath, 'error', 'missing_code');
 
     const settings = await this.requireSettings();
+    if (settings.revision !== attempt.configurationRevision)
+      return this.resultPath(
+        attempt.returnPath,
+        'error',
+        'configuration_changed',
+      );
     const token = await this.requestToken(
       settings,
       new URLSearchParams({
@@ -156,15 +199,26 @@ export class SpotifyService {
     if (!token.refresh_token)
       throw new BadGatewayException('Spotify did not return a refresh token');
     const profile = await this.requestProfile(token.access_token);
-    await this.spotify.saveCredential({
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token,
-      expiresAt: new Date(Date.now() + token.expires_in * 1_000),
-      scope: token.scope,
-      accountId: profile.account_id ?? profile.id,
-      displayName: profile.display_name,
-      reconnectRequired: false,
-    });
+    if (!profile)
+      return this.resultPath(attempt.returnPath, 'error', 'provider_error');
+    const saved = await this.spotify.saveCredentialIfConfigurationCurrent(
+      {
+        accessToken: token.access_token,
+        refreshToken: token.refresh_token,
+        expiresAt: new Date(Date.now() + token.expires_in * 1_000),
+        scope: token.scope,
+        accountId: profile.account_id ?? profile.id,
+        displayName: profile.display_name,
+        reconnectRequired: false,
+      },
+      attempt.configurationRevision,
+    );
+    if (!saved)
+      return this.resultPath(
+        attempt.returnPath,
+        'error',
+        'configuration_changed',
+      );
     return this.resultPath(attempt.returnPath, 'connected');
   }
 
@@ -174,11 +228,41 @@ export class SpotifyService {
       throw new UnauthorizedException('Reconnect Spotify in Settings');
     if (credential.expiresAt.getTime() > Date.now() + 30_000)
       return credential.accessToken;
+    return this.refreshAccessToken();
+  }
+
+  async getCurrentUser(): Promise<{ id: string; displayName: string | null }> {
+    const accessToken = await this.getAccessToken();
+    let profile = await this.requestProfile(accessToken);
+    if (!profile) {
+      const refreshedToken = await this.refreshAccessToken(accessToken);
+      profile = await this.requestProfile(refreshedToken);
+      if (!profile) {
+        throw new UnauthorizedException(
+          'Spotify rejected the refreshed access token',
+        );
+      }
+    }
+    return {
+      id: profile.account_id ?? profile.id,
+      displayName: profile.display_name,
+    };
+  }
+
+  private refreshAccessToken(failedAccessToken?: string): Promise<string> {
     return this.serialize(async () => {
       const latest = await this.spotify.getCredential();
       if (!latest || latest.reconnectRequired)
         throw new UnauthorizedException('Reconnect Spotify in Settings');
-      if (latest.expiresAt.getTime() > Date.now() + 30_000)
+      if (
+        failedAccessToken !== undefined &&
+        latest.accessToken !== failedAccessToken
+      )
+        return latest.accessToken;
+      if (
+        failedAccessToken === undefined &&
+        latest.expiresAt.getTime() > Date.now() + 30_000
+      )
         return latest.accessToken;
       const settings = await this.requireSettings();
       try {
@@ -189,24 +273,21 @@ export class SpotifyService {
             refresh_token: latest.refreshToken,
           }),
         );
-        await this.spotify.saveCredential(
+        const saved = await this.spotify.saveCredentialIfConfigurationCurrent(
           this.updatedCredential(latest, token),
+          settings.revision,
         );
+        if (!saved)
+          throw new UnauthorizedException(
+            'Spotify configuration changed; authorize again in Settings',
+          );
         return token.access_token;
       } catch (error) {
         if (error instanceof UnauthorizedException)
-          await this.spotify.markReconnectRequired();
+          await this.spotify.markReconnectRequiredIfCurrent(latest.accessToken);
         throw error;
       }
     });
-  }
-
-  async getCurrentUser(): Promise<{ id: string; displayName: string | null }> {
-    const profile = await this.requestProfile(await this.getAccessToken());
-    return {
-      id: profile.account_id ?? profile.id,
-      displayName: profile.display_name,
-    };
   }
 
   private updatedCredential(
@@ -254,10 +335,7 @@ export class SpotifyService {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (response.status === 401) {
-      await this.spotify.markReconnectRequired();
-      throw new UnauthorizedException(
-        'Spotify authorization is invalid; reconnect in Settings',
-      );
+      return null;
     }
     if (!response.ok)
       throw new BadGatewayException('Spotify profile is unavailable');
