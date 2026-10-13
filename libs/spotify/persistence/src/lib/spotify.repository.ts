@@ -4,8 +4,13 @@ import { MikroORM } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 
 import { SettingsEntity } from '@playlarr/settings-persistence';
+import type {
+  SourcePlaylist,
+  SourcePlaylistTrack,
+} from '@playlarr/spotify-contracts';
 
 import { SpotifyCredentialEntity } from './spotify-credential.entity.js';
+import { SpotifyImportEntity } from './spotify-import.entity.js';
 import { SpotifyOAuthAttemptEntity } from './spotify-oauth-attempt.entity.js';
 
 export interface SpotifyCredential {
@@ -27,6 +32,26 @@ export class SpotifyRepository {
 
   async getCredential(): Promise<SpotifyCredentialEntity | null> {
     return this.orm.em.fork().findOne(SpotifyCredentialEntity, 'spotify');
+  }
+
+  async createImport(
+    playlist: SourcePlaylist,
+    tracks: SourcePlaylistTrack[],
+  ): Promise<SpotifyImportEntity> {
+    const em = this.orm.em.fork();
+    const imported = em.create(SpotifyImportEntity, {
+      id: randomUUID(),
+      playlist,
+      tracks,
+      createdAt: new Date(),
+    });
+    em.persist(imported);
+    await em.flush();
+    return imported;
+  }
+
+  async getImport(id: string): Promise<SpotifyImportEntity | null> {
+    return this.orm.em.fork().findOne(SpotifyImportEntity, id);
   }
 
   async replaceConfiguration(settings: unknown): Promise<void> {

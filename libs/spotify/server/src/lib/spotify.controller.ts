@@ -19,6 +19,7 @@ import {
 
 import { SpotifyService } from './spotify.service.js';
 import { SpotifyApiClient } from './spotify-api.client.js';
+import { SpotifyImportService } from './spotify-import.service.js';
 
 interface RedirectResponse {
   cookie(
@@ -52,6 +53,7 @@ export class SpotifyController {
   constructor(
     private readonly spotify: SpotifyService,
     private readonly api: SpotifyApiClient,
+    private readonly imports: SpotifyImportService,
   ) {}
 
   @Get('playlists')
@@ -64,6 +66,27 @@ export class SpotifyController {
     if (!playlistId || playlistId.length > 256)
       throw new BadRequestException('Invalid Spotify playlist ID');
     return this.api.getPlaylistContents(playlistId);
+  }
+
+  @Post('imports')
+  createImport(@Body() body: unknown) {
+    const playlistId =
+      typeof body === 'object' &&
+      body !== null &&
+      'playlistId' in body &&
+      typeof body.playlistId === 'string'
+        ? body.playlistId
+        : '';
+    if (!playlistId || playlistId.length > 256)
+      throw new BadRequestException('Invalid Spotify playlist ID');
+    return this.imports.create(playlistId);
+  }
+
+  @Get('imports/:importId')
+  getImport(@Param('importId') importId: string) {
+    if (!importId || importId.length > 64)
+      throw new BadRequestException('Invalid import ID');
+    return this.imports.get(importId);
   }
 
   @Get('configuration')
