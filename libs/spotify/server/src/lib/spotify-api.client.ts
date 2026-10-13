@@ -60,6 +60,7 @@ function pageSchema<T extends z.ZodType>(item: T) {
 
 const playlistPageSchema = pageSchema(spotifyPlaylistSchema);
 const playlistItemPageSchema = pageSchema(spotifyPlaylistItemSchema);
+const pageLimit = 50;
 const maxRateLimitRetries = 2;
 const maxRetryAfterSeconds = 30;
 
@@ -144,20 +145,57 @@ export class SpotifyApiClient {
   ): Promise<T[]> {
     const items: T[] = [];
     let offset = 0;
+    let total: number | undefined;
     while (true) {
       const separator = path.includes('?') ? '&' : '?';
       const response = await this.request(
-        `${path}${separator}limit=50&offset=${offset}`,
+        `${path}${separator}limit=${pageLimit}&offset=${offset}`,
       );
       const parsed = schema.safeParse(await response.json().catch(() => null));
       if (!parsed.success)
         throw new BadGatewayException('Spotify returned an invalid response');
-      items.push(...parsed.data.items);
-      if (parsed.data.next === null) return items;
-      if (parsed.data.items.length === 0)
+      const page = parsed.data;
+      total ??= page.total;
+      const pageEnd = page.offset + page.items.length;
+      if (
+        page.offset !== offset ||
+        page.limit !== pageLimit ||
+        page.total !== total ||
+        page.items.length > page.limit ||
+        pageEnd > page.total
+      )
         throw new BadGatewayException('Spotify returned invalid pagination');
-      offset += parsed.data.items.length;
+      items.push(...page.items);
+      if (page.next === null) {
+        if (pageEnd !== page.total)
+          throw new BadGatewayException(
+            'Spotify returned incomplete pagination',
+          );
+        return items;
+      }
+      if (page.items.length !== page.limit || pageEnd >= page.total)
+        throw new BadGatewayException('Spotify returned invalid pagination');
+      offset = this.nextOffset(page.next, path, pageEnd);
     }
+  }
+
+  private nextOffset(next: string, path: string, expected: number): number {
+    const url = new URL(next);
+    const expectedUrl = new URL(`https://api.spotify.com/v1${path}`);
+    const offset = url.searchParams.get('offset');
+    const limit = url.searchParams.get('limit');
+    if (
+      url.origin !== expectedUrl.origin ||
+      url.pathname !== expectedUrl.pathname ||
+      offset === null ||
+      !/^\d+$/.test(offset) ||
+      Number(offset) !== expected ||
+      limit === null ||
+      !/^\d+$/.test(limit) ||
+      Number(limit) !== pageLimit
+    )
+      throw new BadGatewayException('Spotify returned invalid pagination');
+    return expected;
   }
 
   private async request(path: string): Promise<Response> {
@@ -192,8 +230,11 @@ export class SpotifyApiClient {
   }
 
   private retryAfterSeconds(response: Response): number {
-    const value = Number(response.headers.get('Retry-After'));
-    if (!Number.isFinite(value) || value < 0)
+    const header = response.headers.get('Retry-After');
+    if (header === null || !/^\d+$/.test(header))
+      throw new BadGatewayException('Spotify returned an invalid rate limit');
+    const value = Number(header);
+    if (!Number.isSafeInteger(value))
       throw new BadGatewayException('Spotify returned an invalid rate limit');
     return Math.min(value, maxRetryAfterSeconds);
   }

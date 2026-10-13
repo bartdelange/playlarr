@@ -27,42 +27,69 @@ describe('SpotifyApiClient', () => {
 
   it('returns a stable normalized playlist catalogue across every page', async () => {
     const { api } = client();
+    const firstPage = await fixture('playlists-page-1');
+    const secondPage = await fixture('playlists-page-2');
     const provider = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(Response.json(await fixture('playlists-page-1')))
-      .mockResolvedValueOnce(Response.json(await fixture('playlists-page-2')));
+      .mockResolvedValueOnce(
+        Response.json({
+          ...(firstPage as object),
+          items: Array.from(
+            { length: 50 },
+            () => (firstPage as { items: unknown[] }).items[0],
+          ),
+          limit: 50,
+          next: 'https://api.spotify.com/v1/me/playlists?limit=50&offset=50',
+          total: 51,
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          ...(secondPage as object),
+          limit: 50,
+          offset: 50,
+          total: 51,
+        }),
+      );
 
-    await expect(api.getPlaylists()).resolves.toEqual([
-      {
-        id: 'playlist-one',
-        name: 'First playlist',
-        owner: { id: 'owner-one', displayName: 'Listener' },
-        itemCount: 5,
-        snapshotId: 'snapshot-one',
-      },
-      {
-        id: 'playlist-two',
-        name: 'Second playlist',
-        owner: { id: 'owner-two', displayName: null },
-        itemCount: 2,
-        snapshotId: 'snapshot-two',
-      },
-    ]);
+    const playlists = await api.getPlaylists();
+
+    expect(playlists).toHaveLength(51);
+    expect(playlists[0]).toEqual({
+      id: 'playlist-one',
+      name: 'First playlist',
+      owner: { id: 'owner-one', displayName: 'Listener' },
+      itemCount: 5,
+      snapshotId: 'snapshot-one',
+    });
+    expect(playlists[50]).toEqual({
+      id: 'playlist-two',
+      name: 'Second playlist',
+      owner: { id: 'owner-two', displayName: null },
+      itemCount: 2,
+      snapshotId: 'snapshot-two',
+    });
     expect(provider.mock.calls.map(([url]) => String(url))).toEqual([
       'https://api.spotify.com/v1/me/playlists?limit=50&offset=0',
-      'https://api.spotify.com/v1/me/playlists?limit=50&offset=1',
+      'https://api.spotify.com/v1/me/playlists?limit=50&offset=50',
     ]);
   });
 
   it('preserves source order and duplicates while classifying non-standard items', async () => {
     const { api } = client();
-    vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(
-        Response.json(await fixture('playlist-items-page-1')),
-      )
-      .mockResolvedValueOnce(
-        Response.json(await fixture('playlist-items-page-2')),
-      );
+    const firstPage = await fixture('playlist-items-page-1');
+    const secondPage = await fixture('playlist-items-page-2');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({
+        ...(firstPage as object),
+        items: [
+          ...(firstPage as { items: unknown[] }).items,
+          ...(secondPage as { items: unknown[] }).items,
+        ],
+        limit: 50,
+        next: null,
+      }),
+    );
 
     const contents = await api.getPlaylistContents('selected');
 
@@ -105,7 +132,14 @@ describe('SpotifyApiClient', () => {
       .mockResolvedValueOnce(
         Response.json({}, { status: 429, headers: { 'Retry-After': '0' } }),
       )
-      .mockResolvedValueOnce(Response.json(await fixture('playlists-page-2')));
+      .mockResolvedValueOnce(
+        Response.json({
+          ...((await fixture('playlists-page-2')) as object),
+          limit: 50,
+          offset: 0,
+          total: 1,
+        }),
+      );
 
     await expect(api.getPlaylists()).resolves.toHaveLength(1);
     expect(spotify.refreshRejectedAccessToken).toHaveBeenCalledWith(
@@ -127,5 +161,57 @@ describe('SpotifyApiClient', () => {
     await expect(api.getPlaylists()).rejects.toBeInstanceOf(
       BadGatewayException,
     );
+  });
+
+  it.each([
+    {
+      name: 'a terminal page before the declared total',
+      itemCount: 1,
+      page: { next: null, total: 2 },
+    },
+    {
+      name: 'a response offset that does not match the request',
+      itemCount: 1,
+      page: { offset: 1, total: 1 },
+    },
+    {
+      name: 'a non-contiguous next page',
+      itemCount: 50,
+      page: {
+        next: 'https://api.spotify.com/v1/me/playlists?limit=50&offset=2',
+        total: 51,
+      },
+    },
+  ])('rejects $name', async ({ itemCount, page }) => {
+    const { api } = client();
+    const fixturePage = await fixture('playlists-page-2');
+    const fixtureItem = (fixturePage as { items: unknown[] }).items[0];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json(
+        Object.assign(
+          {},
+          fixturePage,
+          { limit: 50, offset: 0, total: 1 },
+          page,
+          { items: Array.from({ length: itemCount }, () => fixtureItem) },
+        ),
+      ),
+    );
+
+    await expect(api.getPlaylists()).rejects.toThrow(
+      /Spotify returned (incomplete|invalid) pagination/,
+    );
+  });
+
+  it('does not retry a rate limit without Retry-After guidance', async () => {
+    const { api } = client();
+    const provider = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({}, { status: 429 }));
+
+    await expect(api.getPlaylists()).rejects.toThrow(
+      'Spotify returned an invalid rate limit',
+    );
+    expect(provider).toHaveBeenCalledOnce();
   });
 });
