@@ -28,7 +28,7 @@
   "dependencies": {
     "@playlarr/shared-web-infrastructure": "workspace:*",
     "@playlarr/spotify-contracts": "workspace:*",
-    "next": "~16.1.7",
+    "next": "~16.3.8",
     "react": "19.2.8",
     "server-only": "^0.0.1"
   },
