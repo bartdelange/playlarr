@@ -280,6 +280,9 @@ importers:
       '@playlarr/settings-web':
         specifier: workspace:*
         version: link:../../libs/settings/web
+      '@playlarr/shared-web-infrastructure':
+        specifier: workspace:*
+        version: link:../../libs/shared/web-infrastructure
       next:
         specifier: ~16.1.6
         version: 16.1.7(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.62.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.103.1)
@@ -289,9 +292,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.8(react@19.2.8)
-      server-only:
-        specifier: ^0.0.1
-        version: 0.0.1
 
   libs/auth/persistence:
     dependencies:
@@ -356,12 +356,18 @@ importers:
 
   libs/auth/web:
     dependencies:
+      '@playlarr/shared-web-infrastructure':
+        specifier: workspace:*
+        version: link:../../shared/web-infrastructure
       next:
         specifier: ~16.1.7
         version: 16.1.7(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.62.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.103.1)
       react:
         specifier: ^19.2.8
         version: 19.2.8
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
     devDependencies:
       '@testing-library/react':
         specifier: 16.3.0
@@ -513,6 +519,15 @@ importers:
       '@nestjs/config':
         specifier: ^12.0.1
         version: 12.0.1(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(rxjs@7.8.2)
+      tslib:
+        specifier: ^2.3.0
+        version: 2.8.1
+
+  libs/shared/web-infrastructure:
+    dependencies:
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       tslib:
         specifier: ^2.3.0
         version: 2.8.1

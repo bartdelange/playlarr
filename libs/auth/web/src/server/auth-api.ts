@@ -1,8 +1,7 @@
 import 'server-only';
 
+import { fetchNestApi } from '@playlarr/shared-web-infrastructure';
 import { cookies } from 'next/headers';
-
-import { fetchNestApi } from './nest-api';
 
 export interface AuthStatus {
   enabled: boolean;

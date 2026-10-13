@@ -2,8 +2,8 @@ import { AuthenticatedShell } from '@playlarr/auth-web';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { safeReturnPath } from '../../server/safe-return-path';
-import { getAuthStatus } from '../../server/auth-api';
+import { safeReturnPath } from '@playlarr/auth-web/return-path';
+import { getAuthStatus } from '@playlarr/auth-web/server';
 
 export default async function AppLayout({
   children,

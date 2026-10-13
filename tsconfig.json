@@ -41,6 +41,9 @@
     },
     {
       "path": "./libs/settings/web"
+    },
+    {
+      "path": "./libs/shared/web-infrastructure"
     }
   ]
 }

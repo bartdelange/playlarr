@@ -12,6 +12,16 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./return-path": {
+      "types": "./dist/return-path.d.ts",
+      "import": "./dist/return-path.js",
+      "default": "./dist/return-path.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "nx": {
@@ -22,8 +32,10 @@
     ]
   },
   "dependencies": {
+    "@playlarr/shared-web-infrastructure": "workspace:*",
     "next": "~16.1.7",
-    "react": "^19.2.8"
+    "react": "^19.2.8",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@testing-library/react": "16.3.0",
