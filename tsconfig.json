@@ -71,6 +71,9 @@
     },
     {
       "path": "./libs/imports/web"
+    },
+    {
+      "path": "./libs/imports/contracts"
     }
   ]
 }

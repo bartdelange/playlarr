@@ -465,6 +465,15 @@ importers:
         specifier: ^2.3.0
         version: 2.8.1
 
+  libs/imports/contracts:
+    dependencies:
+      tslib:
+        specifier: ^2.3.0
+        version: 2.8.1
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+
   libs/imports/web:
     dependencies:
       '@playlarr/spotify-web':
@@ -568,6 +577,9 @@ importers:
 
   libs/spotify/contracts:
     dependencies:
+      '@playlarr/imports-contracts':
+        specifier: workspace:*
+        version: link:../../imports/contracts
       tslib:
         specifier: ^2.3.0
         version: 2.8.1
@@ -669,6 +681,9 @@ importers:
 
   libs/tidal/contracts:
     dependencies:
+      '@playlarr/imports-contracts':
+        specifier: workspace:*
+        version: link:../../imports/contracts
       tslib:
         specifier: ^2.3.0
         version: 2.8.1

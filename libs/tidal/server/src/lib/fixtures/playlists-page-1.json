@@ -1,0 +1,27 @@
+{
+  "data": [
+    {
+      "id": "playlist-one",
+      "type": "playlists",
+      "attributes": {
+        "name": "First playlist",
+        "numberOfItems": 5,
+        "lastModifiedAt": "2026-10-01T12:00:00Z"
+      },
+      "relationships": {
+        "owners": { "data": [{ "id": "owner-one", "type": "users" }] }
+      }
+    }
+  ],
+  "included": [
+    {
+      "id": "owner-one",
+      "type": "users",
+      "attributes": { "username": "Listener" }
+    }
+  ],
+  "links": {
+    "self": "/v2/playlists?filter[owners.id]=me&include=owners",
+    "next": "/v2/playlists?filter[owners.id]=me&include=owners&page[cursor]=next"
+  }
+}

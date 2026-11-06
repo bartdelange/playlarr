@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  sourcePlaylistSchema,
+  sourcePlaylistTrackSchema,
+} from '@playlarr/imports-contracts';
+
+export * from '@playlarr/imports-contracts';
 
 export const spotifyConnectionStatusSchema = z.enum([
   'not_configured',
@@ -37,48 +43,6 @@ export const spotifyConfigurationInputSchema = z.object({
 
 export type SpotifyConfigurationInput = z.infer<
   typeof spotifyConfigurationInputSchema
->;
-
-export const sourcePlaylistSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  owner: z.object({ id: z.string(), displayName: z.string().nullable() }),
-  itemCount: z.number().int().nonnegative(),
-  snapshotId: z.string(),
-});
-
-export type SourcePlaylist = z.infer<typeof sourcePlaylistSchema>;
-
-const sourceTrackDetailsSchema = z.object({
-  sourceId: z.string(),
-  name: z.string(),
-  artists: z.array(z.string()),
-  album: z.string(),
-  durationMs: z.number().int().nonnegative(),
-  discNumber: z.number().int().positive(),
-  trackNumber: z.number().int().positive(),
-});
-
-export const sourcePlaylistTrackSchema = z.discriminatedUnion('status', [
-  sourceTrackDetailsSchema.extend({
-    position: z.number().int().nonnegative(),
-    status: z.literal('available'),
-  }),
-  z.object({
-    position: z.number().int().nonnegative(),
-    status: z.enum(['unavailable', 'local', 'unsupported']),
-  }),
-]);
-
-export type SourcePlaylistTrack = z.infer<typeof sourcePlaylistTrackSchema>;
-
-export const sourcePlaylistContentsSchema = z.object({
-  playlistId: z.string(),
-  tracks: z.array(sourcePlaylistTrackSchema),
-});
-
-export type SourcePlaylistContents = z.infer<
-  typeof sourcePlaylistContentsSchema
 >;
 
 export const spotifyImportSchema = z.object({

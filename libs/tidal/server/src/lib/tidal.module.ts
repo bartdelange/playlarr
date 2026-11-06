@@ -4,12 +4,13 @@ import { SettingsPersistenceModule } from '@playlarr/settings-persistence';
 import { TidalPersistenceModule } from '@playlarr/tidal-persistence';
 
 import { TidalController } from './tidal.controller.js';
+import { TidalApiClient } from './tidal-api.client.js';
 import { TidalService } from './tidal.service.js';
 
 @Module({
   imports: [AuthModule, SettingsPersistenceModule, TidalPersistenceModule],
   controllers: [TidalController],
-  providers: [TidalService],
-  exports: [TidalService],
+  providers: [TidalService, TidalApiClient],
+  exports: [TidalService, TidalApiClient],
 })
 export class TidalModule {}

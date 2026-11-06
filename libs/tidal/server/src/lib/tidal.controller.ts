@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   Req,
@@ -16,6 +17,7 @@ import {
 } from '@playlarr/auth-server';
 import { tidalConfigurationInputSchema } from '@playlarr/tidal-contracts';
 
+import { TidalApiClient } from './tidal-api.client.js';
 import { TidalService } from './tidal.service.js';
 
 interface RedirectResponse {
@@ -47,7 +49,22 @@ const tidalCallbackPath = '/api/tidal/callback';
 
 @Controller('tidal')
 export class TidalController {
-  constructor(private readonly tidal: TidalService) {}
+  constructor(
+    private readonly tidal: TidalService,
+    private readonly api: TidalApiClient,
+  ) {}
+
+  @Get('playlists')
+  playlists() {
+    return this.api.getPlaylists();
+  }
+
+  @Get('playlists/:playlistId/tracks')
+  playlistTracks(@Param('playlistId') playlistId: string) {
+    if (!playlistId || playlistId.length > 256)
+      throw new BadRequestException('Invalid TIDAL playlist ID');
+    return this.api.getPlaylistContents(playlistId);
+  }
 
   @Get('configuration')
   configuration() {

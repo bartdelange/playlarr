@@ -1,0 +1,35 @@
+{
+  "data": [
+    { "id": "video-one", "type": "videos" },
+    { "id": "track-two", "type": "tracks" }
+  ],
+  "included": [
+    {
+      "id": "video-one",
+      "type": "videos",
+      "attributes": { "title": "A video" }
+    },
+    {
+      "id": "track-two",
+      "type": "tracks",
+      "attributes": { "title": "Another song", "duration": "PT1H1M1S" },
+      "relationships": {
+        "albums": { "data": [{ "id": "album-two", "type": "albums" }] },
+        "artists": { "data": [{ "id": "artist-two", "type": "artists" }] }
+      }
+    },
+    {
+      "id": "album-two",
+      "type": "albums",
+      "attributes": { "title": "Album two" }
+    },
+    {
+      "id": "artist-two",
+      "type": "artists",
+      "attributes": { "name": "Artist two" }
+    }
+  ],
+  "links": {
+    "self": "/v2/playlists/selected/relationships/items?include=items.artists%2Citems.albums&page[cursor]=next"
+  }
+}
