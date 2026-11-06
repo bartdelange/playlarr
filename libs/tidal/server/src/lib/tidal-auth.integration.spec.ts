@@ -57,9 +57,12 @@ const configure = (
       ...overrides,
     });
 
-async function startAuthorization(app: INestApplication) {
+async function startAuthorization(
+  app: INestApplication,
+  returnTo = '/settings',
+) {
   const response = await request(app.getHttpServer())
-    .get('/api/tidal/authorize?returnTo=%2Fsettings')
+    .get(`/api/tidal/authorize?returnTo=${encodeURIComponent(returnTo)}`)
     .expect(302);
   const url = new URL(response.headers.location as string);
   expect(url.origin).toBe('https://login.tidal.com');
@@ -110,10 +113,11 @@ describe('TIDAL authorization', () => {
     const provider = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json({
         access_token: 'access-one',
+        token_type: 'Bearer',
         refresh_token: 'refresh-one',
         expires_in: 3600,
         scope: 'user.read playlists.read',
-        user_id: 'account-1',
+        user_id: 123456789,
       }),
     );
 
@@ -127,9 +131,54 @@ describe('TIDAL authorization', () => {
     expect(await app.get(TidalService).getAccessToken()).toBe('access-one');
     expect(await app.get(TidalRepository).getCredential()).toMatchObject({
       refreshToken: 'refresh-one',
-      accountId: 'account-1',
+      accountId: '123456789',
       reconnectRequired: false,
     });
+  });
+
+  it('rejects token responses that do not identify the account', async () => {
+    await configure(app).expect(201);
+    const authorization = await startAuthorization(app);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        access_token: 'opaque-access-token',
+        token_type: 'Bearer',
+        refresh_token: 'refresh-one',
+        expires_in: 3600,
+        scope: 'user.read playlists.read',
+      }),
+    );
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', authorization.bindingCookie)
+      .expect(502);
+
+    expect(await app.get(TidalRepository).getCredential()).toBeNull();
+  });
+
+  it('only returns to supported Playlarr destinations and preserves their query', async () => {
+    await configure(app).expect(201);
+    const supported = await startAuthorization(
+      app,
+      '/imports/new?source=tidal&step=choose',
+    );
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${supported.state}&error=access_denied`)
+      .set('Cookie', supported.bindingCookie)
+      .expect(
+        'Location',
+        '/imports/new?source=tidal&step=choose&tidal=error&tidal_error=access_denied',
+      )
+      .expect(302);
+
+    const unsupported = await startAuthorization(app, '/imports/command-1');
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${unsupported.state}&error=access_denied`)
+      .set('Cookie', unsupported.bindingCookie)
+      .expect('Location', '/settings?tidal=error&tidal_error=access_denied')
+      .expect(302);
   });
 
   it('returns connection metadata without credential material', async () => {
@@ -162,6 +211,32 @@ describe('TIDAL authorization', () => {
     await expect(
       request(app.getHttpServer()).get('/api/tidal/configuration'),
     ).resolves.toMatchObject({ body: { status: 'reconnect_required' } });
+  });
+
+  it('coalesces concurrent refresh needs within the single backend process', async () => {
+    await configure(app).expect(201);
+    await seedCredential(new Date(Date.now() - 1_000));
+    const provider = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        access_token: 'access-two',
+        token_type: 'Bearer',
+        expires_in: 3600,
+        scope: 'user.read playlists.read',
+      }),
+    );
+
+    await expect(
+      Promise.all([
+        app.get(TidalService).getAccessToken(),
+        app.get(TidalService).getAccessToken(),
+      ]),
+    ).resolves.toEqual(['access-two', 'access-two']);
+    expect(provider).toHaveBeenCalledOnce();
+    expect(await app.get(TidalRepository).getCredential()).toMatchObject({
+      accessToken: 'access-two',
+      refreshToken: 'refresh-one',
+      reconnectRequired: false,
+    });
   });
 
   it('invalidates credentials immediately when configuration changes', async () => {

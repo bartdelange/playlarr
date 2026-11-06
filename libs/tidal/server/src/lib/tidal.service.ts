@@ -29,7 +29,7 @@ const tokenSchema = z.object({
   refresh_token: z.string().min(1).optional(),
   expires_in: z.number().int().positive(),
   scope: z.string().default(''),
-  user_id: z.string().optional(),
+  user_id: z.number().int().positive().transform(String).optional(),
 });
 const tokenErrorSchema = z.object({ error: z.string() });
 const tidalScopes = 'user.read playlists.read';
@@ -185,8 +185,7 @@ export class TidalService {
     );
     if (!token.refresh_token)
       throw new BadGatewayException('TIDAL did not return a refresh token');
-    const accountId =
-      token.user_id ?? this.accountIdFromToken(token.access_token);
+    const accountId = token.user_id;
     if (!accountId)
       throw new BadGatewayException(
         'TIDAL did not identify the authorized account',
@@ -316,19 +315,6 @@ export class TidalService {
     return parsed.data;
   }
 
-  private accountIdFromToken(token: string): string | null {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    try {
-      const parsed = z
-        .object({ sub: z.string().min(1) })
-        .safeParse(JSON.parse(Buffer.from(payload, 'base64url').toString()));
-      return parsed.success ? parsed.data.sub : null;
-    } catch {
-      return null;
-    }
-  }
-
   private getSettings() {
     return this.settings.get(tidalSettingsKey, tidalSettingsSchema);
   }
@@ -341,6 +327,8 @@ export class TidalService {
   }
 
   private hash(value: string) {
+    // These are high-entropy random bearer values, not passwords. A fast
+    // one-way lookup hash is intentional and does not need password stretching.
     return createHash('sha256').update(value).digest('hex');
   }
 
@@ -357,9 +345,17 @@ export class TidalService {
   }
 
   private safeReturnPath(value: string) {
-    return value.startsWith('/') && !value.startsWith('//')
-      ? value
-      : '/settings';
+    try {
+      const url = new URL(value, 'http://playlarr.local');
+      if (
+        url.origin === 'http://playlarr.local' &&
+        ['/settings', '/imports/new'].includes(url.pathname)
+      )
+        return `${url.pathname}${url.search}`;
+    } catch {
+      // Invalid URL input falls back to Settings like unsupported destinations.
+    }
+    return '/settings';
   }
 
   private resultPath(path: string, status: string, error?: string) {
