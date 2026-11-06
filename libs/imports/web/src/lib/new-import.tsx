@@ -7,7 +7,14 @@ import {
   getSpotifyConfiguration,
   getSpotifyPlaylists,
 } from '@playlarr/spotify-web/server';
-import { TidalImportUnavailable } from '@playlarr/tidal-web';
+import {
+  TidalAuthorizationRequired,
+  TidalPlaylistSelection,
+} from '@playlarr/tidal-web';
+import {
+  getTidalConfiguration,
+  getTidalPlaylists,
+} from '@playlarr/tidal-web/server';
 
 import { NewImportSources } from './new-import-sources.js';
 
@@ -50,6 +57,37 @@ async function SpotifySource({
   );
 }
 
+async function TidalSource({
+  authorizationResult,
+}: {
+  authorizationResult: { status?: string; error?: string };
+}) {
+  const configuration = await getTidalConfiguration();
+  if (configuration.status !== 'connected') {
+    return (
+      <TidalAuthorizationRequired
+        authorizationResult={authorizationResult}
+        configured={configuration.status !== 'not_configured'}
+      />
+    );
+  }
+  const playlists = await getTidalPlaylists();
+  if (!playlists) {
+    return (
+      <TidalAuthorizationRequired
+        authorizationResult={authorizationResult}
+        configured
+      />
+    );
+  }
+  return (
+    <TidalPlaylistSelection
+      authorizationResult={authorizationResult}
+      playlists={playlists}
+    />
+  );
+}
+
 export function NewImport({
   searchParams,
 }: {
@@ -74,9 +112,11 @@ export function NewImport({
   }
   if (source === 'tidal') {
     return (
-      <TidalImportUnavailable
-        authorizationResult={{ status: tidal, error: tidalError }}
-      />
+      <Suspense fallback={<p role="status">Loading TIDAL playlists…</p>}>
+        <TidalSource
+          authorizationResult={{ status: tidal, error: tidalError }}
+        />
+      </Suspense>
     );
   }
   return <NewImportSources />;

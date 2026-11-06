@@ -13,5 +13,12 @@
     "emitDecoratorMetadata": true
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../../settings/persistence/tsconfig.lib.json" }]
+  "references": [
+    {
+      "path": "../contracts/tsconfig.lib.json"
+    },
+    {
+      "path": "../../settings/persistence/tsconfig.lib.json"
+    }
+  ]
 }

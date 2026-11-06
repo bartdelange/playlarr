@@ -1,16 +1,31 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { TidalImportUnavailable } from './tidal-import';
+import {
+  TidalAuthorizationRequired,
+  TidalPlaylistSelection,
+} from './tidal-import';
 
-describe('TidalImportUnavailable', () => {
-  it('shows the authorization result and a route back to source selection', () => {
+const playlist = {
+  id: 'playlist-one',
+  name: 'Evening mix',
+  owner: { id: 'owner-one', displayName: 'Listener' },
+  itemCount: 7,
+  snapshotId: 'snapshot-one',
+};
+
+describe('TIDAL import flow', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('guides a disconnected user through authorization and back to the flow', () => {
     render(
-      <TidalImportUnavailable
+      <TidalAuthorizationRequired
         authorizationResult={{
           status: 'error',
           error: 'authorization_expired',
         }}
+        configured
       />,
     );
 
@@ -18,12 +33,52 @@ describe('TidalImportUnavailable', () => {
       'TIDAL authorization expired or was already used.',
     );
     expect(
-      screen.getByText('TIDAL playlist importing is not available yet.'),
-    ).toBeTruthy();
-    expect(
       screen
-        .getByRole('link', { name: 'Choose another source' })
+        .getByRole('link', { name: 'Authorize TIDAL' })
         .getAttribute('href'),
-    ).toBe('/imports/new');
+    ).toBe('/api/tidal/authorize?returnTo=%2Fimports%2Fnew%3Fsource%3Dtidal');
+  });
+
+  it('shows useful playlist metadata and an intentional empty state', () => {
+    const { rerender } = render(
+      <TidalPlaylistSelection playlists={[playlist]} />,
+    );
+    expect(screen.getByText('Listener · 7 items')).toBeTruthy();
+
+    rerender(<TidalPlaylistSelection playlists={[]} />);
+    expect(screen.getByText('No TIDAL playlists were found.')).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'Choose another source' }),
+    ).toBeTruthy();
+  });
+
+  it('keeps the playlist selectable after a failed import so it can be retried', async () => {
+    const user = userEvent.setup();
+    const request = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 503 }));
+    render(<TidalPlaylistSelection playlists={[playlist]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Import' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Unable to import this playlist. Please try again.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Import' }));
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it('guides the user back through authorization when import access expires', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 401 }),
+    );
+    render(<TidalPlaylistSelection playlists={[playlist]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Import' }));
+    expect(
+      (
+        await screen.findByRole('link', { name: 'Authorize TIDAL' })
+      ).getAttribute('href'),
+    ).toBe('/api/tidal/authorize?returnTo=%2Fimports%2Fnew%3Fsource%3Dtidal');
   });
 });

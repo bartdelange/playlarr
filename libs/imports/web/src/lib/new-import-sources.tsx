@@ -9,6 +9,10 @@ export function NewImportSources() {
         <strong>Spotify</strong>
         <span>Browse playlists from your connected Spotify account.</span>
       </a>
+      <a className={styles.source} href="/imports/new?source=tidal">
+        <strong>TIDAL</strong>
+        <span>Browse playlists from your connected TIDAL account.</span>
+      </a>
     </main>
   );
 }

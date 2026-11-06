@@ -18,6 +18,7 @@ import {
 import { tidalConfigurationInputSchema } from '@playlarr/tidal-contracts';
 
 import { TidalApiClient } from './tidal-api.client.js';
+import { TidalImportService } from './tidal-import.service.js';
 import { TidalService } from './tidal.service.js';
 
 interface RedirectResponse {
@@ -52,6 +53,7 @@ export class TidalController {
   constructor(
     private readonly tidal: TidalService,
     private readonly api: TidalApiClient,
+    private readonly imports: TidalImportService,
   ) {}
 
   @Get('playlists')
@@ -64,6 +66,27 @@ export class TidalController {
     if (!playlistId || playlistId.length > 256)
       throw new BadRequestException('Invalid TIDAL playlist ID');
     return this.api.getPlaylistContents(playlistId);
+  }
+
+  @Post('imports')
+  createImport(@Body() body: unknown) {
+    const playlistId =
+      typeof body === 'object' &&
+      body !== null &&
+      'playlistId' in body &&
+      typeof body.playlistId === 'string'
+        ? body.playlistId
+        : '';
+    if (!playlistId || playlistId.length > 256)
+      throw new BadRequestException('Invalid TIDAL playlist ID');
+    return this.imports.create(playlistId);
+  }
+
+  @Get('imports/:importId')
+  getImport(@Param('importId') importId: string) {
+    if (!importId || importId.length > 64)
+      throw new BadRequestException('Invalid import ID');
+    return this.imports.get(importId);
   }
 
   @Get('configuration')
