@@ -114,6 +114,14 @@
   color: #a14d00;
 }
 
+.partialError {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e7c479;
+  border-radius: 0.5rem;
+  background: #fff8e6;
+  color: #765b00;
+}
+
 .empty {
   display: grid;
   justify-items: start;

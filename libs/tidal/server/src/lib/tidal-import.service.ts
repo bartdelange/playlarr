@@ -47,14 +47,8 @@ export class TidalImportService {
 
   async list(): Promise<ImportSummary[]> {
     return (await this.repository.listImports()).map((imported) => ({
-      id: imported.id,
+      ...imported,
       source: 'tidal',
-      name: imported.playlist.name,
-      trackCount: imported.tracks.length,
-      unavailableTrackCount: imported.tracks.filter(
-        (track) => track.status !== 'available',
-      ).length,
-      createdAt: imported.createdAt.toISOString(),
     }));
   }
 

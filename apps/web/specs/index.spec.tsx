@@ -7,7 +7,7 @@ vi.mock('@playlarr/imports-web/server', () => ({
   ImportDashboardSkeleton: () => <p>Loading imports</p>,
 }));
 
-import HomePage from '../src/app/(app)/page';
+import HomePage from '../src/app/(app)/(dashboard)/page';
 
 describe('home page', () => {
   it('composes the import dashboard', () => {

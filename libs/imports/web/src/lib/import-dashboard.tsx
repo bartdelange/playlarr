@@ -35,16 +35,8 @@ function ImportCard({ imported }: { imported: ImportSummary }) {
             <dd>{imported.trackCount}</dd>
           </div>
           <div>
-            <dt>MusicBrainz</dt>
-            <dd>Not started</dd>
-          </div>
-          <div>
-            <dt>Lidarr</dt>
-            <dd>Waiting for matching</dd>
-          </div>
-          <div>
-            <dt>Library</dt>
-            <dd>Not started</dd>
+            <dt>Workflow</dt>
+            <dd>Ready for matching</dd>
           </div>
         </dl>
 
@@ -64,9 +56,23 @@ function ImportCard({ imported }: { imported: ImportSummary }) {
 }
 
 export async function ImportDashboard() {
-  const imports = (await Promise.all([getSpotifyImports(), getTidalImports()]))
-    .flat()
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  const [spotifyResult, tidalResult] = await Promise.allSettled([
+    getSpotifyImports(),
+    getTidalImports(),
+  ]);
+  const failedSources = [
+    spotifyResult.status === 'rejected' ? 'Spotify' : null,
+    tidalResult.status === 'rejected' ? 'TIDAL' : null,
+  ].filter((source): source is string => source !== null);
+
+  if (failedSources.length === 2) {
+    throw new Error('Imported playlists are unavailable');
+  }
+
+  const imports = [
+    ...(spotifyResult.status === 'fulfilled' ? spotifyResult.value : []),
+    ...(tidalResult.status === 'fulfilled' ? tidalResult.value : []),
+  ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 
   return (
     <main className={styles.dashboard}>
@@ -80,11 +86,26 @@ export async function ImportDashboard() {
         </a>
       </header>
 
+      {failedSources.length > 0 ? (
+        <p className={styles.partialError} role="alert">
+          {failedSources.join(' and ')} imports could not be loaded. Showing the
+          local imports that are available.
+        </p>
+      ) : null}
+
       {imports.length === 0 ? (
         <section className={styles.empty}>
-          <h2>No imported playlists yet</h2>
-          <p>Import a playlist from Spotify or TIDAL to get started.</p>
-          <a href="/imports/new">Import a playlist</a>
+          <h2>
+            {failedSources.length > 0
+              ? 'No imported playlists available to show'
+              : 'No imported playlists yet'}
+          </h2>
+          {failedSources.length === 0 ? (
+            <>
+              <p>Import a playlist from Spotify or TIDAL to get started.</p>
+              <a href="/imports/new">Import a playlist</a>
+            </>
+          ) : null}
         </section>
       ) : (
         <ul className={styles.grid}>

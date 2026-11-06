@@ -41,7 +41,9 @@ describe('ImportDashboard', () => {
     render(await ImportDashboard());
 
     expect(screen.getAllByText('Matching required')).toHaveLength(2);
-    expect(screen.getAllByText('Waiting for matching')).toHaveLength(2);
+    expect(screen.getAllByText('Ready for matching')).toHaveLength(2);
+    expect(screen.queryByText('Lidarr')).toBeNull();
+    expect(screen.queryByText('Library')).toBeNull();
     expect(screen.getByText('2 tracks need review')).toBeTruthy();
     expect(
       screen.getByRole('link', { name: /Road trip/ }).getAttribute('href'),
@@ -49,6 +51,42 @@ describe('ImportDashboard', () => {
     expect(
       screen.getByRole('link', { name: /Quiet evening/ }).getAttribute('href'),
     ).toBe('/imports/366ec008-0f13-40e9-a8e4-107ad87026fa/tidal');
+  });
+
+  it('shows available local imports when one provider summary fails', async () => {
+    providerApis.getSpotifyImports.mockResolvedValue([
+      {
+        id: '01d19f17-ff19-4e1f-b4c8-ec601f91b6f5',
+        source: 'spotify',
+        name: 'Road trip',
+        trackCount: 42,
+        unavailableTrackCount: 0,
+        createdAt: '2026-11-05T10:00:00.000Z',
+      },
+    ]);
+    providerApis.getTidalImports.mockRejectedValue(
+      new Error('TIDAL summaries unavailable'),
+    );
+
+    render(await ImportDashboard());
+
+    expect(screen.getByRole('link', { name: /Road trip/ })).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain(
+      'TIDAL imports could not be loaded',
+    );
+  });
+
+  it('fails the dashboard when no provider summary can be loaded', async () => {
+    providerApis.getSpotifyImports.mockRejectedValue(
+      new Error('Spotify summaries unavailable'),
+    );
+    providerApis.getTidalImports.mockRejectedValue(
+      new Error('TIDAL summaries unavailable'),
+    );
+
+    await expect(ImportDashboard()).rejects.toThrow(
+      'Imported playlists are unavailable',
+    );
   });
 
   it('offers an import action when no local imports exist', async () => {
