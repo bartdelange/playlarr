@@ -41,3 +41,16 @@ export const sourcePlaylistContentsSchema = z.object({
 export type SourcePlaylistContents = z.infer<
   typeof sourcePlaylistContentsSchema
 >;
+
+export const importSourceSchema = z.enum(['spotify', 'tidal']);
+
+export const importSummarySchema = z.object({
+  id: z.uuid(),
+  source: importSourceSchema,
+  name: z.string(),
+  trackCount: z.number().int().nonnegative(),
+  unavailableTrackCount: z.number().int().nonnegative(),
+  createdAt: z.iso.datetime(),
+});
+
+export type ImportSummary = z.infer<typeof importSummarySchema>;

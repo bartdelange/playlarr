@@ -52,6 +52,12 @@ export class TidalRepository {
     return this.orm.em.fork().findOne(TidalImportEntity, id);
   }
 
+  listImports(): Promise<TidalImportEntity[]> {
+    return this.orm.em.fork().findAll(TidalImportEntity, {
+      orderBy: { createdAt: 'DESC' },
+    });
+  }
+
   async replaceConfiguration(settings: unknown): Promise<void> {
     await this.orm.em.transactional(async (em) => {
       await em.upsert(SettingsEntity, { key: 'tidal', value: settings });

@@ -26,6 +26,7 @@
     ]
   },
   "dependencies": {
+    "@playlarr/imports-contracts": "workspace:*",
     "@playlarr/spotify-web": "workspace:*",
     "@playlarr/tidal-web": "workspace:*",
     "react": "19.2.8",

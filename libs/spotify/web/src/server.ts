@@ -1,6 +1,7 @@
 import 'server-only';
 
 import {
+  importSummarySchema,
   sourcePlaylistSchema,
   spotifyConfigurationSchema,
   spotifyImportSchema,
@@ -39,5 +40,16 @@ export async function getSpotifyImport(id: string) {
   if (!response.ok) throw new Error('Spotify import is unavailable');
   const parsed = spotifyImportSchema.safeParse(await response.json());
   if (!parsed.success) throw new Error('Spotify import is invalid');
+  return parsed.data;
+}
+
+export async function getSpotifyImports() {
+  const response = await fetchNestApi(
+    '/spotify/imports',
+    (await cookies()).toString(),
+  );
+  if (!response.ok) throw new Error('Spotify imports are unavailable');
+  const parsed = importSummarySchema.array().safeParse(await response.json());
+  if (!parsed.success) throw new Error('Spotify imports are invalid');
   return parsed.data;
 }

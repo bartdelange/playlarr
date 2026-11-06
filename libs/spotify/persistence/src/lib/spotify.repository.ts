@@ -54,6 +54,12 @@ export class SpotifyRepository {
     return this.orm.em.fork().findOne(SpotifyImportEntity, id);
   }
 
+  listImports(): Promise<SpotifyImportEntity[]> {
+    return this.orm.em.fork().findAll(SpotifyImportEntity, {
+      orderBy: { createdAt: 'DESC' },
+    });
+  }
+
   async replaceConfiguration(settings: unknown): Promise<void> {
     await this.orm.em.transactional(async (em) => {
       await em.upsert(SettingsEntity, { key: 'spotify', value: settings });

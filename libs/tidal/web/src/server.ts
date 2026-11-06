@@ -2,6 +2,7 @@ import 'server-only';
 
 import { fetchNestApi } from '@playlarr/shared-web-infrastructure';
 import {
+  importSummarySchema,
   sourcePlaylistSchema,
   tidalConfigurationSchema,
   tidalImportSchema,
@@ -39,5 +40,16 @@ export async function getTidalImport(id: string) {
   if (!response.ok) throw new Error('TIDAL import is unavailable');
   const parsed = tidalImportSchema.safeParse(await response.json());
   if (!parsed.success) throw new Error('TIDAL import is invalid');
+  return parsed.data;
+}
+
+export async function getTidalImports() {
+  const response = await fetchNestApi(
+    '/tidal/imports',
+    (await cookies()).toString(),
+  );
+  if (!response.ok) throw new Error('TIDAL imports are unavailable');
+  const parsed = importSummarySchema.array().safeParse(await response.json());
+  if (!parsed.success) throw new Error('TIDAL imports are invalid');
   return parsed.data;
 }

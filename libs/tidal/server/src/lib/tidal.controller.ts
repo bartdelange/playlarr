@@ -82,6 +82,11 @@ export class TidalController {
     return this.imports.create(playlistId);
   }
 
+  @Get('imports')
+  listImports() {
+    return this.imports.list();
+  }
+
   @Get('imports/:importId')
   getImport(@Param('importId') importId: string) {
     if (!importId || importId.length > 64)

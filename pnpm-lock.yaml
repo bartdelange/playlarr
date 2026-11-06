@@ -476,6 +476,9 @@ importers:
 
   libs/imports/web:
     dependencies:
+      '@playlarr/imports-contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@playlarr/spotify-web':
         specifier: workspace:*
         version: link:../../spotify/web

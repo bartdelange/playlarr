@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { SpotifyImport } from '@playlarr/spotify-contracts';
+import type { ImportSummary, SpotifyImport } from '@playlarr/spotify-contracts';
 import { SpotifyRepository } from '@playlarr/spotify-persistence';
 
 import { SpotifyApiClient } from './spotify-api.client.js';
@@ -34,6 +34,19 @@ export class SpotifyImportService {
     const imported = await this.repository.getImport(id);
     if (!imported) throw new NotFoundException('Import not found');
     return this.toContract(imported);
+  }
+
+  async list(): Promise<ImportSummary[]> {
+    return (await this.repository.listImports()).map((imported) => ({
+      id: imported.id,
+      source: 'spotify',
+      name: imported.playlist.name,
+      trackCount: imported.tracks.length,
+      unavailableTrackCount: imported.tracks.filter(
+        (track) => track.status !== 'available',
+      ).length,
+      createdAt: imported.createdAt.toISOString(),
+    }));
   }
 
   private toContract(imported: {
