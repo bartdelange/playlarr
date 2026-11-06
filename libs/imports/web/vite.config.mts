@@ -45,6 +45,7 @@ export default defineConfig(() => ({
         '@playlarr/spotify-web',
         '@playlarr/spotify-web/server',
         '@playlarr/tidal-web',
+        '@playlarr/tidal-web/server',
         'react',
         'react-dom',
         'react/jsx-runtime',

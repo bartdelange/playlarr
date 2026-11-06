@@ -3,8 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { MikroORM } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 import { SettingsEntity } from '@playlarr/settings-persistence';
+import type {
+  SourcePlaylist,
+  SourcePlaylistTrack,
+} from '@playlarr/tidal-contracts';
 
 import { TidalCredentialEntity } from './tidal-credential.entity.js';
+import { TidalImportEntity } from './tidal-import.entity.js';
 import { TidalOAuthAttemptEntity } from './tidal-oauth-attempt.entity.js';
 
 export interface TidalCredential {
@@ -25,6 +30,26 @@ export class TidalRepository {
 
   getCredential(): Promise<TidalCredentialEntity | null> {
     return this.orm.em.fork().findOne(TidalCredentialEntity, 'tidal');
+  }
+
+  async createImport(
+    playlist: SourcePlaylist,
+    tracks: SourcePlaylistTrack[],
+  ): Promise<TidalImportEntity> {
+    const em = this.orm.em.fork();
+    const imported = em.create(TidalImportEntity, {
+      id: randomUUID(),
+      playlist,
+      tracks,
+      createdAt: new Date(),
+    });
+    em.persist(imported);
+    await em.flush();
+    return imported;
+  }
+
+  getImport(id: string): Promise<TidalImportEntity | null> {
+    return this.orm.em.fork().findOne(TidalImportEntity, id);
   }
 
   async replaceConfiguration(settings: unknown): Promise<void> {

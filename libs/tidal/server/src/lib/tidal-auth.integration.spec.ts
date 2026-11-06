@@ -273,6 +273,149 @@ describe('TIDAL authorization', () => {
     expect(JSON.stringify(response.body)).not.toMatch(/access|refresh|token/i);
   });
 
+  it('persists a normalized playlist snapshot with source order and duplicates', async () => {
+    await configure(app).expect(201);
+    await seedCredential(new Date(Date.now() + 3_600_000));
+    const playlistPage = {
+      data: [
+        {
+          id: 'playlist-one',
+          type: 'playlists',
+          attributes: {
+            name: 'Repeated favorites',
+            numberOfItems: 2,
+            lastModifiedAt: '2026-11-06T10:00:00Z',
+          },
+          relationships: {
+            owners: { data: [{ id: 'owner-one', type: 'users' }] },
+          },
+        },
+      ],
+      included: [
+        {
+          id: 'owner-one',
+          type: 'users',
+          attributes: { username: 'Listener' },
+        },
+      ],
+      links: { self: '/v2/playlists' },
+    };
+    const itemPage = {
+      data: [
+        { id: 'track-one', type: 'tracks' },
+        { id: 'track-one', type: 'tracks' },
+      ],
+      included: [
+        {
+          id: 'track-one',
+          type: 'tracks',
+          attributes: { title: 'Same song', duration: 'PT2M3S' },
+          relationships: {
+            albums: { data: [{ id: 'album-one', type: 'albums' }] },
+            artists: { data: [{ id: 'artist-one', type: 'artists' }] },
+          },
+        },
+        {
+          id: 'album-one',
+          type: 'albums',
+          attributes: { title: 'Album' },
+        },
+        {
+          id: 'artist-one',
+          type: 'artists',
+          attributes: { name: 'Artist' },
+        },
+      ],
+      links: { self: '/v2/playlists/playlist-one/relationships/items' },
+    };
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(playlistPage))
+      .mockResolvedValueOnce(Response.json(itemPage))
+      .mockResolvedValueOnce(Response.json(playlistPage));
+
+    const created = await request(app.getHttpServer())
+      .post('/api/tidal/imports')
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ playlistId: 'playlist-one' })
+      .expect(201);
+
+    expect(created.body.playlist).toMatchObject({
+      id: 'playlist-one',
+      name: 'Repeated favorites',
+      snapshotId: '2026-11-06T10:00:00Z',
+    });
+    expect(
+      created.body.tracks.map((track: { sourceId: string }) => track.sourceId),
+    ).toEqual(['track-one', 'track-one']);
+    expect(
+      created.body.tracks.map((track: { position: number }) => track.position),
+    ).toEqual([0, 1]);
+
+    const persisted = await request(app.getHttpServer())
+      .get(`/api/tidal/imports/${created.body.id as string}`)
+      .expect(200);
+    expect(persisted.body).toEqual(created.body);
+  });
+
+  it('rejects imports when TIDAL metadata and fetched item counts disagree', async () => {
+    await configure(app).expect(201);
+    await seedCredential(new Date(Date.now() + 3_600_000));
+    const playlistPage = (numberOfItems: number) => ({
+      data: [
+        {
+          id: 'playlist-one',
+          type: 'playlists',
+          attributes: {
+            name: 'Changing playlist',
+            numberOfItems,
+            lastModifiedAt: '2026-11-06T10:00:00Z',
+          },
+          relationships: {
+            owners: { data: [{ id: 'owner-one', type: 'users' }] },
+          },
+        },
+      ],
+      included: [
+        {
+          id: 'owner-one',
+          type: 'users',
+          attributes: { username: 'Listener' },
+        },
+      ],
+      links: { self: '/v2/playlists' },
+    });
+    const itemPage = {
+      data: [
+        { id: 'video-one', type: 'videos' },
+        { id: 'video-two', type: 'videos' },
+      ],
+      included: [],
+      links: { self: '/v2/playlists/playlist-one/relationships/items' },
+    };
+    const provider = vi.spyOn(globalThis, 'fetch');
+
+    provider
+      .mockResolvedValueOnce(Response.json(playlistPage(2)))
+      .mockResolvedValueOnce(Response.json(itemPage))
+      .mockResolvedValueOnce(Response.json(playlistPage(3)));
+    await request(app.getHttpServer())
+      .post('/api/tidal/imports')
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ playlistId: 'playlist-one' })
+      .expect(409);
+
+    provider.mockReset();
+    provider
+      .mockResolvedValueOnce(Response.json(playlistPage(3)))
+      .mockResolvedValueOnce(Response.json(itemPage))
+      .mockResolvedValueOnce(Response.json(playlistPage(3)));
+    await request(app.getHttpServer())
+      .post('/api/tidal/imports')
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({ playlistId: 'playlist-one' })
+      .expect(409);
+  });
+
   it('marks rejected expired authorization as requiring reconnect', async () => {
     await configure(app).expect(201);
     await seedCredential(new Date(Date.now() - 1_000));

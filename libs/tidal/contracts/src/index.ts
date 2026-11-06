@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  sourcePlaylistSchema,
+  sourcePlaylistTrackSchema,
+} from '@playlarr/imports-contracts';
 
 export * from '@playlarr/imports-contracts';
 
@@ -36,3 +40,12 @@ export const tidalConfigurationInputSchema = z.object({
 export type TidalConfigurationInput = z.infer<
   typeof tidalConfigurationInputSchema
 >;
+
+export const tidalImportSchema = z.object({
+  id: z.uuid(),
+  playlist: sourcePlaylistSchema,
+  tracks: z.array(sourcePlaylistTrackSchema),
+  createdAt: z.iso.datetime(),
+});
+
+export type TidalImport = z.infer<typeof tidalImportSchema>;
