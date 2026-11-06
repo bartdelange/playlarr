@@ -1,0 +1,37 @@
+{
+  "name": "@playlarr/imports-web",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "nx": {
+    "tags": [
+      "type:feature",
+      "platform:web"
+    ]
+  },
+  "dependencies": {
+    "@playlarr/spotify-web": "workspace:*",
+    "@playlarr/tidal-web": "workspace:*",
+    "react": "19.2.8",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.0"
+  }
+}

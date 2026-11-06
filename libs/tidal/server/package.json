@@ -1,0 +1,40 @@
+{
+  "name": "@playlarr/tidal-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "tags": [
+      "type:feature",
+      "platform:server"
+    ]
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.1.2",
+    "@playlarr/auth-server": "workspace:*",
+    "@playlarr/settings-persistence": "workspace:*",
+    "@playlarr/tidal-contracts": "workspace:*",
+    "@playlarr/tidal-persistence": "workspace:*",
+    "tslib": "^2.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@mikro-orm/core": "^7.1.13",
+    "@nestjs/config": "^12.0.1",
+    "@nestjs/testing": "^12.1.2",
+    "@playlarr/shared-database": "workspace:*",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.2.2"
+  }
+}

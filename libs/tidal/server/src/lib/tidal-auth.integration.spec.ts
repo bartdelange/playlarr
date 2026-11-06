@@ -1,0 +1,344 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import type { INestApplication } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import { AuthModule } from '@playlarr/auth-server';
+import { DatabaseModule } from '@playlarr/shared-database';
+import { SettingsRepository } from '@playlarr/settings-persistence';
+import { TidalRepository } from '@playlarr/tidal-persistence';
+import request, { type Response as SupertestResponse } from 'supertest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { TidalModule } from './tidal.module.js';
+import { TidalService } from './tidal.service.js';
+import { tidalSettingsKey, tidalSettingsSchema } from './tidal-settings.js';
+
+async function createApplication(databasePath: string) {
+  const moduleRef = await Test.createTestingModule({
+    imports: [
+      ConfigModule.forRoot({
+        isGlobal: true,
+        load: [() => ({ app: { database: { path: databasePath } } })],
+      }),
+      DatabaseModule,
+      AuthModule,
+      TidalModule,
+    ],
+  }).compile();
+  const app = moduleRef.createNestApplication();
+  app.enableCsrfProtection();
+  app.setGlobalPrefix('api');
+  await app.listen(0, '127.0.0.1');
+  return app;
+}
+
+function cookie(response: SupertestResponse, name: string) {
+  const cookies = response.headers['set-cookie'] as unknown as
+    string[] | undefined;
+  const value = cookies?.find((item) => item.startsWith(`${name}=`));
+  if (!value) throw new Error(`Response did not set ${name}`);
+  return value.split(';', 1)[0];
+}
+
+const configure = (
+  app: INestApplication,
+  overrides: Partial<{ clientId: string; redirectUri: string }> = {},
+) =>
+  request(app.getHttpServer())
+    .post('/api/tidal/configuration')
+    .set('Sec-Fetch-Site', 'same-origin')
+    .send({
+      clientId: 'client-id',
+      redirectUri: 'https://playlarr.example/api/tidal/callback',
+      ...overrides,
+    });
+
+async function startAuthorization(
+  app: INestApplication,
+  returnTo = '/settings',
+) {
+  const response = await request(app.getHttpServer())
+    .get(`/api/tidal/authorize?returnTo=${encodeURIComponent(returnTo)}`)
+    .expect(302);
+  const url = new URL(response.headers.location as string);
+  expect(url.origin).toBe('https://login.tidal.com');
+  expect(url.searchParams.get('scope')).toBe('user.read playlists.read');
+  expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+  return {
+    state: url.searchParams.get('state') as string,
+    bindingCookie: cookie(response, 'playlarr_tidal_oauth'),
+  };
+}
+
+describe('TIDAL authorization', () => {
+  let app: INestApplication;
+  let directory: string;
+
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), 'playlarr-tidal-'));
+    app = await createApplication(join(directory, 'playlarr.db'));
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await app.close();
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  async function seedCredential(expiresAt: Date) {
+    const settings = await app
+      .get(SettingsRepository)
+      .get(tidalSettingsKey, tidalSettingsSchema);
+    if (!settings) throw new Error('TIDAL is not configured');
+    await app.get(TidalRepository).saveCredentialIfConfigurationCurrent(
+      {
+        accessToken: 'access-one',
+        refreshToken: 'refresh-one',
+        expiresAt,
+        scope: 'user.read playlists.read',
+        accountId: 'account-1',
+        reconnectRequired: false,
+      },
+      settings.revision,
+    );
+  }
+
+  it('completes PKCE authorization and stores reusable server-side credentials', async () => {
+    await configure(app).expect(201);
+    const authorization = await startAuthorization(app);
+    const provider = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        access_token: 'access-one',
+        token_type: 'Bearer',
+        refresh_token: 'refresh-one',
+        expires_in: 3600,
+        scope: 'user.read playlists.read',
+        user_id: 123456789,
+      }),
+    );
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', authorization.bindingCookie)
+      .expect('Location', '/settings?tidal=connected')
+      .expect(302);
+
+    expect(provider).toHaveBeenCalledOnce();
+    expect(await app.get(TidalService).getAccessToken()).toBe('access-one');
+    expect(await app.get(TidalRepository).getCredential()).toMatchObject({
+      refreshToken: 'refresh-one',
+      accountId: '123456789',
+      reconnectRequired: false,
+    });
+  });
+
+  it('returns safely when the provider response does not identify the account', async () => {
+    await configure(app).expect(201);
+    const authorization = await startAuthorization(app);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        access_token: 'opaque-access-token',
+        token_type: 'Bearer',
+        refresh_token: 'refresh-one',
+        expires_in: 3600,
+        scope: 'user.read playlists.read',
+      }),
+    );
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', authorization.bindingCookie)
+      .expect('Location', '/settings?tidal=error&tidal_error=provider_error')
+      .expect(302);
+
+    expect(await app.get(TidalRepository).getCredential()).toBeNull();
+  });
+
+  it('returns an expired grant to the originating flow and can retry', async () => {
+    await configure(app).expect(201);
+    const rejected = await startAuthorization(app, '/imports/new?source=tidal');
+    const provider = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({ error: 'invalid_grant' }, { status: 400 }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          access_token: 'access-after-retry',
+          token_type: 'Bearer',
+          refresh_token: 'refresh-after-retry',
+          expires_in: 3600,
+          scope: 'user.read playlists.read',
+          user_id: 123456789,
+        }),
+      );
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${rejected.state}&code=expired-code`)
+      .set('Cookie', rejected.bindingCookie)
+      .expect(
+        'Location',
+        '/imports/new?source=tidal&tidal=error&tidal_error=authorization_expired',
+      )
+      .expect(302);
+    expect(await app.get(TidalRepository).getCredential()).toBeNull();
+
+    const retry = await startAuthorization(app);
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${retry.state}&code=fresh-code`)
+      .set('Cookie', retry.bindingCookie)
+      .expect('Location', '/settings?tidal=connected')
+      .expect(302);
+
+    expect(provider).toHaveBeenCalledTimes(2);
+    expect(await app.get(TidalService).getAccessToken()).toBe(
+      'access-after-retry',
+    );
+  });
+
+  it('returns missing permissions and unexpected provider failures safely', async () => {
+    await configure(app).expect(201);
+    const missingPermissions = await startAuthorization(app);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({ error: 'invalid_scope' }, { status: 400 }),
+    );
+
+    await request(app.getHttpServer())
+      .get(
+        `/api/tidal/callback?state=${missingPermissions.state}&code=limited-code`,
+      )
+      .set('Cookie', missingPermissions.bindingCookie)
+      .expect(
+        'Location',
+        '/settings?tidal=error&tidal_error=missing_permissions',
+      )
+      .expect(302);
+
+    const unavailable = await startAuthorization(app);
+    vi.mocked(globalThis.fetch).mockRejectedValueOnce(
+      new Error('private upstream detail'),
+    );
+    const response = await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${unavailable.state}&code=code`)
+      .set('Cookie', unavailable.bindingCookie)
+      .expect('Location', '/settings?tidal=error&tidal_error=provider_error')
+      .expect(302);
+
+    expect(response.text).not.toContain('private upstream detail');
+    expect(await app.get(TidalRepository).getCredential()).toBeNull();
+  });
+
+  it('only returns to supported Playlarr destinations and preserves their query', async () => {
+    await configure(app).expect(201);
+    const supported = await startAuthorization(
+      app,
+      '/imports/new?source=tidal&step=choose',
+    );
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${supported.state}&error=access_denied`)
+      .set('Cookie', supported.bindingCookie)
+      .expect(
+        'Location',
+        '/imports/new?source=tidal&step=choose&tidal=error&tidal_error=access_denied',
+      )
+      .expect(302);
+
+    const unsupported = await startAuthorization(app, '/imports/command-1');
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${unsupported.state}&error=access_denied`)
+      .set('Cookie', unsupported.bindingCookie)
+      .expect('Location', '/settings?tidal=error&tidal_error=access_denied')
+      .expect(302);
+  });
+
+  it('returns connection metadata without credential material', async () => {
+    await configure(app).expect(201);
+    await seedCredential(new Date(Date.now() + 3_600_000));
+
+    const response = await request(app.getHttpServer())
+      .get('/api/tidal/configuration')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      clientId: 'client-id',
+      redirectUri: 'https://playlarr.example/api/tidal/callback',
+      status: 'connected',
+      account: { id: 'account-1' },
+    });
+    expect(JSON.stringify(response.body)).not.toMatch(/access|refresh|token/i);
+  });
+
+  it('marks rejected expired authorization as requiring reconnect', async () => {
+    await configure(app).expect(201);
+    await seedCredential(new Date(Date.now() - 1_000));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ error: 'invalid_grant' }, { status: 400 }),
+    );
+
+    await expect(app.get(TidalService).getAccessToken()).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    await expect(
+      request(app.getHttpServer()).get('/api/tidal/configuration'),
+    ).resolves.toMatchObject({ body: { status: 'reconnect_required' } });
+  });
+
+  it('coalesces concurrent refresh needs within the single backend process', async () => {
+    await configure(app).expect(201);
+    await seedCredential(new Date(Date.now() - 1_000));
+    const provider = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        access_token: 'access-two',
+        token_type: 'Bearer',
+        expires_in: 3600,
+        scope: 'user.read playlists.read',
+      }),
+    );
+
+    await expect(
+      Promise.all([
+        app.get(TidalService).getAccessToken(),
+        app.get(TidalService).getAccessToken(),
+      ]),
+    ).resolves.toEqual(['access-two', 'access-two']);
+    expect(provider).toHaveBeenCalledOnce();
+    expect(await app.get(TidalRepository).getCredential()).toMatchObject({
+      accessToken: 'access-two',
+      refreshToken: 'refresh-one',
+      reconnectRequired: false,
+    });
+  });
+
+  it('invalidates credentials immediately when configuration changes', async () => {
+    await configure(app).expect(201);
+    await seedCredential(new Date(Date.now() + 3_600_000));
+
+    await configure(app, { clientId: 'replacement-client' }).expect(201, {
+      clientId: 'replacement-client',
+      redirectUri: 'https://playlarr.example/api/tidal/callback',
+      status: 'not_connected',
+      account: null,
+    });
+
+    await expect(app.get(TidalService).getAccessToken()).rejects.toThrow(
+      'Reconnect TIDAL in Settings',
+    );
+  });
+
+  it('rejects callbacks that do not match the browser-bound attempt', async () => {
+    await configure(app).expect(201);
+    const authorization = await startAuthorization(app);
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${authorization.state}&code=code`)
+      .set('Cookie', 'playlarr_tidal_oauth=wrong')
+      .expect(400);
+
+    expect(await app.get(TidalRepository).getCredential()).toBeNull();
+  });
+});

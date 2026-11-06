@@ -48,10 +48,16 @@
   ],
   "references": [
     {
+      "path": "../../libs/tidal/web"
+    },
+    {
       "path": "../../libs/spotify/web"
     },
     {
       "path": "../../libs/settings/web"
+    },
+    {
+      "path": "../../libs/imports/web"
     },
     {
       "path": "../../libs/auth/web"

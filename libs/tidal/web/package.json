@@ -1,0 +1,39 @@
+{
+  "name": "@playlarr/tidal-web",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "nx": {
+    "tags": [
+      "type:feature",
+      "platform:web"
+    ]
+  },
+  "dependencies": {
+    "@playlarr/shared-web-infrastructure": "workspace:*",
+    "@playlarr/tidal-contracts": "workspace:*",
+    "next": "~16.1.7",
+    "react": "19.2.8",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "^14.6.6"
+  }
+}
