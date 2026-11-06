@@ -12,42 +12,26 @@ import type {
   TidalConfiguration,
   TidalConfigurationInput,
 } from '@playlarr/tidal-contracts';
-import {
-  TidalRepository,
-  type TidalCredential,
-} from '@playlarr/tidal-persistence';
+import { TidalRepository } from '@playlarr/tidal-persistence';
 import { SettingsRepository } from '@playlarr/settings-persistence';
-import { z } from 'zod';
 
 import {
   tidalSettingsKey,
   tidalSettingsSchema,
   type TidalSettings,
 } from './tidal-settings.js';
+import {
+  requestTidalToken,
+  TidalGrantRejectedException,
+  updatedTidalCredential,
+} from './tidal-token.js';
 
-const tokenSchema = z.object({
-  access_token: z.string().min(1),
-  refresh_token: z.string().min(1).optional(),
-  expires_in: z.number().int().positive(),
-  scope: z.string().default(''),
-  user_id: z.number().int().positive().transform(String).optional(),
-});
-const tokenErrorSchema = z.object({ error: z.string() });
 const tidalScopes = 'user.read playlists.read';
 
 interface AuthorizationStart {
   bindingToken: string;
   secureCookie: boolean;
   url: string;
-}
-
-type TidalAuthorizationError =
-  'authorization_expired' | 'missing_permissions' | 'provider_error';
-
-class TidalGrantRejectedException extends UnauthorizedException {
-  constructor(readonly authorizationError: TidalAuthorizationError) {
-    super('TIDAL authorization is invalid; reconnect in Settings');
-  }
 }
 
 @Injectable()
@@ -189,7 +173,7 @@ export class TidalService {
           'error',
           'configuration_changed',
         );
-      const token = await this.requestToken(
+      const token = await requestTidalToken(
         new URLSearchParams({
           grant_type: 'authorization_code',
           client_id: settings.clientId,
@@ -263,14 +247,14 @@ export class TidalService {
         return latest.accessToken;
       const settings = await this.requireSettings();
       try {
-        const token = await this.requestToken(
+        const token = await requestTidalToken(
           new URLSearchParams({
             grant_type: 'refresh_token',
             refresh_token: latest.refreshToken,
           }),
         );
         const saved = await this.tidal.saveRefreshedCredentialIfCurrent(
-          this.updatedCredential(latest, token),
+          updatedTidalCredential(latest, token),
           settings.revision,
           latest.revision,
         );
@@ -298,58 +282,6 @@ export class TidalService {
     });
   }
 
-  private updatedCredential(
-    current: TidalCredential,
-    token: z.infer<typeof tokenSchema>,
-  ): TidalCredential {
-    return {
-      ...current,
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token ?? current.refreshToken,
-      expiresAt: new Date(Date.now() + token.expires_in * 1_000),
-      scope: token.scope || current.scope,
-      reconnectRequired: false,
-    };
-  }
-
-  private async requestToken(body: URLSearchParams) {
-    const response = await fetch('https://auth.tidal.com/v1/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-    if (!response.ok) {
-      const parsed = tokenErrorSchema.safeParse(
-        await response.json().catch(() => null),
-      );
-      if (
-        parsed.success &&
-        [
-          'access_denied',
-          'invalid_client',
-          'invalid_grant',
-          'invalid_request',
-          'invalid_scope',
-          'insufficient_scope',
-        ].includes(parsed.data.error)
-      )
-        throw new TidalGrantRejectedException(
-          parsed.data.error === 'invalid_grant' ||
-            parsed.data.error === 'access_denied'
-            ? 'authorization_expired'
-            : parsed.data.error === 'invalid_scope' ||
-                parsed.data.error === 'insufficient_scope'
-              ? 'missing_permissions'
-              : 'provider_error',
-        );
-      throw new BadGatewayException('TIDAL token service is unavailable');
-    }
-    const parsed = tokenSchema.safeParse(await response.json());
-    if (!parsed.success)
-      throw new BadGatewayException('TIDAL returned an invalid token response');
-    return parsed.data;
-  }
-
   private getSettings() {
     return this.settings.get(tidalSettingsKey, tidalSettingsSchema);
   }
@@ -362,8 +294,8 @@ export class TidalService {
   }
 
   private hash(value: string) {
-    // These are high-entropy random bearer values, not passwords. A fast
-    // one-way lookup hash is intentional and does not need password stretching.
+    // These are 256-bit-or-greater random bearer tokens, not user-chosen
+    // passwords; SHA-256 is intentionally used as a one-way lookup hash.
     return createHash('sha256').update(value).digest('hex');
   }
 

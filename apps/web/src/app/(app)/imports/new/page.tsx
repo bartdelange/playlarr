@@ -8,7 +8,7 @@ import {
   getSpotifyConfiguration,
   getSpotifyPlaylists,
 } from '@playlarr/spotify-web/server';
-import { TidalAuthorizationResult } from '@playlarr/tidal-web';
+import { TidalImportUnavailable } from '@playlarr/tidal-web';
 
 async function SpotifySource({
   authorizationResult,
@@ -58,20 +58,20 @@ export default async function NewImportPage({
     tidal,
     tidal_error: tidalError,
   } = await searchParams;
-  if (source !== 'spotify')
+  if (source === undefined) return <NewImportSources />;
+  if (source === 'tidal')
     return (
-      <>
-        <TidalAuthorizationResult
-          result={{ status: tidal, error: tidalError }}
-        />
-        <NewImportSources />
-      </>
-    );
-  return (
-    <Suspense fallback={<p role="status">Loading Spotify playlists…</p>}>
-      <SpotifySource
-        authorizationResult={{ status: spotify, error: spotifyError }}
+      <TidalImportUnavailable
+        authorizationResult={{ status: tidal, error: tidalError }}
       />
-    </Suspense>
-  );
+    );
+  if (source === 'spotify')
+    return (
+      <Suspense fallback={<p role="status">Loading Spotify playlists…</p>}>
+        <SpotifySource
+          authorizationResult={{ status: spotify, error: spotifyError }}
+        />
+      </Suspense>
+    );
+  return <NewImportSources />;
 }
