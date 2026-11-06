@@ -148,6 +148,25 @@ describe('TidalApiClient', () => {
   it.each([
     ['malformed payloads', { data: 'not-an-array' }],
     [
+      'playlists without an item count',
+      {
+        data: [
+          {
+            id: 'playlist-one',
+            type: 'playlists',
+            attributes: {
+              name: 'Unknown size',
+              lastModifiedAt: '2026-10-01T12:00:00Z',
+            },
+            relationships: {
+              owners: { data: [{ id: 'owner-one', type: 'users' }] },
+            },
+          },
+        ],
+        links: { self: '/v2/playlists' },
+      },
+    ],
+    [
       'pagination outside TIDAL',
       {
         data: [],
@@ -166,6 +185,21 @@ describe('TidalApiClient', () => {
     await expect(api.getPlaylists()).rejects.toBeInstanceOf(
       BadGatewayException,
     );
+  });
+
+  it('reports a malformed pagination URL as a provider failure', async () => {
+    const { api } = client();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({
+        data: [],
+        links: { self: '/v2/playlists', next: 'http://[' },
+      }),
+    );
+
+    await expect(api.getPlaylists()).rejects.toMatchObject({
+      status: 502,
+      message: 'TIDAL returned invalid pagination',
+    });
   });
 
   it('does not retry a rate limit without Retry-After guidance', async () => {

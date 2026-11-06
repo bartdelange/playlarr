@@ -27,7 +27,7 @@ const playlistSchema = z.object({
   type: z.literal('playlists'),
   attributes: z.object({
     name: z.string(),
-    numberOfItems: z.number().int().nonnegative().optional(),
+    numberOfItems: z.number().int().nonnegative(),
     lastModifiedAt: z.iso.datetime(),
   }),
   relationships: z.object({ owners: relationshipSchema }),
@@ -121,7 +121,7 @@ export class TidalApiClient {
           id: playlist.id,
           name: playlist.attributes.name,
           owner: { id: owner.id, displayName: profile.attributes.username },
-          itemCount: playlist.attributes.numberOfItems ?? 0,
+          itemCount: playlist.attributes.numberOfItems,
           snapshotId: playlist.attributes.lastModifiedAt,
         };
       });
@@ -215,7 +215,12 @@ export class TidalApiClient {
   }
 
   private validateNextLink(next: string, expectedPathname: string): string {
-    const url = new URL(next, apiOrigin);
+    let url: URL;
+    try {
+      url = new URL(next, apiOrigin);
+    } catch {
+      throw new BadGatewayException('TIDAL returned invalid pagination');
+    }
     if (url.origin !== apiOrigin || url.pathname !== expectedPathname)
       throw new BadGatewayException('TIDAL returned invalid pagination');
     return `${url.pathname.slice(apiBasePath.length)}${url.search}`;
