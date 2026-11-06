@@ -22,6 +22,18 @@ export interface TidalCredential {
   reconnectRequired: boolean;
 }
 
+export interface TidalImportSummary {
+  id: string;
+  name: string;
+  trackCount: number;
+  unavailableTrackCount: number;
+  createdAt: string;
+}
+
+type TidalImportSummaryRow = Omit<TidalImportSummary, 'createdAt'> & {
+  createdAt: number | string;
+};
+
 type TidalCredentialWrite = Omit<TidalCredential, 'revision'>;
 
 @Injectable()
@@ -50,6 +62,29 @@ export class TidalRepository {
 
   getImport(id: string): Promise<TidalImportEntity | null> {
     return this.orm.em.fork().findOne(TidalImportEntity, id);
+  }
+
+  async listImports(): Promise<TidalImportSummary[]> {
+    const rows: TidalImportSummaryRow[] = await this.orm.em.getConnection()
+      .execute(`
+      select
+        id,
+        json_extract(playlist, '$.name') as name,
+        json_array_length(tracks) as trackCount,
+        (
+          select count(*)
+          from json_each(tidal_imports.tracks)
+          where json_extract(value, '$.status') <> 'available'
+        ) as unavailableTrackCount,
+        created_at as createdAt
+      from tidal_imports
+      order by created_at desc
+    `);
+
+    return rows.map((row) => ({
+      ...row,
+      createdAt: new Date(row.createdAt).toISOString(),
+    }));
   }
 
   async replaceConfiguration(settings: unknown): Promise<void> {

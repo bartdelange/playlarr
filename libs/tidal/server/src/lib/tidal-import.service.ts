@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { TidalImport } from '@playlarr/tidal-contracts';
+import type { ImportSummary, TidalImport } from '@playlarr/tidal-contracts';
 import { TidalRepository } from '@playlarr/tidal-persistence';
 
 import { TidalApiClient } from './tidal-api.client.js';
@@ -43,6 +43,13 @@ export class TidalImportService {
     const imported = await this.repository.getImport(id);
     if (!imported) throw new NotFoundException('Import not found');
     return this.toContract(imported);
+  }
+
+  async list(): Promise<ImportSummary[]> {
+    return (await this.repository.listImports()).map((imported) => ({
+      ...imported,
+      source: 'tidal',
+    }));
   }
 
   private async getPlaylist(playlistId: string) {

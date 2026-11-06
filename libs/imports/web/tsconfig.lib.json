@@ -47,6 +47,9 @@
     },
     {
       "path": "../../spotify/web/tsconfig.lib.json"
+    },
+    {
+      "path": "../contracts/tsconfig.lib.json"
     }
   ]
 }

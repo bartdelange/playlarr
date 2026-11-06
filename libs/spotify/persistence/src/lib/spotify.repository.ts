@@ -24,6 +24,18 @@ export interface SpotifyCredential {
   reconnectRequired: boolean;
 }
 
+export interface SpotifyImportSummary {
+  id: string;
+  name: string;
+  trackCount: number;
+  unavailableTrackCount: number;
+  createdAt: string;
+}
+
+type SpotifyImportSummaryRow = Omit<SpotifyImportSummary, 'createdAt'> & {
+  createdAt: number | string;
+};
+
 type SpotifyCredentialWrite = Omit<SpotifyCredential, 'revision'>;
 
 @Injectable()
@@ -52,6 +64,29 @@ export class SpotifyRepository {
 
   async getImport(id: string): Promise<SpotifyImportEntity | null> {
     return this.orm.em.fork().findOne(SpotifyImportEntity, id);
+  }
+
+  async listImports(): Promise<SpotifyImportSummary[]> {
+    const rows: SpotifyImportSummaryRow[] = await this.orm.em.getConnection()
+      .execute(`
+      select
+        id,
+        json_extract(playlist, '$.name') as name,
+        json_array_length(tracks) as trackCount,
+        (
+          select count(*)
+          from json_each(spotify_imports.tracks)
+          where json_extract(value, '$.status') <> 'available'
+        ) as unavailableTrackCount,
+        created_at as createdAt
+      from spotify_imports
+      order by created_at desc
+    `);
+
+    return rows.map((row) => ({
+      ...row,
+      createdAt: new Date(row.createdAt).toISOString(),
+    }));
   }
 
   async replaceConfiguration(settings: unknown): Promise<void> {
