@@ -1,0 +1,26 @@
+{
+  "data": [
+    {
+      "id": "playlist-two",
+      "type": "playlists",
+      "attributes": {
+        "name": "Second playlist",
+        "numberOfItems": 2,
+        "lastModifiedAt": "2026-10-02T12:00:00Z"
+      },
+      "relationships": {
+        "owners": { "data": [{ "id": "owner-two", "type": "users" }] }
+      }
+    }
+  ],
+  "included": [
+    {
+      "id": "owner-two",
+      "type": "users",
+      "attributes": { "username": "Other listener" }
+    }
+  ],
+  "links": {
+    "self": "/v2/playlists?filter[owners.id]=me&include=owners&page[cursor]=next"
+  }
+}

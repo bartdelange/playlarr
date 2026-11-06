@@ -1,0 +1,42 @@
+{
+  "data": [
+    { "id": "track-one", "type": "tracks" },
+    { "id": "track-one", "type": "tracks" },
+    { "id": "missing-track", "type": "tracks" }
+  ],
+  "included": [
+    {
+      "id": "track-one",
+      "type": "tracks",
+      "attributes": { "title": "Repeated song", "duration": "PT2M3.456S" },
+      "relationships": {
+        "albums": { "data": [{ "id": "album-one", "type": "albums" }] },
+        "artists": {
+          "data": [
+            { "id": "artist-one", "type": "artists" },
+            { "id": "artist-two", "type": "artists" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "album-one",
+      "type": "albums",
+      "attributes": { "title": "Album one" }
+    },
+    {
+      "id": "artist-one",
+      "type": "artists",
+      "attributes": { "name": "Artist one" }
+    },
+    {
+      "id": "artist-two",
+      "type": "artists",
+      "attributes": { "name": "Artist two" }
+    }
+  ],
+  "links": {
+    "self": "/v2/playlists/selected/relationships/items?include=items.artists,items.albums",
+    "next": "https://openapi.tidal.com/v2/playlists/selected/relationships/items?include=items.artists%2Citems.albums&page[cursor]=next"
+  }
+}
