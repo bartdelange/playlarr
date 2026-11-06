@@ -1,0 +1,22 @@
+.flow {
+  display: grid;
+  gap: 1rem;
+}
+
+.flow h1,
+.flow p {
+  margin: 0;
+}
+
+.source {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.25rem;
+  border: 1px solid #dfe3ea;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.source span {
+  color: #59657a;
+}

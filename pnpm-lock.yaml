@@ -283,6 +283,9 @@ importers:
       '@playlarr/auth-web':
         specifier: workspace:*
         version: link:../../libs/auth/web
+      '@playlarr/imports-web':
+        specifier: workspace:*
+        version: link:../../libs/imports/web
       '@playlarr/settings-web':
         specifier: workspace:*
         version: link:../../libs/settings/web
@@ -461,6 +464,25 @@ importers:
       tslib:
         specifier: ^2.3.0
         version: 2.8.1
+
+  libs/imports/web:
+    dependencies:
+      '@playlarr/spotify-web':
+        specifier: workspace:*
+        version: link:../../spotify/web
+      '@playlarr/tidal-web':
+        specifier: workspace:*
+        version: link:../../tidal/web
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+    devDependencies:
+      '@testing-library/react':
+        specifier: 16.3.0
+        version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
   libs/sample-command/server:
     dependencies:

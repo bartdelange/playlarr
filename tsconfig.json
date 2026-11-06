@@ -68,6 +68,9 @@
     },
     {
       "path": "./libs/tidal/web"
+    },
+    {
+      "path": "./libs/imports/web"
     }
   ]
 }

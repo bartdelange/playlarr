@@ -6,7 +6,6 @@
 .flow p {
   margin: 0;
 }
-.source,
 .notice,
 .playlists li,
 .tracks li {
@@ -14,12 +13,6 @@
   border-radius: 0.75rem;
   background: #fff;
 }
-.source {
-  display: grid;
-  gap: 0.25rem;
-  padding: 1.25rem;
-}
-.source span,
 .playlists span,
 .tracks span {
   color: #59657a;

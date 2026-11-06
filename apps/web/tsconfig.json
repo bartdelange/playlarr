@@ -57,6 +57,9 @@
       "path": "../../libs/settings/web"
     },
     {
+      "path": "../../libs/imports/web"
+    },
+    {
       "path": "../../libs/auth/web"
     },
     {

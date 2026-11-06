@@ -12,6 +12,7 @@ packages:
   - 'libs/settings/*'
   - 'libs/spotify/*'
   - 'libs/tidal/*'
+  - 'libs/imports/*'
 autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': true

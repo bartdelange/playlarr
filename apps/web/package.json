@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@playlarr/auth-web": "workspace:*",
+    "@playlarr/imports-web": "workspace:*",
     "@playlarr/settings-web": "workspace:*",
     "@playlarr/shared-web-infrastructure": "workspace:*",
     "@playlarr/spotify-web": "workspace:*",
