@@ -17,11 +17,32 @@ const statusLabels = {
 
 const authorizationErrorMessages: Record<string, string> = {
   access_denied: 'TIDAL authorization was cancelled.',
+  authorization_expired:
+    'TIDAL authorization expired or was already used. Start authorization again.',
   configuration_changed:
     'TIDAL settings changed during authorization. Start authorization again.',
+  missing_permissions:
+    'TIDAL did not grant the required permissions. Approve the requested access and try again.',
   missing_code: 'TIDAL did not return an authorization code.',
   provider_error: 'TIDAL could not complete authorization.',
 };
+
+export function TidalAuthorizationResult({
+  result,
+}: {
+  result?: { status?: string; error?: string };
+}) {
+  if (result?.status === 'connected')
+    return <p className={styles.success}>TIDAL connected successfully.</p>;
+  if (result?.status !== 'error') return null;
+  return (
+    <p className={styles.error} role="alert">
+      {authorizationErrorMessages[result.error ?? 'provider_error'] ??
+        authorizationErrorMessages.provider_error}{' '}
+      Check the app settings and reconnect.
+    </p>
+  );
+}
 
 export function TidalSettings({
   initialConfiguration,
@@ -105,17 +126,7 @@ export function TidalSettings({
           {configuration.account.id}.
         </p>
       ) : null}
-      {authorizationResult?.status === 'connected' ? (
-        <p className={styles.success}>TIDAL connected successfully.</p>
-      ) : null}
-      {authorizationResult?.status === 'error' ? (
-        <p className={styles.error} role="alert">
-          {authorizationErrorMessages[
-            authorizationResult.error ?? 'provider_error'
-          ] ?? authorizationErrorMessages.provider_error}{' '}
-          Check the app settings and reconnect.
-        </p>
-      ) : null}
+      <TidalAuthorizationResult result={authorizationResult} />
       {status === 'reconnect_required' ? (
         <p className={styles.error} role="alert">
           TIDAL no longer accepts the saved authorization. Reconnect to

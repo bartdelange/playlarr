@@ -4,6 +4,7 @@ import {
   BadGatewayException,
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from '@playlarr/auth-server';
@@ -40,10 +41,18 @@ interface AuthorizationStart {
   url: string;
 }
 
-class TidalGrantRejectedException extends UnauthorizedException {}
+type TidalAuthorizationError =
+  'authorization_expired' | 'missing_permissions' | 'provider_error';
+
+class TidalGrantRejectedException extends UnauthorizedException {
+  constructor(readonly authorizationError: TidalAuthorizationError) {
+    super('TIDAL authorization is invalid; reconnect in Settings');
+  }
+}
 
 @Injectable()
 export class TidalService {
+  private readonly logger = new Logger(TidalService.name);
   private mutationTail = Promise.resolve();
 
   constructor(
@@ -162,48 +171,66 @@ export class TidalService {
       return this.resultPath(
         attempt.returnPath,
         'error',
-        input.error === 'access_denied' ? 'access_denied' : 'provider_error',
+        input.error === 'access_denied'
+          ? 'access_denied'
+          : input.error === 'invalid_scope' ||
+              input.error === 'insufficient_scope'
+            ? 'missing_permissions'
+            : 'provider_error',
       );
     if (!input.code)
       return this.resultPath(attempt.returnPath, 'error', 'missing_code');
 
-    const settings = await this.requireSettings();
-    if (settings.revision !== attempt.configurationRevision)
-      return this.resultPath(
-        attempt.returnPath,
-        'error',
-        'configuration_changed',
+    try {
+      const settings = await this.requireSettings();
+      if (settings.revision !== attempt.configurationRevision)
+        return this.resultPath(
+          attempt.returnPath,
+          'error',
+          'configuration_changed',
+        );
+      const token = await this.requestToken(
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: settings.clientId,
+          code: input.code,
+          redirect_uri: settings.redirectUri,
+          code_verifier: attempt.codeVerifier,
+        }),
       );
-    const token = await this.requestToken(
-      new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: settings.clientId,
-        code: input.code,
-        redirect_uri: settings.redirectUri,
-        code_verifier: attempt.codeVerifier,
-      }),
-    );
-    if (!token.refresh_token)
-      throw new BadGatewayException('TIDAL did not return a refresh token');
-    const accountId = token.user_id;
-    if (!accountId)
-      throw new BadGatewayException(
-        'TIDAL did not identify the authorized account',
+      if (!token.refresh_token)
+        throw new BadGatewayException('TIDAL did not return a refresh token');
+      const accountId = token.user_id;
+      if (!accountId)
+        throw new BadGatewayException(
+          'TIDAL did not identify the authorized account',
+        );
+      const saved = await this.tidal.saveCredentialIfConfigurationCurrent(
+        {
+          accessToken: token.access_token,
+          refreshToken: token.refresh_token,
+          expiresAt: new Date(Date.now() + token.expires_in * 1_000),
+          scope: token.scope,
+          accountId,
+          reconnectRequired: false,
+        },
+        attempt.configurationRevision,
       );
-    const saved = await this.tidal.saveCredentialIfConfigurationCurrent(
-      {
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token,
-        expiresAt: new Date(Date.now() + token.expires_in * 1_000),
-        scope: token.scope,
-        accountId,
-        reconnectRequired: false,
-      },
-      attempt.configurationRevision,
-    );
-    return saved
-      ? this.resultPath(attempt.returnPath, 'connected')
-      : this.resultPath(attempt.returnPath, 'error', 'configuration_changed');
+      return saved
+        ? this.resultPath(attempt.returnPath, 'connected')
+        : this.resultPath(attempt.returnPath, 'error', 'configuration_changed');
+    } catch (error) {
+      const authorizationError =
+        error instanceof TidalGrantRejectedException
+          ? error.authorizationError
+          : 'provider_error';
+      if (!(error instanceof TidalGrantRejectedException))
+        this.logger.error(
+          'TIDAL authorization callback failed',
+          error instanceof Error ? error.stack : undefined,
+        );
+      return this.resultPath(attempt.returnPath, 'error', authorizationError);
+    }
   }
 
   async getAccessToken(): Promise<string> {
@@ -302,10 +329,18 @@ export class TidalService {
           'invalid_client',
           'invalid_grant',
           'invalid_request',
+          'invalid_scope',
+          'insufficient_scope',
         ].includes(parsed.data.error)
       )
         throw new TidalGrantRejectedException(
-          'TIDAL authorization is invalid; reconnect in Settings',
+          parsed.data.error === 'invalid_grant' ||
+            parsed.data.error === 'access_denied'
+            ? 'authorization_expired'
+            : parsed.data.error === 'invalid_scope' ||
+                parsed.data.error === 'insufficient_scope'
+              ? 'missing_permissions'
+              : 'provider_error',
         );
       throw new BadGatewayException('TIDAL token service is unavailable');
     }

@@ -8,6 +8,7 @@ import {
   getSpotifyConfiguration,
   getSpotifyPlaylists,
 } from '@playlarr/spotify-web/server';
+import { TidalAuthorizationResult } from '@playlarr/tidal-web';
 
 async function SpotifySource({
   authorizationResult,
@@ -46,10 +47,26 @@ export default async function NewImportPage({
     source?: string;
     spotify?: string;
     spotify_error?: string;
+    tidal?: string;
+    tidal_error?: string;
   }>;
 }) {
-  const { source, spotify, spotify_error: spotifyError } = await searchParams;
-  if (source !== 'spotify') return <NewImportSources />;
+  const {
+    source,
+    spotify,
+    spotify_error: spotifyError,
+    tidal,
+    tidal_error: tidalError,
+  } = await searchParams;
+  if (source !== 'spotify')
+    return (
+      <>
+        <TidalAuthorizationResult
+          result={{ status: tidal, error: tidalError }}
+        />
+        <NewImportSources />
+      </>
+    );
   return (
     <Suspense fallback={<p role="status">Loading Spotify playlists…</p>}>
       <SpotifySource

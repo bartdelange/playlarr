@@ -136,7 +136,7 @@ describe('TIDAL authorization', () => {
     });
   });
 
-  it('rejects token responses that do not identify the account', async () => {
+  it('returns safely when the provider response does not identify the account', async () => {
     await configure(app).expect(201);
     const authorization = await startAuthorization(app);
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -152,8 +152,83 @@ describe('TIDAL authorization', () => {
     await request(app.getHttpServer())
       .get(`/api/tidal/callback?state=${authorization.state}&code=code`)
       .set('Cookie', authorization.bindingCookie)
-      .expect(502);
+      .expect('Location', '/settings?tidal=error&tidal_error=provider_error')
+      .expect(302);
 
+    expect(await app.get(TidalRepository).getCredential()).toBeNull();
+  });
+
+  it('returns an expired grant to the originating flow and can retry', async () => {
+    await configure(app).expect(201);
+    const rejected = await startAuthorization(app, '/imports/new?source=tidal');
+    const provider = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({ error: 'invalid_grant' }, { status: 400 }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          access_token: 'access-after-retry',
+          token_type: 'Bearer',
+          refresh_token: 'refresh-after-retry',
+          expires_in: 3600,
+          scope: 'user.read playlists.read',
+          user_id: 123456789,
+        }),
+      );
+
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${rejected.state}&code=expired-code`)
+      .set('Cookie', rejected.bindingCookie)
+      .expect(
+        'Location',
+        '/imports/new?source=tidal&tidal=error&tidal_error=authorization_expired',
+      )
+      .expect(302);
+    expect(await app.get(TidalRepository).getCredential()).toBeNull();
+
+    const retry = await startAuthorization(app);
+    await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${retry.state}&code=fresh-code`)
+      .set('Cookie', retry.bindingCookie)
+      .expect('Location', '/settings?tidal=connected')
+      .expect(302);
+
+    expect(provider).toHaveBeenCalledTimes(2);
+    expect(await app.get(TidalService).getAccessToken()).toBe(
+      'access-after-retry',
+    );
+  });
+
+  it('returns missing permissions and unexpected provider failures safely', async () => {
+    await configure(app).expect(201);
+    const missingPermissions = await startAuthorization(app);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({ error: 'invalid_scope' }, { status: 400 }),
+    );
+
+    await request(app.getHttpServer())
+      .get(
+        `/api/tidal/callback?state=${missingPermissions.state}&code=limited-code`,
+      )
+      .set('Cookie', missingPermissions.bindingCookie)
+      .expect(
+        'Location',
+        '/settings?tidal=error&tidal_error=missing_permissions',
+      )
+      .expect(302);
+
+    const unavailable = await startAuthorization(app);
+    vi.mocked(globalThis.fetch).mockRejectedValueOnce(
+      new Error('private upstream detail'),
+    );
+    const response = await request(app.getHttpServer())
+      .get(`/api/tidal/callback?state=${unavailable.state}&code=code`)
+      .set('Cookie', unavailable.bindingCookie)
+      .expect('Location', '/settings?tidal=error&tidal_error=provider_error')
+      .expect(302);
+
+    expect(response.text).not.toContain('private upstream detail');
     expect(await app.get(TidalRepository).getCredential()).toBeNull();
   });
 
