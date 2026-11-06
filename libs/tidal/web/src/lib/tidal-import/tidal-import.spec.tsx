@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   TidalAuthorizationRequired,
   TidalPlaylistSelection,
+  tidalImportWorkspacePath,
 } from './tidal-import';
 
 const playlist = {
@@ -17,6 +18,12 @@ const playlist = {
 
 describe('TIDAL import flow', () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it('uses a provider-specific workspace path', () => {
+    expect(tidalImportWorkspacePath('import/one')).toBe(
+      '/imports/import%2Fone/tidal',
+    );
+  });
 
   it('guides a disconnected user through authorization and back to the flow', () => {
     render(

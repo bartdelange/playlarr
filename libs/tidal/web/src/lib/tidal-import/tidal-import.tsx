@@ -12,6 +12,9 @@ import styles from './tidal-import.module.css';
 
 const returnTo = encodeURIComponent('/imports/new?source=tidal');
 
+export const tidalImportWorkspacePath = (importId: string) =>
+  `/imports/${encodeURIComponent(importId)}/tidal`;
+
 export function TidalAuthorizationRequired({
   configured,
   authorizationResult,
@@ -72,7 +75,7 @@ export function TidalPlaylistSelection({
       if (!response.ok) throw new Error();
       const parsed = tidalImportSchema.safeParse(await response.json());
       if (!parsed.success) throw new Error();
-      window.location.assign(`/imports/${parsed.data.id}?source=tidal`);
+      window.location.assign(tidalImportWorkspacePath(parsed.data.id));
     } catch {
       setError('Unable to import this playlist. Please try again.');
       setCreating(null);

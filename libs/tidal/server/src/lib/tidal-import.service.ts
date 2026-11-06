@@ -19,7 +19,16 @@ export class TidalImportService {
     const playlist = await this.getPlaylist(playlistId);
     const contents = await this.api.getPlaylistContents(playlistId);
     const currentPlaylist = await this.getPlaylist(playlistId);
-    if (currentPlaylist.snapshotId !== playlist.snapshotId)
+
+    // TIDAL documents lastModifiedAt as a date-time, not as an immutable
+    // revision token. These checks detect timestamp or size changes around the
+    // paginated read. The endpoint offers no atomic multi-page snapshot, so a
+    // same-size mutation without a timestamp change cannot be excluded.
+    if (
+      currentPlaylist.snapshotId !== playlist.snapshotId ||
+      currentPlaylist.itemCount !== playlist.itemCount ||
+      contents.tracks.length !== playlist.itemCount
+    )
       throw new ConflictException(
         'TIDAL playlist changed during import; try again',
       );
