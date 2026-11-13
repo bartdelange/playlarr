@@ -21,7 +21,7 @@ describe('TIDAL import flow', () => {
 
   it('uses a provider-specific workspace path', () => {
     expect(tidalImportWorkspacePath('import/one')).toBe(
-      '/imports/import%2Fone/tidal',
+      '/imports/import%2Fone',
     );
   });
 

@@ -13,7 +13,7 @@ import styles from './tidal-import.module.css';
 const returnTo = encodeURIComponent('/imports/new?source=tidal');
 
 export const tidalImportWorkspacePath = (importId: string) =>
-  `/imports/${encodeURIComponent(importId)}/tidal`;
+  `/imports/${encodeURIComponent(importId)}`;
 
 export function TidalAuthorizationRequired({
   configured,

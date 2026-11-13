@@ -1,3 +1,5 @@
+import { ImportWorkspaceSkeleton } from '@playlarr/imports-web';
+
 export default function ImportWorkspaceLoading() {
-  return <p role="status">Loading import workspace…</p>;
+  return <ImportWorkspaceSkeleton />;
 }

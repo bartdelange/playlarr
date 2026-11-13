@@ -1,0 +1,23 @@
+.navigation {
+  border-bottom: 1px solid #d9dee5;
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+}
+
+.navigation a {
+  border-bottom: 3px solid transparent;
+  font-weight: 650;
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
+}
+
+.navigation a[aria-current='page'] {
+  border-color: #2457c5;
+  color: #1747ac;
+}
+
+.navigation a:focus-visible {
+  outline: 3px solid #8eb3ff;
+  outline-offset: -3px;
+}
