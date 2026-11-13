@@ -76,7 +76,7 @@ afterEach(() => {
 
 describe('ImportWorkspace', () => {
   it('keeps active progress visible while stage content changes', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(command())));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([command()])));
     vi.stubGlobal('EventSource', FakeEventSource);
 
     const { rerender } = render(
@@ -94,7 +94,7 @@ describe('ImportWorkspace', () => {
     expect(screen.getByText('42 tracks · 2 items need review')).toBeTruthy();
     expect(await screen.findByText('Waiting 1 of 3 (1/3)')).toBeTruthy();
     expect(FakeEventSource.instances[0]?.url).toBe(
-      '/api/events?commandId=command-one',
+      '/api/events?scope=imports&entityId=import-one',
     );
 
     rerender(
@@ -129,7 +129,7 @@ describe('ImportWorkspace', () => {
   });
 
   it('shows terminal command states received over the shared stream', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(command())));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([command()])));
     vi.stubGlobal('EventSource', FakeEventSource);
     render(
       <ImportWorkspace
@@ -157,16 +157,16 @@ describe('ImportWorkspace', () => {
   it('reconciles persisted progress when the event stream reconnects', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(response(command()))
+      .mockResolvedValueOnce(response([command()]))
       .mockResolvedValueOnce(
-        response(
+        response([
           command({
             current: 3,
             currentItem: 'Waiting 3 of 3',
             status: 'completed',
             revision: 4,
           }),
-        ),
+        ]),
       );
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('EventSource', FakeEventSource);
@@ -188,11 +188,12 @@ describe('ImportWorkspace', () => {
 
     expect(await screen.findByText('Background work completed.')).toBeTruthy();
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenLastCalledWith('/api/commands/command-one', {
-        cache: 'no-store',
-      });
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        '/api/commands?scope=imports&entityId=import-one',
+        { cache: 'no-store' },
+      );
     });
-    expect(FakeEventSource.instances[0]?.closed).toBe(true);
+    expect(FakeEventSource.instances[0]?.closed).toBe(false);
 
     act(() => {
       FakeEventSource.instances[0]?.emit('command.snapshot', {
@@ -203,6 +204,88 @@ describe('ImportWorkspace', () => {
     });
 
     expect(screen.getByText('Background work completed.')).toBeTruthy();
+  });
+
+  it('observes a command that starts after the workspace is open', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([])));
+    vi.stubGlobal('EventSource', FakeEventSource);
+    render(
+      <ImportWorkspace
+        activity={activity}
+        imported={imported}
+        navigation={stageNavigation}
+      >
+        <h2>Music Matching content</h2>
+      </ImportWorkspace>,
+    );
+
+    await screen.findByText('No command activity recorded for this import.');
+
+    act(() => {
+      FakeEventSource.instances[0]?.emit('command.started', {
+        type: 'command.started',
+        occurredAt: '2026-11-13T10:00:02.000Z',
+        command: command(),
+      });
+    });
+
+    expect(screen.getByText('Waiting 1 of 3 (1/3)')).toBeTruthy();
+  });
+
+  it('shows every active command associated with the import', async () => {
+    const second = command({
+      id: 'command-two',
+      current: 0,
+      currentItem: 'Preparing another job',
+      revision: 1,
+      createdAt: '2026-11-13T10:00:02.000Z',
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(response([command(), second])),
+    );
+    vi.stubGlobal('EventSource', FakeEventSource);
+    render(
+      <ImportWorkspace
+        activity={activity}
+        imported={imported}
+        navigation={stageNavigation}
+      >
+        <h2>Music Matching content</h2>
+      </ImportWorkspace>,
+    );
+
+    expect(await screen.findByText('Waiting 1 of 3 (1/3)')).toBeTruthy();
+    expect(screen.getByText('Preparing another job (0/3)')).toBeTruthy();
+  });
+
+  it('uses persisted insertion order for the latest terminal command', async () => {
+    const createdAt = '2026-11-13T10:00:00.000Z';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response([
+          command({
+            id: 'z-older',
+            status: 'failed',
+            revision: 4,
+            createdAt,
+          }),
+          command({
+            id: 'a-newer',
+            status: 'completed',
+            revision: 4,
+            createdAt,
+          }),
+        ]),
+      ),
+    );
+    vi.stubGlobal('EventSource', FakeEventSource);
+
+    render(<ImportActivity importId={imported.id} />);
+
+    expect(await screen.findByText('Background work completed.')).toBeTruthy();
+    expect(screen.queryByText('Background work failed.')).toBeNull();
   });
 
   it('announces workspace loading', () => {

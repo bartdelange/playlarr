@@ -55,10 +55,21 @@ async function renderWorkspace(source: 'Spotify' | 'TIDAL') {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue(
-      new Response('null', {
+      new Response('[]', {
         headers: { 'content-type': 'application/json' },
       }),
     ),
+  );
+  vi.stubGlobal(
+    'EventSource',
+    class {
+      addEventListener() {
+        return undefined;
+      }
+      close() {
+        return undefined;
+      }
+    },
   );
   const params = Promise.resolve({ importId: 'import-one' });
   apis.getContext.mockResolvedValue({

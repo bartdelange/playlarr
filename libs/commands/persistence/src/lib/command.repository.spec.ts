@@ -108,11 +108,11 @@ describe('CommandRepository', () => {
     expect(state).not.toHaveProperty('payloadJson');
   });
 
-  it('finds the latest command associated with an imported playlist', async () => {
+  it('finds every command associated with an imported playlist in insertion order', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-13T10:00:00.000Z'));
 
-    await repository.create(
+    const first = await repository.create(
       'sample.delay',
       { steps: 2 },
       { scope: 'imports', entityId: 'import-one' },
@@ -132,14 +132,20 @@ describe('CommandRepository', () => {
 
     try {
       await expect(
-        repository.findLatestStateByAssociation({
+        repository.findStatesByAssociation({
           scope: 'imports',
           entityId: 'import-one',
         }),
-      ).resolves.toMatchObject({
-        id: second.id,
-        association: { scope: 'imports', entityId: 'import-one' },
-      });
+      ).resolves.toMatchObject([
+        {
+          id: first.id,
+          association: { scope: 'imports', entityId: 'import-one' },
+        },
+        {
+          id: second.id,
+          association: { scope: 'imports', entityId: 'import-one' },
+        },
+      ]);
     } finally {
       vi.useRealTimers();
     }

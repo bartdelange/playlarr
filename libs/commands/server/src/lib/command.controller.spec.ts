@@ -19,19 +19,17 @@ const state: CommandState = {
 };
 
 describe('CommandController', () => {
-  it('returns the latest command for an association', async () => {
+  it('returns all commands for an association', async () => {
     const repository = Object.create(
       CommandRepository.prototype,
     ) as CommandRepository;
-    vi.spyOn(repository, 'findLatestStateByAssociation').mockResolvedValue(
-      state,
-    );
+    vi.spyOn(repository, 'findStatesByAssociation').mockResolvedValue([state]);
     const controller = new CommandController(repository);
 
-    await expect(controller.latest(' imports ', ' import-one ')).resolves.toBe(
-      state,
-    );
-    expect(repository.findLatestStateByAssociation).toHaveBeenCalledWith({
+    await expect(
+      controller.associated(' imports ', ' import-one '),
+    ).resolves.toEqual([state]);
+    expect(repository.findStatesByAssociation).toHaveBeenCalledWith({
       scope: 'imports',
       entityId: 'import-one',
     });
@@ -44,7 +42,7 @@ describe('CommandController', () => {
     const controller = new CommandController(repository);
 
     await expect(
-      controller.latest('imports', undefined),
+      controller.associated('imports', undefined),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 

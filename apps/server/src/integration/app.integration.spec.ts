@@ -273,6 +273,6 @@ describe('Playlarr server', () => {
     );
 
     expect(importCommand.status).toBe(200);
-    expect(importCommand.body).toEqual(currentState.body);
+    expect(importCommand.body).toEqual([currentState.body]);
   });
 });

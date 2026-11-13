@@ -35,6 +35,8 @@ export const commandStateSchema = z.object({
 
 export type CommandState = z.infer<typeof commandStateSchema>;
 
+export const commandStatesSchema = z.array(commandStateSchema);
+
 export const commandEventTypeSchema = z.enum([
   'command.snapshot',
   'command.started',

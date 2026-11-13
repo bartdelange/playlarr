@@ -50,16 +50,14 @@ export class CommandRepository {
     return command ? this.toState(command) : null;
   }
 
-  async findLatestStateByAssociation(
+  async findStatesByAssociation(
     association: CommandAssociation,
-  ): Promise<CommandState | null> {
-    const command = await this.orm.em
-      .fork()
-      .findOne(CommandEntity, association, {
-        orderBy: [{ createdAt: 'DESC' }, { [raw('rowid')]: 'DESC' }],
-      });
+  ): Promise<CommandState[]> {
+    const commands = await this.orm.em.fork().find(CommandEntity, association, {
+      orderBy: [{ createdAt: 'ASC' }, { [raw('rowid')]: 'ASC' }],
+    });
 
-    return command ? this.toState(command) : null;
+    return commands.map((command) => this.toState(command));
   }
 
   async updateProgress(

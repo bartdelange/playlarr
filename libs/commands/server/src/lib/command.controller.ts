@@ -14,10 +14,10 @@ export class CommandController {
   constructor(private readonly commandRepository: CommandRepository) {}
 
   @Get()
-  async latest(
+  async associated(
     @Query('scope') scopeQuery?: string,
     @Query('entityId') entityIdQuery?: string,
-  ): Promise<CommandState | null> {
+  ): Promise<CommandState[]> {
     const scope = scopeQuery?.trim();
     const entityId = entityIdQuery?.trim();
 
@@ -25,7 +25,7 @@ export class CommandController {
       throw new BadRequestException('scope and entityId are required');
     }
 
-    return this.commandRepository.findLatestStateByAssociation({
+    return this.commandRepository.findStatesByAssociation({
       scope,
       entityId,
     });
