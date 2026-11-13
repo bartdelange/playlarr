@@ -4,10 +4,12 @@ import type { ImportWorkspaceContext } from './import-workspace.server.js';
 import styles from './import-workspace.module.css';
 
 export function ImportWorkspace({
+  activity,
   children,
   imported,
   navigation,
 }: {
+  activity: ReactNode;
   children: ReactNode;
   imported: ImportWorkspaceContext;
   navigation: ReactNode;
@@ -30,7 +32,7 @@ export function ImportWorkspace({
         </div>
         <aside className={styles.activity}>
           <strong>Activity</strong>
-          <p>Import activity will appear here when available.</p>
+          {activity}
         </aside>
       </header>
 

@@ -108,6 +108,43 @@ describe('CommandRepository', () => {
     expect(state).not.toHaveProperty('payloadJson');
   });
 
+  it('finds the latest command associated with an imported playlist', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-13T10:00:00.000Z'));
+
+    await repository.create(
+      'sample.delay',
+      { steps: 2 },
+      { scope: 'imports', entityId: 'import-one' },
+    );
+
+    const second = await repository.create(
+      'sample.delay',
+      { steps: 3 },
+      { scope: 'imports', entityId: 'import-one' },
+    );
+
+    await repository.create(
+      'sample.delay',
+      { steps: 4 },
+      { scope: 'imports', entityId: 'import-two' },
+    );
+
+    try {
+      await expect(
+        repository.findLatestStateByAssociation({
+          scope: 'imports',
+          entityId: 'import-one',
+        }),
+      ).resolves.toMatchObject({
+        id: second.id,
+        association: { scope: 'imports', entityId: 'import-one' },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('orders transitions by revision when timestamps are identical', async () => {
     const timestamp = new Date('2026-10-02T10:00:00.000Z');
 

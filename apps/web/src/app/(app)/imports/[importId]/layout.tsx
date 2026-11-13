@@ -1,4 +1,5 @@
 import { ImportWorkspace } from '@playlarr/imports-web';
+import { ImportActivity } from '@playlarr/imports-web/activity';
 import { getImportWorkspaceContext } from '@playlarr/imports-web/server';
 import { notFound } from 'next/navigation';
 
@@ -18,6 +19,7 @@ export default async function ImportWorkspaceLayout({
 
   return (
     <ImportWorkspace
+      activity={<ImportActivity importId={imported.id} key={imported.id} />}
       imported={imported}
       navigation={<ImportWorkspaceNavigation importId={imported.id} />}
     >

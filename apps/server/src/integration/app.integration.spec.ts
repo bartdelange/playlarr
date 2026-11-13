@@ -219,6 +219,7 @@ describe('Playlarr server', () => {
       .post('/api/sample-command')
       .send({
         steps: 3,
+        importId: 'import-one',
       });
 
     expect(response.status).toBe(201);
@@ -244,6 +245,8 @@ describe('Playlarr server', () => {
       total: 3,
       attempts: 1,
       error: null,
+      scope: 'imports',
+      entityId: 'import-one',
     });
 
     expect(command?.completedAt).toBeInstanceOf(Date);
@@ -261,7 +264,15 @@ describe('Playlarr server', () => {
       total: 3,
       attempts: 1,
       completedAt: expect.any(String),
+      association: { scope: 'imports', entityId: 'import-one' },
     });
     expect(currentState.body).not.toHaveProperty('payloadJson');
+
+    const importCommand = await request(app.getHttpServer()).get(
+      '/api/commands?scope=imports&entityId=import-one',
+    );
+
+    expect(importCommand.status).toBe(200);
+    expect(importCommand.body).toEqual(currentState.body);
   });
 });

@@ -50,6 +50,9 @@
     },
     {
       "path": "../contracts/tsconfig.lib.json"
+    },
+    {
+      "path": "../../commands/contracts/tsconfig.lib.json"
     }
   ]
 }

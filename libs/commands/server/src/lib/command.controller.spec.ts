@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { CommandState } from '@playlarr/commands-domain';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { describe, expect, it, vi } from 'vitest';
@@ -19,6 +19,35 @@ const state: CommandState = {
 };
 
 describe('CommandController', () => {
+  it('returns the latest command for an association', async () => {
+    const repository = Object.create(
+      CommandRepository.prototype,
+    ) as CommandRepository;
+    vi.spyOn(repository, 'findLatestStateByAssociation').mockResolvedValue(
+      state,
+    );
+    const controller = new CommandController(repository);
+
+    await expect(controller.latest(' imports ', ' import-one ')).resolves.toBe(
+      state,
+    );
+    expect(repository.findLatestStateByAssociation).toHaveBeenCalledWith({
+      scope: 'imports',
+      entityId: 'import-one',
+    });
+  });
+
+  it('requires both association fields', async () => {
+    const repository = Object.create(
+      CommandRepository.prototype,
+    ) as CommandRepository;
+    const controller = new CommandController(repository);
+
+    await expect(
+      controller.latest('imports', undefined),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('returns authoritative command state', async () => {
     const repository = Object.create(
       CommandRepository.prototype,

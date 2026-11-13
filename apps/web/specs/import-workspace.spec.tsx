@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 const apis = vi.hoisted(() => ({
   getContext: vi.fn(),
@@ -46,8 +46,20 @@ const repeatedTrack = (position: number) => ({
   trackNumber: 1,
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 async function renderWorkspace(source: 'Spotify' | 'TIDAL') {
   vi.clearAllMocks();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response('null', {
+        headers: { 'content-type': 'application/json' },
+      }),
+    ),
+  );
   const params = Promise.resolve({ importId: 'import-one' });
   apis.getContext.mockResolvedValue({
     id: 'import-one',
@@ -75,6 +87,7 @@ async function renderWorkspace(source: 'Spotify' | 'TIDAL') {
 
   const stage = await MusicMatchingPage({ params });
   render(await ImportWorkspaceLayout({ children: stage, params }));
+  await screen.findByText('No command activity recorded for this import.');
 }
 
 describe('import workspace composition', () => {

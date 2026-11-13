@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import { MikroORM, raw } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
-import type { CommandState } from '@playlarr/commands-domain';
+import type {
+  CommandAssociation,
+  CommandState,
+} from '@playlarr/commands-domain';
 
 import { CommandEntity } from './command.entity.js';
 
@@ -10,13 +13,18 @@ import { CommandEntity } from './command.entity.js';
 export class CommandRepository {
   constructor(private readonly orm: MikroORM) {}
 
-  async create(type: string, payload: unknown): Promise<CommandEntity> {
+  async create(
+    type: string,
+    payload: unknown,
+    association?: CommandAssociation,
+  ): Promise<CommandEntity> {
     const em = this.orm.em.fork();
 
     const command = em.create(CommandEntity, {
       id: randomUUID(),
       type,
       payloadJson: payload,
+      ...(association ?? {}),
       status: 'queued',
       current: 0,
       total: 0,
@@ -38,6 +46,18 @@ export class CommandRepository {
 
   async findStateById(id: string): Promise<CommandState | null> {
     const command = await this.findById(id);
+
+    return command ? this.toState(command) : null;
+  }
+
+  async findLatestStateByAssociation(
+    association: CommandAssociation,
+  ): Promise<CommandState | null> {
+    const command = await this.orm.em
+      .fork()
+      .findOne(CommandEntity, association, {
+        orderBy: [{ createdAt: 'DESC' }, { [raw('rowid')]: 'DESC' }],
+      });
 
     return command ? this.toState(command) : null;
   }
@@ -196,6 +216,11 @@ export class CommandRepository {
         : { currentItem: command.currentItem }),
       attempts: command.attempts,
       revision: command.revision,
+      ...(command.scope == null || command.entityId == null
+        ? {}
+        : {
+            association: { scope: command.scope, entityId: command.entityId },
+          }),
       ...(command.error == null ? {} : { error: command.error }),
       createdAt: command.createdAt.toISOString(),
       updatedAt: command.updatedAt.toISOString(),

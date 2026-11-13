@@ -1,1 +1,1 @@
-export type CommandStatus = 'queued' | 'running' | 'completed' | 'failed';
+export type { CommandStatus } from '@playlarr/commands-contracts';
