@@ -3,19 +3,11 @@ import type { ReactNode } from 'react';
 import type { ImportWorkspaceContext } from './import-workspace.server.js';
 import styles from './import-workspace.module.css';
 
-export interface ImportActiveWork {
-  readonly label: string;
-  readonly current?: number;
-  readonly total?: number;
-}
-
 export function ImportWorkspace({
-  activeWork,
   children,
   imported,
   navigation,
 }: {
-  activeWork?: ImportActiveWork;
   children: ReactNode;
   imported: ImportWorkspaceContext;
   navigation: ReactNode;
@@ -36,19 +28,9 @@ export function ImportWorkspace({
               : ' · Ready for matching'}
           </p>
         </div>
-        <aside aria-live="polite" className={styles.activity}>
+        <aside className={styles.activity}>
           <strong>Activity</strong>
-          {activeWork ? (
-            <p role="status">
-              {activeWork.label}
-              {activeWork.current !== undefined &&
-              activeWork.total !== undefined
-                ? ` · ${activeWork.current} of ${activeWork.total}`
-                : ''}
-            </p>
-          ) : (
-            <p>No background work is running.</p>
-          )}
+          <p>Import activity will appear here when available.</p>
         </aside>
       </header>
 

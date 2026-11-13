@@ -14,11 +14,7 @@ const imported = {
 describe('ImportWorkspace', () => {
   it('keeps import context and activity around stage content', () => {
     const { rerender } = render(
-      <ImportWorkspace
-        activeWork={{ label: 'Matching tracks', current: 12, total: 42 }}
-        imported={imported}
-        navigation={stageNavigation}
-      >
+      <ImportWorkspace imported={imported} navigation={stageNavigation}>
         <h2>Music Matching content</h2>
       </ImportWorkspace>,
     );
@@ -26,16 +22,12 @@ describe('ImportWorkspace', () => {
     expect(screen.getByRole('heading', { name: 'Road trip' })).toBeTruthy();
     expect(screen.getByText('Spotify import')).toBeTruthy();
     expect(screen.getByText('42 tracks · 2 items need review')).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toBe(
-      'Matching tracks · 12 of 42',
-    );
+    expect(
+      screen.getByText('Import activity will appear here when available.'),
+    ).toBeTruthy();
 
     rerender(
-      <ImportWorkspace
-        activeWork={{ label: 'Matching tracks', current: 12, total: 42 }}
-        imported={imported}
-        navigation={stageNavigation}
-      >
+      <ImportWorkspace imported={imported} navigation={stageNavigation}>
         <h2>Lidarr content</h2>
       </ImportWorkspace>,
     );
@@ -43,9 +35,9 @@ describe('ImportWorkspace', () => {
     expect(
       screen.getByRole('heading', { name: 'Lidarr content' }),
     ).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toBe(
-      'Matching tracks · 12 of 42',
-    );
+    expect(
+      screen.getByText('Import activity will appear here when available.'),
+    ).toBeTruthy();
   });
 
   it('announces workspace loading', () => {

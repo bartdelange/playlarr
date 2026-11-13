@@ -141,6 +141,16 @@ export function TidalImportWorkspace({ imported }: { imported: TidalImport }) {
         {imported.tracks.length} source{' '}
         {imported.tracks.length === 1 ? 'item' : 'items'} in playlist order
       </p>
+      <TidalImportedTracks imported={imported} />
+    </main>
+  );
+}
+
+export function TidalImportedTracks({ imported }: { imported: TidalImport }) {
+  return (
+    <section className={styles.importedTracks}>
+      <h2>Imported tracks</h2>
+      <p>Source items are shown in their original playlist order.</p>
       <ol className={styles.tracks}>
         {imported.tracks.map((track) => (
           <li key={track.position}>
@@ -160,6 +170,6 @@ export function TidalImportWorkspace({ imported }: { imported: TidalImport }) {
           </li>
         ))}
       </ol>
-    </main>
+    </section>
   );
 }

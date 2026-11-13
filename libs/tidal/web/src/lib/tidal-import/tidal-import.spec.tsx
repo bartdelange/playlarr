@@ -19,7 +19,7 @@ const playlist = {
 describe('TIDAL import flow', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('uses a provider-specific workspace path', () => {
+  it('uses the canonical import workspace path', () => {
     expect(tidalImportWorkspacePath('import/one')).toBe(
       '/imports/import%2Fone',
     );

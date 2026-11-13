@@ -1,7 +1,8 @@
 import 'server-only';
 
-import { getSpotifyImport } from '@playlarr/spotify-web/server';
-import { getTidalImport } from '@playlarr/tidal-web/server';
+import { cache } from 'react';
+import { getSpotifyImports } from '@playlarr/spotify-web/server';
+import { getTidalImports } from '@playlarr/tidal-web/server';
 
 export interface ImportWorkspaceContext {
   readonly id: string;
@@ -11,16 +12,25 @@ export interface ImportWorkspaceContext {
   readonly unavailableTrackCount: number;
 }
 
-export async function getImportWorkspaceContext(
+async function loadImportWorkspaceContext(
   importId: string,
 ): Promise<ImportWorkspaceContext | null> {
   const [spotifyResult, tidalResult] = await Promise.allSettled([
-    getSpotifyImport(importId),
-    getTidalImport(importId),
+    getSpotifyImports(),
+    getTidalImports(),
   ]);
   const spotify =
-    spotifyResult.status === 'fulfilled' ? spotifyResult.value : null;
-  const tidal = tidalResult.status === 'fulfilled' ? tidalResult.value : null;
+    spotifyResult.status === 'fulfilled'
+      ? (spotifyResult.value.find((imported) => imported.id === importId) ??
+        null)
+      : null;
+  const tidal =
+    tidalResult.status === 'fulfilled'
+      ? (tidalResult.value.find((imported) => imported.id === importId) ?? null)
+      : null;
+
+  // Provider repositories generate UUIDv4 import IDs. Canonical import URLs
+  // therefore treat the ID as globally unique across provider stores.
   const imported = spotify ?? tidal;
 
   if (imported === null) {
@@ -36,11 +46,11 @@ export async function getImportWorkspaceContext(
 
   return {
     id: imported.id,
-    name: imported.playlist.name,
+    name: imported.name,
     source: spotify === null ? 'TIDAL' : 'Spotify',
-    trackCount: imported.tracks.length,
-    unavailableTrackCount: imported.tracks.filter(
-      (track) => track.status !== 'available',
-    ).length,
+    trackCount: imported.trackCount,
+    unavailableTrackCount: imported.unavailableTrackCount,
   };
 }
+
+export const getImportWorkspaceContext = cache(loadImportWorkspaceContext);
