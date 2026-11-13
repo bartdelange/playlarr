@@ -24,7 +24,13 @@ const matches = (
 
   if (
     filter.scope !== undefined &&
-    (event.type !== 'domain.invalidated' || event.scope !== filter.scope)
+    (event.type === 'domain.invalidated'
+      ? event.scope !== filter.scope ||
+        (filter.entityId !== undefined && event.entityId !== filter.entityId)
+      : filter.entityId === undefined ||
+        event.command.association?.scope !== filter.scope ||
+        (filter.entityId !== undefined &&
+          event.command.association.entityId !== filter.entityId))
   ) {
     return false;
   }

@@ -98,6 +98,13 @@
     }
   },
   "targetDefaults": {
+    "build": {
+      "options": {
+        "env": {
+          "NODE_ENV": "production"
+        }
+      }
+    },
     "actionlint": {
       "cache": true,
       "inputs": [

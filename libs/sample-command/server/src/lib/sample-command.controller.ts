@@ -3,6 +3,7 @@ import { CommandService } from '@playlarr/commands-server';
 
 interface StartSampleCommandBody {
   steps: number;
+  importId?: string;
 }
 
 interface StartSampleCommandResponse {
@@ -21,9 +22,17 @@ export class SampleCommandController {
       throw new BadRequestException('steps must be a positive integer');
     }
 
-    const commandId = await this.commands.enqueue('sample.delay', {
-      steps: body.steps,
-    });
+    const importId = body.importId?.trim();
+
+    if (body.importId !== undefined && !importId) {
+      throw new BadRequestException('importId must not be empty');
+    }
+
+    const commandId = await this.commands.enqueue(
+      'sample.delay',
+      { steps: body.steps },
+      importId ? { scope: 'imports', entityId: importId } : undefined,
+    );
 
     return { commandId };
   }

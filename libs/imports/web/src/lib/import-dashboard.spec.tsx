@@ -50,7 +50,7 @@ describe('ImportDashboard', () => {
     ).toBe('/imports/01d19f17-ff19-4e1f-b4c8-ec601f91b6f5');
     expect(
       screen.getByRole('link', { name: /Quiet evening/ }).getAttribute('href'),
-    ).toBe('/imports/366ec008-0f13-40e9-a8e4-107ad87026fa/tidal');
+    ).toBe('/imports/366ec008-0f13-40e9-a8e4-107ad87026fa');
   });
 
   it('shows available local imports when one provider summary fails', async () => {

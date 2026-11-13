@@ -2,6 +2,14 @@
   display: grid;
   gap: 1rem;
 }
+.importedTracks {
+  display: grid;
+  gap: 1rem;
+}
+.importedTracks h2,
+.importedTracks p {
+  margin: 0;
+}
 .flow h1,
 .flow p {
   margin: 0;

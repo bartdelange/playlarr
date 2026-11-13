@@ -52,6 +52,55 @@ describe('ApplicationEventsController', () => {
     );
   });
 
+  it('reconciles all associated commands before live events', async () => {
+    let resolveSnapshots!: (commands: CommandState[]) => void;
+    const snapshots = new Promise<CommandState[]>((resolve) => {
+      resolveSnapshots = resolve;
+    });
+    const repository = Object.create(
+      CommandRepository.prototype,
+    ) as CommandRepository;
+    vi.spyOn(repository, 'findStatesByAssociation').mockReturnValue(snapshots);
+    const eventBus = new ApplicationEventBus();
+    const controller = new ApplicationEventsController(eventBus, repository);
+    const messages: Array<{ type?: string; data?: unknown }> = [];
+    const first = {
+      ...commandState(1, 1),
+      association: { scope: 'imports', entityId: 'import-1' },
+    };
+    const second = {
+      ...commandState(1, 0),
+      id: 'command-2',
+      association: { scope: 'imports', entityId: 'import-1' },
+    };
+
+    subscriptions.push(
+      controller.events(undefined, 'imports', 'import-1').subscribe((event) => {
+        messages.push(event);
+      }),
+    );
+
+    eventBus.publish({
+      type: 'command.progress',
+      occurredAt: '2026-09-30T10:00:02.000Z',
+      command: { ...first, current: 2, revision: 2 },
+    });
+    resolveSnapshots([first, second]);
+
+    await vi.waitFor(() => {
+      expect(messages).toHaveLength(3);
+    });
+
+    expect(messages).toMatchObject([
+      { type: 'command.snapshot', data: { command: { id: 'command-1' } } },
+      { type: 'command.snapshot', data: { command: { id: 'command-2' } } },
+      {
+        type: 'command.progress',
+        data: { command: { id: 'command-1', revision: 2 } },
+      },
+    ]);
+  });
+
   it('reconciles a command-scoped connection from persisted current state', async () => {
     const completedCommand = commandState(
       3,

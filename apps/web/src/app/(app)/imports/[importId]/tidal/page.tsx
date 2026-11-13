@@ -1,11 +1,10 @@
-import { TidalImportWorkspace } from '@playlarr/tidal-web';
-import { getTidalImport } from '@playlarr/tidal-web/server';
+import { redirect } from 'next/navigation';
 
-export default async function TidalImportWorkspacePage({
+export default async function LegacyTidalImportWorkspacePage({
   params,
 }: {
   params: Promise<{ importId: string }>;
 }) {
   const { importId } = await params;
-  return <TidalImportWorkspace imported={await getTidalImport(importId)} />;
+  redirect(`/imports/${encodeURIComponent(importId)}/matching`);
 }

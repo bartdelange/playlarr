@@ -11,6 +11,10 @@ import type { CommandStatus } from '@playlarr/commands-domain';
   name: 'commands_status_created_at_idx',
   properties: ['status', 'createdAt'],
 })
+@Index({
+  name: 'commands_scope_entity_created_at_idx',
+  properties: ['scope', 'entityId', 'createdAt'],
+})
 export class CommandEntity {
   @PrimaryKey()
   id!: string;
@@ -20,6 +24,12 @@ export class CommandEntity {
 
   @Property({ type: 'json' })
   payloadJson!: unknown;
+
+  @Property({ nullable: true })
+  scope?: string;
+
+  @Property({ nullable: true })
+  entityId?: string;
 
   @Property()
   status: CommandStatus = 'queued';

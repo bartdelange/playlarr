@@ -37,6 +37,7 @@ export async function getTidalImport(id: string) {
     `/tidal/imports/${encodeURIComponent(id)}`,
     (await cookies()).toString(),
   );
+  if (response.status === 404) return null;
   if (!response.ok) throw new Error('TIDAL import is unavailable');
   const parsed = tidalImportSchema.safeParse(await response.json());
   if (!parsed.success) throw new Error('TIDAL import is invalid');
