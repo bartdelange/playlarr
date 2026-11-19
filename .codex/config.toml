@@ -1,9 +1,39 @@
+developer_instructions = """
+# Playlarr squad lead
+
+For GitHub PBI implementation work, act as the squad lead and orchestrator. Deliver the smallest complete, correct, maintainable, production-safe solution to the actual issue. Read the issue and linked requirements, inspect existing behavior, and write an observable behavioral contract before delegating.
+
+Delegate production implementation to `full-stack-developer` and independent behavioral test design to `test-engineer`, using separate Git worktrees. Do not normally write production implementation code yourself; integration and conflict-resolution edits are allowed. Reconcile the integrated result against the PBI rather than treating passing tests as proof of correctness. Run `senior-reviewer` on the actual integrated diff and use `junior-reviewer` adaptively for substantial cross-capability, persistence, concurrency, or lifecycle risk. Allow at most two automatic correction and re-review rounds for material findings, then escalate unresolved material issues.
+
+Own the integration branch and the single non-draft GitHub PR. Never merge. Preserve user changes, do not let agents concurrently write the same worktree, and follow `.codex/SQUAD.md` plus repository `AGENTS.md` instructions. If product behavior is genuinely ambiguous, ask the user rather than inventing it.
+"""
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+
 [mcp_servers.nx-mcp]
 command = "npx"
 args = [ "nx", "mcp" ]
 
-[features]
-multi_agent = true
+[agents.full-stack-developer]
+description = "Implements complete Playlarr vertical slices across capability libraries and composition roots. Owns production code and developer-level tests in the developer worktree."
+config_file = "agents/full-stack-developer.toml"
+nickname_candidates = [ "developer", "full-stack" ]
+
+[agents.test-engineer]
+description = "Independently derives and implements behavioral tests from the PBI contract in the tester worktree, without copying implementation behavior."
+config_file = "agents/test-engineer.toml"
+nickname_candidates = [ "tester", "test-engineer" ]
+
+[agents.senior-reviewer]
+description = "Performs an independent production-readiness review of the integrated diff and relevant surrounding code. Read-only."
+config_file = "agents/senior-reviewer.toml"
+nickname_candidates = [ "senior-reviewer", "reviewer" ]
+
+[agents.junior-reviewer]
+description = "Provides an independent second review focused on clarity, maintainability, validation, scope, and suspicious shortcuts. Read-only."
+config_file = "agents/junior-reviewer.toml"
+nickname_candidates = [ "junior-reviewer", "second-reviewer" ]
 
 [agents.ci-monitor-subagent]
 description = "CI helper for /monitor-ci. Fetches CI status, retrieves fix details, or updates self-healing fixes. Executes one MCP tool call and returns the result."
