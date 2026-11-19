@@ -16,7 +16,7 @@ const imported = {
 
 const command = (overrides: Partial<CommandState> = {}): CommandState => ({
   id: 'command-one',
-  type: 'sample.delay',
+  type: 'imports.test-work',
   status: 'running',
   current: 1,
   total: 3,
