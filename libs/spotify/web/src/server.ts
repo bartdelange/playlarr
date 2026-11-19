@@ -37,6 +37,7 @@ export async function getSpotifyImport(id: string) {
     `/spotify/imports/${encodeURIComponent(id)}`,
     (await cookies()).toString(),
   );
+  if (response.status === 404) return null;
   if (!response.ok) throw new Error('Spotify import is unavailable');
   const parsed = spotifyImportSchema.safeParse(await response.json());
   if (!parsed.success) throw new Error('Spotify import is invalid');

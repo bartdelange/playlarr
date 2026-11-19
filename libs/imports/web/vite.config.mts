@@ -29,6 +29,7 @@ export default defineConfig(() => ({
     },
     lib: {
       entry: {
+        activity: 'src/activity.ts',
         index: 'src/index.ts',
         server: 'src/server.ts',
       },
@@ -48,6 +49,7 @@ export default defineConfig(() => ({
         '@playlarr/tidal-web/server',
         'react',
         'react-dom',
+        'react/jsx-dev-runtime',
         'react/jsx-runtime',
         'server-only',
       ],

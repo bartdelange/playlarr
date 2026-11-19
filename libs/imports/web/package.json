@@ -12,6 +12,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./activity": {
+      "types": "./dist/activity.d.ts",
+      "import": "./dist/activity.js",
+      "default": "./dist/activity.js"
+    },
     "./server": {
       "types": "./dist/server.d.ts",
       "import": "./dist/server.js",
@@ -26,6 +31,7 @@
     ]
   },
   "dependencies": {
+    "@playlarr/commands-contracts": "workspace:*",
     "@playlarr/imports-contracts": "workspace:*",
     "@playlarr/spotify-web": "workspace:*",
     "@playlarr/tidal-web": "workspace:*",

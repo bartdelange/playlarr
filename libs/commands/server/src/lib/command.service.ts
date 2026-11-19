@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { CommandAssociation } from '@playlarr/commands-domain';
 import { CommandRepository } from '@playlarr/commands-persistence';
 import { CommandWakeSignal } from './command-wake-signal.js';
 import { CommandRuntimeLifecycle } from './command-runtime-lifecycle.js';
@@ -11,10 +12,14 @@ export class CommandService {
     private readonly lifecycle: CommandRuntimeLifecycle,
   ) {}
 
-  async enqueue<TPayload>(type: string, payload: TPayload): Promise<string> {
+  async enqueue<TPayload>(
+    type: string,
+    payload: TPayload,
+    association?: CommandAssociation,
+  ): Promise<string> {
     this.lifecycle.assertAcceptingWork();
 
-    const command = await this.repository.create(type, payload);
+    const command = await this.repository.create(type, payload, association);
 
     this.wakeSignal.wake();
 

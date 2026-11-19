@@ -165,6 +165,20 @@ export function SpotifyImportWorkspace({
         {imported.tracks.length} source{' '}
         {imported.tracks.length === 1 ? 'item' : 'items'} in playlist order
       </p>
+      <SpotifyImportedTracks imported={imported} />
+    </main>
+  );
+}
+
+export function SpotifyImportedTracks({
+  imported,
+}: {
+  imported: SpotifyImport;
+}) {
+  return (
+    <section className={styles.importedTracks}>
+      <h2>Imported tracks</h2>
+      <p>Source items are shown in their original playlist order.</p>
       <ol className={styles.tracks}>
         {imported.tracks.map((track) => (
           <li key={track.position}>
@@ -184,6 +198,6 @@ export function SpotifyImportWorkspace({
           </li>
         ))}
       </ol>
-    </main>
+    </section>
   );
 }

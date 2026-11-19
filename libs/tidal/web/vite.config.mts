@@ -47,6 +47,7 @@ export default defineConfig(() => ({
         'next/headers',
         'react',
         'react-dom',
+        'react/jsx-dev-runtime',
         'react/jsx-runtime',
         'server-only',
       ],

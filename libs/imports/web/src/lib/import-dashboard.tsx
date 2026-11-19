@@ -5,9 +5,7 @@ import { getTidalImports } from '@playlarr/tidal-web/server';
 import styles from './import-dashboard.module.css';
 
 function importHref(imported: ImportSummary): string {
-  return imported.source === 'spotify'
-    ? `/imports/${imported.id}`
-    : `/imports/${imported.id}/tidal`;
+  return `/imports/${imported.id}`;
 }
 
 function ImportCard({ imported }: { imported: ImportSummary }) {

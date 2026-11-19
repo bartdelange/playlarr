@@ -226,6 +226,23 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "error": {
           "name": "error",
           "type": "text",
@@ -293,6 +310,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "integer"
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
         },
         "started_at": {
           "name": "started_at",
@@ -381,6 +415,18 @@
         }
       },
       "indexes": [
+        {
+          "columnNames": [
+            "scope",
+            "entity_id",
+            "created_at"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "commands_scope_entity_created_at_idx",
+          "primary": false,
+          "unique": false
+        },
         {
           "columnNames": [
             "status",

@@ -46,6 +46,33 @@ describe('ApplicationEventBus', () => {
     expect(domainListener).toHaveBeenCalledOnce();
   });
 
+  it('delivers command events to their association subscriber', () => {
+    const bus = new ApplicationEventBus();
+    const listener = vi.fn();
+    const associated = {
+      ...command('command-1'),
+      association: { scope: 'imports', entityId: 'import-1' },
+    };
+
+    bus.subscribe({ scope: 'imports', entityId: 'import-1' }, listener);
+    bus.publish({
+      type: 'command.started',
+      occurredAt: '2026-09-30T10:00:01.000Z',
+      command: associated,
+    });
+    bus.publish({
+      type: 'command.started',
+      occurredAt: '2026-09-30T10:00:01.000Z',
+      command: {
+        ...associated,
+        id: 'command-2',
+        association: { scope: 'imports', entityId: 'import-2' },
+      },
+    });
+
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
   it('removes a subscription when disconnected', () => {
     const bus = new ApplicationEventBus();
     const listener = vi.fn();

@@ -1,5 +1,4 @@
-import { SpotifyImportWorkspace } from '@playlarr/spotify-web';
-import { getSpotifyImport } from '@playlarr/spotify-web/server';
+import { redirect } from 'next/navigation';
 
 export default async function ImportWorkspacePage({
   params,
@@ -7,5 +6,5 @@ export default async function ImportWorkspacePage({
   params: Promise<{ importId: string }>;
 }) {
   const { importId } = await params;
-  return <SpotifyImportWorkspace imported={await getSpotifyImport(importId)} />;
+  redirect(`/imports/${encodeURIComponent(importId)}/matching`);
 }

@@ -18,4 +18,5 @@ export type ApplicationEvent = CommandEvent | DomainInvalidatedEvent;
 export interface ApplicationEventFilter {
   readonly commandId?: string;
   readonly scope?: string;
+  readonly entityId?: string;
 }
